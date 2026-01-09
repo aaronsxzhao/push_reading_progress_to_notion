@@ -68,6 +68,7 @@ PROP_COVER_IMAGE = env("PROP_COVER_IMAGE", "Cover")
 PROP_GENRE = env("PROP_GENRE", "Genre")
 PROP_YEAR_STARTED = env("PROP_YEAR_STARTED", "Year Started")
 PROP_RATING = env("PROP_RATING", "Rating")
+PROP_REVIEW = env("PROP_REVIEW", "Review")
 
 STATUS_TBR = env("STATUS_TBR", "To Be Read")
 STATUS_READING = env("STATUS_READING", "Currently Reading")
@@ -267,7 +268,15 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
         props[PROP_LAST_READ_AT] = {"date": {"start": fields["last_read_at"].isoformat()}}
 
     if fields.get("date_finished") and prop_exists(db_props, PROP_DATE_FINISHED):
-        props[PROP_DATE_FINISHED] = {"date": {"start": fields["date_finished"].date().isoformat()}}
+        # Handle both datetime and date objects
+        date_finished = fields["date_finished"]
+        if hasattr(date_finished, 'date'):
+            date_str = date_finished.date().isoformat()
+        elif hasattr(date_finished, 'isoformat'):
+            date_str = date_finished.isoformat()
+        else:
+            date_str = str(date_finished)
+        props[PROP_DATE_FINISHED] = {"date": {"start": date_str}}
 
     if fields.get("source") and prop_exists(db_props, PROP_SOURCE):
         props[PROP_SOURCE] = {"multi_select": [{"name": fields["source"]}]}
@@ -311,6 +320,94 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     return props
 
+def build_update_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    """Build properties for update only: status, last_read_at, date_finished, current_page"""
+    props: Dict[str, Any] = {}
+
+    if fields.get("status") and prop_exists(db_props, PROP_STATUS):
+        status_prop = db_props[PROP_STATUS]
+        prop_type = status_prop.get("type")
+        
+        # Handle both "select" and "status" property types
+        if prop_type in ["select", "status"]:
+            options_key = "select" if prop_type == "select" else "status"
+            options = status_prop.get(options_key, {}).get("options", [])
+            option_names = [opt.get("name") for opt in options]
+            
+            status_value = fields["status"]
+            if status_value not in option_names:
+                # Try case-insensitive match
+                status_lower = status_value.lower()
+                matched = None
+                for opt_name in option_names:
+                    if opt_name.lower() == status_lower:
+                        matched = opt_name
+                        break
+                
+                if matched:
+                    if prop_type == "status":
+                        props[PROP_STATUS] = {"status": {"name": matched}}
+                    else:
+                        props[PROP_STATUS] = {"select": {"name": matched}}
+            else:
+                if prop_type == "status":
+                    props[PROP_STATUS] = {"status": {"name": status_value}}
+                else:
+                    props[PROP_STATUS] = {"select": {"name": status_value}}
+
+    if fields.get("current_page") is not None and prop_exists(db_props, PROP_CURRENT_PAGE):
+        props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
+
+    if fields.get("last_read_at") and prop_exists(db_props, PROP_LAST_READ_AT):
+        props[PROP_LAST_READ_AT] = {"date": {"start": fields["last_read_at"].isoformat()}}
+
+    if fields.get("date_finished") and prop_exists(db_props, PROP_DATE_FINISHED):
+        # Handle both datetime and date objects
+        date_finished = fields["date_finished"]
+        if hasattr(date_finished, 'date'):
+            date_str = date_finished.date().isoformat()
+        elif hasattr(date_finished, 'isoformat'):
+            date_str = date_finished.isoformat()
+        else:
+            date_str = str(date_finished)
+        props[PROP_DATE_FINISHED] = {"date": {"start": date_str}}
+
+    return props
+
+def append_review(notion: Client, page_id: str, db_props: Dict[str, Any], review_text: str) -> None:
+    """Append review text to the Review property"""
+    if not review_text or not prop_exists(db_props, PROP_REVIEW):
+        return
+    
+    try:
+        # Get current page to read existing review
+        page = notion.pages.retrieve(page_id=page_id)
+        existing_review = ""
+        
+        prop_type = db_props[PROP_REVIEW].get("type")
+        if prop_type == "rich_text":
+            # Get existing rich_text content
+            if PROP_REVIEW in page.get("properties", {}):
+                rich_text_array = page["properties"][PROP_REVIEW].get("rich_text", [])
+                existing_review = "".join([rt.get("plain_text", "") for rt in rich_text_array])
+        
+        # Append new review (add separator if existing review exists)
+        if existing_review:
+            new_review = f"{existing_review}\n\n{review_text}"
+        else:
+            new_review = review_text
+        
+        # Update the review property
+        notion.pages.update(
+            page_id=page_id,
+            properties={
+                PROP_REVIEW: {"rich_text": [{"text": {"content": new_review}}]}
+            }
+        )
+        print(f"[INFO] Appended review to page {page_id}")
+    except Exception as e:
+        print(f"[WARNING] Failed to append review: {e}")
+
 def find_page_by_title(notion: Client, database_id: str, title: str) -> Optional[Dict[str, Any]]:
     res = notion.databases.query(
         database_id=database_id,
@@ -320,15 +417,63 @@ def find_page_by_title(notion: Client, database_id: str, title: str) -> Optional
     results = res.get("results", [])
     return results[0] if results else None
 
+def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Dict[str, Any], title: str, author: str) -> Optional[Dict[str, Any]]:
+    """Find a page by matching both title AND author"""
+    if not title:
+        return None
+    
+    # Build filter: title matches AND author matches
+    filters = {
+        "and": [
+            {"property": PROP_TITLE, "title": {"equals": title}}
+        ]
+    }
+    
+    # Add author filter if author exists and property exists
+    if author and prop_exists(db_props, PROP_AUTHOR):
+        author_filter = {"property": PROP_AUTHOR, "rich_text": {"equals": author}}
+        filters["and"].append(author_filter)
+    
+    try:
+        res = notion.databases.query(
+            database_id=database_id,
+            filter=filters,
+            page_size=10
+        )
+        results = res.get("results", [])
+        return results[0] if results else None
+    except Exception as e:
+        print(f"[WARNING] Error finding page by title and author: {e}")
+        # Fallback to title-only search
+        return find_page_by_title(notion, database_id, title)
+
 def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> str:
-    title = fields["title"]
-    existing = find_page_by_title(notion, database_id, title)
-    props = build_props(db_props, fields)
-
+    title = fields.get("title", "")
+    author = fields.get("author", "")
+    
+    # Check for duplicate by title AND author
+    existing = find_page_by_title_and_author(notion, database_id, db_props, title, author)
+    
     if existing:
-        notion.pages.update(page_id=existing["id"], properties=props)
+        # Duplicate found - only update: status, last_read_at, date_finished, current_page
+        print(f"[INFO] Duplicate found (title: '{title}', author: '{author}') - updating only: status, last_read_at, date_finished, current_page")
+        
+        # Build update props (only the fields we want to update)
+        update_props = build_update_props(db_props, fields)
+        
+        if update_props:
+            notion.pages.update(page_id=existing["id"], properties=update_props)
+            print(f"[INFO] Updated page {existing['id']} with: {list(update_props.keys())}")
+        
+        # Append review if it exists
+        if fields.get("review"):
+            append_review(notion, existing["id"], db_props, fields["review"])
+        
         return existing["id"]
-
+    
+    # No duplicate - create new page with all fields
+    print(f"[INFO] Creating new page (title: '{title}', author: '{author}')")
+    props = build_props(db_props, fields)
     created = notion.pages.create(parent={"database_id": database_id}, properties=props)
     return created["id"]
 
