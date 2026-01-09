@@ -697,34 +697,39 @@ class WeReadAPI:
             
             print(f"[DEBUG] Book {book_id} - EXTRACTED: total_page={total_page}, current_page={current_page}, percent={percent}, chapterIdx={chapter_idx}, lastChapterIdx={last_chapter_idx}")
             
-            # Check for finished flags (highest priority)
+            # Check for finishReading flag - ONLY this flag determines if book is read
             is_finished = False
-            if book_info:
-                is_finished = (book_info.get("finishReading") == 1 or 
-                              book_info.get("finished") == 1 or
-                              book_info.get("isFinished") == 1 or
-                              book_info.get("readFinish") == 1)
-            if book_item and not is_finished:
-                is_finished = (book_item.get("finishReading") == 1 or 
-                              book_item.get("finished") == 1 or
-                              book_item.get("isFinished") == 1)
-            if reading_data and not is_finished:
-                is_finished = (reading_data.get("finishReading") == 1 or 
-                              reading_data.get("finished") == 1 or
-                              reading_data.get("isFinished") == 1)
+            if book_info and book_info.get("finishReading") == 1:
+                is_finished = True
+                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_info")
+            elif book_item and book_item.get("finishReading") == 1:
+                is_finished = True
+                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_item")
+            elif book_item and "book" in book_item and book_item["book"].get("finishReading") == 1:
+                is_finished = True
+                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_item.book")
+            elif reading_data and reading_data.get("finishReading") == 1:
+                is_finished = True
+                print(f"[DEBUG] Book {book_id} - finishReading=1 in reading_data")
             
-            # Determine status - finished flag takes priority
+            # Determine status - ONLY finishReading=1 means "Read"
+            # Progress < 5% is considered "To Be Read"
             if is_finished:
                 status = "Read"
-                print(f"[DEBUG] Book {book_id} - marked as Read (finished flag = 1)")
-            elif percent is not None and percent >= 100:
-                status = "Read"
-            elif percent is not None and percent > 0:
+                print(f"[DEBUG] Book {book_id} - marked as Read (finishReading = 1)")
+            elif percent is not None and percent >= 5:
                 status = "Currently Reading"
-            elif current_page and current_page > 0:
+                print(f"[DEBUG] Book {book_id} - marked as Currently Reading (progress = {percent}%)")
+            elif current_page and total_page and (current_page / total_page * 100) >= 5:
                 status = "Currently Reading"
+                calculated_percent = (current_page / total_page * 100)
+                print(f"[DEBUG] Book {book_id} - marked as Currently Reading (calculated progress = {calculated_percent:.1f}%)")
             else:
                 status = "To Be Read"
+                if percent is not None:
+                    print(f"[DEBUG] Book {book_id} - marked as To Be Read (progress = {percent}% < 5%)")
+                else:
+                    print(f"[DEBUG] Book {book_id} - marked as To Be Read (no progress or < 5%)")
             
             # Extract dates - prioritize first read time as started_at
             started_at = None
