@@ -27,8 +27,10 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# edit .env
+# edit .env with your real values
 ```
+
+**⚠️ Security Note:** Your `.env` file contains secrets and is **automatically ignored by git** (see `.gitignore`). Never commit your `.env` file to GitHub. Only `.env.example` (with placeholder values) is safe to commit.
 
 ### 3) Run once (foreground)
 
@@ -49,4 +51,44 @@ Logs:
 
 * /tmp/weread_notion_sync.out.log
 * /tmp/weread_notion_sync.err.log
+
+## Security: Protecting Your Secrets
+
+**Your `.env` file is automatically ignored by git** and will never be committed. Here's how to verify:
+
+### Before pushing to GitHub:
+
+1. **Run the security check:**
+   ```bash
+   bash scripts/check_secrets.sh
+   ```
+
+2. **Verify `.env` is not tracked:**
+   ```bash
+   git status
+   # Should NOT show .env in the output
+   ```
+
+3. **Double-check what will be committed:**
+   ```bash
+   git diff --cached  # if staging
+   git diff          # if not staging
+   ```
+
+### What's safe to commit:
+- ✅ `.env.example` (template with placeholder values)
+- ✅ All code files
+- ✅ `requirements.txt`, `README.md`, etc.
+
+### What's NEVER committed:
+- ❌ `.env` (your real secrets)
+- ❌ Any file with `secret_` tokens
+- ❌ LaunchAgent plist files
+
+**If you accidentally commit `.env`:**
+```bash
+git rm --cached .env
+git commit -m "Remove accidentally committed .env"
+# Then immediately rotate your Notion token in Notion settings
+```
 
