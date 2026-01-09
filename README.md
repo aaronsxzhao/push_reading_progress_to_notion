@@ -1,12 +1,20 @@
 # WeRead → Notion Auto Sync
 
-This runs a background watcher that syncs WeRead (via Obsidian markdown exported by the WeRead plugin)
-into a Notion database, updating reading progress and status automatically.
+Syncs your WeRead (微信读书) reading progress directly to Notion, updating your Books & Media database automatically.
+
+## Two Modes Available
+
+### 🚀 **Direct API Mode** (Recommended - No Obsidian needed!)
+Fetches data directly from WeRead's API using your browser cookies. No plugins or extra apps required.
+
+### 📁 **File Watch Mode** (Alternative)
+Watches an Obsidian folder for markdown files exported by the WeRead Obsidian plugin.
 
 ## Features
-- Watches WeRead folder in real time (no daily runs)
-- Upserts book into Notion database
-- Updates:
+- ✅ Direct API access to WeRead (no Obsidian needed)
+- ✅ Real-time file watching (if using Obsidian mode)
+- ✅ Upserts books into Notion database
+- ✅ Updates:
   - Author
   - Current Page / Total Page
   - Status (To Be Read / Currently Reading / Read)
@@ -32,16 +40,56 @@ cp .env.example .env
 
 **⚠️ Security Note:** Your `.env` file contains secrets and is **automatically ignored by git** (see `.gitignore`). Never commit your `.env` file to GitHub. Only `.env.example` (with placeholder values) is safe to commit.
 
-### 3) Run once (foreground)
+### 3) Choose Your Mode
 
-```bash
-source .venv/bin/activate
-python3 src/weread_notion_sync.py
-```
+#### Option A: Direct API Mode (Recommended)
+
+1. **Get your WeRead cookies:**
+   - Open [weread.qq.com](https://weread.qq.com) in browser and log in
+   - Press F12 → Application tab → Cookies → `weread.qq.com`
+   - Copy cookie values (especially `wr_skey`, `wr_vid`, `wr_rt`)
+   - Format: `wr_skey=xxx; wr_vid=xxx; wr_rt=xxx`
+   - See `scripts/get_weread_cookies.md` for detailed instructions
+
+2. **Add to `.env`:**
+   ```bash
+   WEREAD_COOKIES=wr_skey=your_value; wr_vid=your_value; wr_rt=your_value
+   ```
+
+3. **Run the API sync:**
+   ```bash
+   source .venv/bin/activate
+   python3 src/weread_notion_sync_api.py
+   ```
+
+#### Option B: File Watch Mode (Obsidian)
+
+1. **Set up Obsidian WeRead plugin** (if not already done)
+2. **Add to `.env`:**
+   ```bash
+   WEREAD_ROOT=/path/to/your/Obsidian/WeRead
+   ```
+
+3. **Run the file watcher:**
+   ```bash
+   source .venv/bin/activate
+   python3 src/weread_notion_sync.py
+   ```
 
 ## macOS auto-run (launchd)
 
-Use the provided `scripts/install_launchd.sh` to install a LaunchAgent.
+### For Direct API Mode:
+
+Create a LaunchAgent that runs the API sync periodically (e.g., every hour):
+
+```bash
+# Edit scripts/install_launchd_api.sh (create it) or use cron:
+# Add to crontab: 0 * * * * /path/to/project/.venv/bin/python3 /path/to/project/src/weread_notion_sync_api.py
+```
+
+### For File Watch Mode:
+
+Use the provided `scripts/install_launchd.sh` to install a LaunchAgent that watches files continuously:
 
 ```bash
 bash scripts/install_launchd.sh
