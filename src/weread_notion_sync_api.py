@@ -20,7 +20,7 @@ Optional env vars: same as weread_notion_sync.py
 
 import os
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from notion_client import Client
 from weread_api import WeReadAPI, env
@@ -39,7 +39,7 @@ from weread_notion_sync import (
 )
 
 
-def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str):
+def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None):
     """Fetch books from WeRead API and sync to Notion"""
     print("[API] Fetching books from WeRead API...")
     
@@ -47,6 +47,11 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     books = client.get_all_books_with_progress()
     
     print(f"[API] Found {len(books)} books")
+    
+    # Apply limit if specified
+    if limit is not None and limit > 0:
+        books = books[:limit]
+        print(f"[API] Limiting to first {limit} book(s) for testing")
     
     synced_count = 0
     error_count = 0
@@ -77,6 +82,17 @@ def main():
     NOTION_DATABASE_ID = env("NOTION_DATABASE_ID")
     WEREAD_COOKIES = env("WEREAD_COOKIES")
     
+    # Optional limit for testing (set SYNC_LIMIT in .env, default: None = all books)
+    sync_limit = env("SYNC_LIMIT")
+    limit = None
+    if sync_limit:
+        try:
+            limit = int(sync_limit)
+            if limit <= 0:
+                limit = None
+        except ValueError:
+            limit = None
+    
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
     if not WEREAD_COOKIES:
@@ -85,7 +101,7 @@ def main():
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)
     
-    sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES)
+    sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit)
 
 
 if __name__ == "__main__":

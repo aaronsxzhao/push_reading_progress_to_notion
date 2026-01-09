@@ -80,12 +80,18 @@ cp .env.example .env
 
 ### For Direct API Mode:
 
-Create a LaunchAgent that runs the API sync periodically (e.g., every hour):
+Use the provided `scripts/install_launchd_api.sh` to run sync periodically (default: every hour):
 
 ```bash
-# Edit scripts/install_launchd_api.sh (create it) or use cron:
-# Add to crontab: 0 * * * * /path/to/project/.venv/bin/python3 /path/to/project/src/weread_notion_sync_api.py
+bash scripts/install_launchd_api.sh
 ```
+
+To change sync interval, set `SYNC_INTERVAL` in `.env` (in seconds, default 3600 = 1 hour).
+
+Logs:
+
+* /tmp/weread_notion_sync_api.out.log
+* /tmp/weread_notion_sync_api.err.log
 
 ### For File Watch Mode:
 

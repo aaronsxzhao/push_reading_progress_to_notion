@@ -193,14 +193,50 @@ def prop_exists(db_props: Dict[str, Any], name: str) -> bool:
 def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
     props: Dict[str, Any] = {}
 
-    if fields.get("title") and prop_exists(db_props, PROP_TITLE):
-        props[PROP_TITLE] = {"title": [{"text": {"content": fields["title"]}}]}
+    if fields.get("title"):
+        if prop_exists(db_props, PROP_TITLE):
+            # Check if it's a title property
+            prop_type = db_props[PROP_TITLE].get("type")
+            if prop_type == "title":
+                props[PROP_TITLE] = {"title": [{"text": {"content": fields["title"]}}]}
+            else:
+                # Try as rich_text if title type doesn't work
+                props[PROP_TITLE] = {"rich_text": [{"text": {"content": fields["title"]}}]}
+        else:
+            # Property doesn't exist - print helpful error
+            available_props = ", ".join(list(db_props.keys())[:10])
+            raise ValueError(f"Property '{PROP_TITLE}' not found in database. Available properties: {available_props}... (set NOTION_TITLE_PROP in .env)")
 
     if fields.get("author") is not None and fields.get("author") != "" and prop_exists(db_props, PROP_AUTHOR):
         props[PROP_AUTHOR] = {"rich_text": [{"text": {"content": fields["author"]}}]}
 
     if fields.get("status") and prop_exists(db_props, PROP_STATUS):
-        props[PROP_STATUS] = {"select": {"name": fields["status"]}}
+        status_prop = db_props[PROP_STATUS]
+        if status_prop.get("type") == "select":
+            # Get available options
+            options = status_prop.get("select", {}).get("options", [])
+            option_names = [opt.get("name") for opt in options]
+            
+            # Check if the status value matches an option
+            status_value = fields["status"]
+            if status_value not in option_names:
+                # Try case-insensitive match
+                status_lower = status_value.lower()
+                matched = None
+                for opt_name in option_names:
+                    if opt_name.lower() == status_lower:
+                        matched = opt_name
+                        break
+                
+                if matched:
+                    props[PROP_STATUS] = {"select": {"name": matched}}
+                else:
+                    print(f"[WARNING] Status '{status_value}' not found in Notion options.")
+                    print(f"[WARNING] Available options: {', '.join(option_names)}")
+                    print(f"[WARNING] Skipping status update for this book.")
+                    # Don't set status if it doesn't match
+            else:
+                props[PROP_STATUS] = {"select": {"name": status_value}}
 
     if fields.get("current_page") is not None and prop_exists(db_props, PROP_CURRENT_PAGE):
         props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
