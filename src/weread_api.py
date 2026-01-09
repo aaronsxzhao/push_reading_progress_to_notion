@@ -12,12 +12,13 @@ import os
 import json
 import time
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
 import requests
 from dateutil import parser as dtparser
+import dateutil.tz
 
 
 def env(name: str, default: Optional[str] = None) -> str:
@@ -545,7 +546,9 @@ class WeReadAPI:
                 if book_item.get("updateTime"):
                     try:
                         # updateTime is Unix timestamp
-                        last_read_at = datetime.fromtimestamp(book_item["updateTime"])
+                        # Use local timezone for timestamp conversion
+                        local_tz = dateutil.tz.tzlocal()
+                        last_read_at = datetime.fromtimestamp(book_item["updateTime"], tz=local_tz)
                     except:
                         pass
                 
@@ -750,14 +753,18 @@ class WeReadAPI:
                     print(f"[DEBUG] Book {book_id} - startTime (raw): {reading_data.get('startTime')}")
                     try:
                         start_time_raw = reading_data["startTime"]
-                        # Handle Unix timestamp (seconds)
+                        # Handle Unix timestamp (seconds) - use local timezone
                         if isinstance(start_time_raw, (int, float)):
+                            local_tz = dateutil.tz.tzlocal()
                             if start_time_raw > 1e10:  # Milliseconds timestamp
-                                start_time = datetime.fromtimestamp(start_time_raw / 1000)
+                                start_time = datetime.fromtimestamp(start_time_raw / 1000, tz=local_tz)
                             else:  # Seconds timestamp
-                                start_time = datetime.fromtimestamp(start_time_raw)
+                                start_time = datetime.fromtimestamp(start_time_raw, tz=local_tz)
                         else:
                             start_time = dtparser.parse(str(start_time_raw))
+                            # Ensure local timezone if naive
+                            if start_time.tzinfo is None:
+                                start_time = start_time.replace(tzinfo=dateutil.tz.tzlocal())
                         start_times.append(start_time)
                         started_at = start_time
                         print(f"[DEBUG] Book {book_id} - parsed startTime: {start_time}")
@@ -768,12 +775,16 @@ class WeReadAPI:
                     try:
                         last_read_raw = reading_data.get("lastReadTime") or reading_data.get("updateTime")
                         if isinstance(last_read_raw, (int, float)):
+                            local_tz = dateutil.tz.tzlocal()
                             if last_read_raw > 1e10:  # Milliseconds
-                                last_read_at = datetime.fromtimestamp(last_read_raw / 1000)
+                                last_read_at = datetime.fromtimestamp(last_read_raw / 1000, tz=local_tz)
                             else:  # Seconds
-                                last_read_at = datetime.fromtimestamp(last_read_raw)
+                                last_read_at = datetime.fromtimestamp(last_read_raw, tz=local_tz)
                         else:
                             last_read_at = dtparser.parse(str(last_read_raw))
+                            # Ensure local timezone if naive
+                            if last_read_at.tzinfo is None:
+                                last_read_at = last_read_at.replace(tzinfo=dateutil.tz.tzlocal())
                     except Exception as e:
                         print(f"[DEBUG] Book {book_id} - failed to parse lastReadTime: {e}")
             
@@ -781,12 +792,13 @@ class WeReadAPI:
             if book_item and book_item.get("updateTime"):
                 try:
                     update_time_raw = book_item["updateTime"]
-                    # updateTime is typically Unix timestamp in seconds
+                    # updateTime is typically Unix timestamp in seconds - use local timezone
                     if isinstance(update_time_raw, (int, float)):
+                        local_tz = dateutil.tz.tzlocal()
                         if update_time_raw > 1e10:  # Milliseconds timestamp
-                            update_time = datetime.fromtimestamp(update_time_raw / 1000)
+                            update_time = datetime.fromtimestamp(update_time_raw / 1000, tz=local_tz)
                         else:  # Seconds timestamp
-                            update_time = datetime.fromtimestamp(update_time_raw)
+                            update_time = datetime.fromtimestamp(update_time_raw, tz=local_tz)
                         print(f"[DEBUG] Book {book_id} - parsed updateTime: {update_time} (from timestamp {update_time_raw})")
                         if not last_read_at:
                             last_read_at = update_time

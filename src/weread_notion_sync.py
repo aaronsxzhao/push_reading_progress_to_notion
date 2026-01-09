@@ -62,7 +62,7 @@ PROP_CURRENT_PAGE = env("PROP_CURRENT_PAGE", "Current Page")
 PROP_TOTAL_PAGE = env("PROP_TOTAL_PAGE", "Total Page")
 PROP_DATE_FINISHED = env("PROP_DATE_FINISHED", "Date Finished")
 PROP_SOURCE = env("PROP_SOURCE", "Source")
-PROP_STARTED_AT = env("PROP_STARTED_AT", "Started At")
+PROP_STARTED_AT = env("PROP_STARTED_AT", "Date Started")
 PROP_LAST_READ_AT = env("PROP_LAST_READ_AT", "Last Read At")
 PROP_COVER_IMAGE = env("PROP_COVER_IMAGE", "Cover")
 PROP_GENRE = env("PROP_GENRE", "Genre")
@@ -262,10 +262,31 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
         props[PROP_TOTAL_PAGE] = {"number": int(fields["total_page"])}
 
     if fields.get("started_at") and prop_exists(db_props, PROP_STARTED_AT):
-        props[PROP_STARTED_AT] = {"date": {"start": fields["started_at"].isoformat()}}
+        # Handle both datetime and date objects - use same format as date_finished
+        started_at = fields["started_at"]
+        if hasattr(started_at, 'date'):
+            date_str = started_at.date().isoformat()
+        elif hasattr(started_at, 'isoformat'):
+            date_str = started_at.isoformat()
+        else:
+            date_str = str(started_at)
+        props[PROP_STARTED_AT] = {"date": {"start": date_str}}
 
     if fields.get("last_read_at") and prop_exists(db_props, PROP_LAST_READ_AT):
-        props[PROP_LAST_READ_AT] = {"date": {"start": fields["last_read_at"].isoformat()}}
+        # Convert to local timezone if needed, then format as date (same as date_finished)
+        last_read_at = fields["last_read_at"]
+        if hasattr(last_read_at, 'astimezone'):
+            # Convert to local timezone if it has timezone info
+            import dateutil.tz
+            if last_read_at.tzinfo is not None:
+                last_read_at = last_read_at.astimezone(dateutil.tz.tzlocal())
+        if hasattr(last_read_at, 'date'):
+            date_str = last_read_at.date().isoformat()
+        elif hasattr(last_read_at, 'isoformat'):
+            date_str = last_read_at.isoformat()
+        else:
+            date_str = str(last_read_at)
+        props[PROP_LAST_READ_AT] = {"date": {"start": date_str}}
 
     if fields.get("date_finished") and prop_exists(db_props, PROP_DATE_FINISHED):
         # Handle both datetime and date objects
@@ -302,10 +323,20 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     if fields.get("year_started") is not None and prop_exists(db_props, PROP_YEAR_STARTED):
         prop_type = db_props[PROP_YEAR_STARTED].get("type")
-        if prop_type == "number":
+        year_value = str(int(fields["year_started"]))  # Convert to string for multi-select
+        
+        if prop_type == "multi_select":
+            # Multi-select expects a list of objects with "name" field
+            props[PROP_YEAR_STARTED] = {"multi_select": [{"name": year_value}]}
+        elif prop_type == "select":
+            # Single select
+            props[PROP_YEAR_STARTED] = {"select": {"name": year_value}}
+        elif prop_type == "number":
             props[PROP_YEAR_STARTED] = {"number": int(fields["year_started"])}
         elif prop_type == "rich_text":
-            props[PROP_YEAR_STARTED] = {"rich_text": [{"text": {"content": str(fields["year_started"])}}]}
+            props[PROP_YEAR_STARTED] = {"rich_text": [{"text": {"content": year_value}}]}
+        else:
+            print(f"[WARNING] Property '{PROP_YEAR_STARTED}' is of type '{prop_type}', which is not supported. Skipping.")
 
     if fields.get("rating") is not None and prop_exists(db_props, PROP_RATING):
         prop_type = db_props[PROP_RATING].get("type")
@@ -359,11 +390,29 @@ def build_update_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict
         props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
 
     if fields.get("last_read_at") and prop_exists(db_props, PROP_LAST_READ_AT):
-        props[PROP_LAST_READ_AT] = {"date": {"start": fields["last_read_at"].isoformat()}}
+        # Convert to local timezone if needed, then format as date (same as date_finished)
+        last_read_at = fields["last_read_at"]
+        if hasattr(last_read_at, 'astimezone'):
+            # Convert to local timezone if it has timezone info
+            import dateutil.tz
+            if last_read_at.tzinfo is not None:
+                last_read_at = last_read_at.astimezone(dateutil.tz.tzlocal())
+        if hasattr(last_read_at, 'date'):
+            date_str = last_read_at.date().isoformat()
+        elif hasattr(last_read_at, 'isoformat'):
+            date_str = last_read_at.isoformat()
+        else:
+            date_str = str(last_read_at)
+        props[PROP_LAST_READ_AT] = {"date": {"start": date_str}}
 
     if fields.get("date_finished") and prop_exists(db_props, PROP_DATE_FINISHED):
         # Handle both datetime and date objects
         date_finished = fields["date_finished"]
+        if hasattr(date_finished, 'astimezone'):
+            # Convert to local timezone if it has timezone info
+            import dateutil.tz
+            if date_finished.tzinfo is not None:
+                date_finished = date_finished.astimezone(dateutil.tz.tzlocal())
         if hasattr(date_finished, 'date'):
             date_str = date_finished.date().isoformat()
         elif hasattr(date_finished, 'isoformat'):
