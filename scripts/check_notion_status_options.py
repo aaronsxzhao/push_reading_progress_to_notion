@@ -32,12 +32,15 @@ def main():
         return
     
     status_prop = db_props[status_prop_name]
+    prop_type = status_prop.get("type")
     
-    if status_prop.get("type") != "select":
-        print(f"⚠️  Property '{status_prop_name}' is not a select type (it's {status_prop.get('type')})")
+    if prop_type not in ["select", "status"]:
+        print(f"⚠️  Property '{status_prop_name}' is not a select/status type (it's {prop_type})")
         return
     
-    options = status_prop.get("select", {}).get("options", [])
+    # Get options based on property type
+    options_key = "select" if prop_type == "select" else "status"
+    options = status_prop.get(options_key, {}).get("options", [])
     
     print("=" * 60)
     print("Notion Status Options")

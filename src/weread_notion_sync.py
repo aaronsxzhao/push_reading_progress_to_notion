@@ -64,6 +64,10 @@ PROP_DATE_FINISHED = env("PROP_DATE_FINISHED", "Date Finished")
 PROP_SOURCE = env("PROP_SOURCE", "Source")
 PROP_STARTED_AT = env("PROP_STARTED_AT", "Started At")
 PROP_LAST_READ_AT = env("PROP_LAST_READ_AT", "Last Read At")
+PROP_COVER_IMAGE = env("PROP_COVER_IMAGE", "Cover")
+PROP_GENRE = env("PROP_GENRE", "Genre")
+PROP_YEAR_STARTED = env("PROP_YEAR_STARTED", "Year Started")
+PROP_RATING = env("PROP_RATING", "Rating")
 
 STATUS_TBR = env("STATUS_TBR", "To Be Read")
 STATUS_READING = env("STATUS_READING", "Currently Reading")
@@ -212,9 +216,13 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     if fields.get("status") and prop_exists(db_props, PROP_STATUS):
         status_prop = db_props[PROP_STATUS]
-        if status_prop.get("type") == "select":
-            # Get available options
-            options = status_prop.get("select", {}).get("options", [])
+        prop_type = status_prop.get("type")
+        
+        # Handle both "select" and "status" property types
+        if prop_type in ["select", "status"]:
+            # Get available options (same structure for both types)
+            options_key = "select" if prop_type == "select" else "status"
+            options = status_prop.get(options_key, {}).get("options", [])
             option_names = [opt.get("name") for opt in options]
             
             # Check if the status value matches an option
@@ -229,14 +237,22 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
                         break
                 
                 if matched:
-                    props[PROP_STATUS] = {"select": {"name": matched}}
+                    # Use the correct property type format
+                    if prop_type == "status":
+                        props[PROP_STATUS] = {"status": {"name": matched}}
+                    else:
+                        props[PROP_STATUS] = {"select": {"name": matched}}
                 else:
                     print(f"[WARNING] Status '{status_value}' not found in Notion options.")
                     print(f"[WARNING] Available options: {', '.join(option_names)}")
                     print(f"[WARNING] Skipping status update for this book.")
                     # Don't set status if it doesn't match
             else:
-                props[PROP_STATUS] = {"select": {"name": status_value}}
+                # Use the correct property type format
+                if prop_type == "status":
+                    props[PROP_STATUS] = {"status": {"name": status_value}}
+                else:
+                    props[PROP_STATUS] = {"select": {"name": status_value}}
 
     if fields.get("current_page") is not None and prop_exists(db_props, PROP_CURRENT_PAGE):
         props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
@@ -255,6 +271,43 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     if fields.get("source") and prop_exists(db_props, PROP_SOURCE):
         props[PROP_SOURCE] = {"multi_select": [{"name": fields["source"]}]}
+
+    if fields.get("cover_image") and prop_exists(db_props, PROP_COVER_IMAGE):
+        # Cover image as URL (files property) or rich_text
+        prop_type = db_props[PROP_COVER_IMAGE].get("type")
+        if prop_type == "files":
+            props[PROP_COVER_IMAGE] = {"files": [{"type": "external", "name": "Cover", "external": {"url": fields["cover_image"]}}]}
+        elif prop_type == "url":
+            props[PROP_COVER_IMAGE] = {"url": fields["cover_image"]}
+        elif prop_type == "rich_text":
+            props[PROP_COVER_IMAGE] = {"rich_text": [{"text": {"content": fields["cover_image"]}}]}
+
+    if fields.get("genre") and prop_exists(db_props, PROP_GENRE):
+        prop_type = db_props[PROP_GENRE].get("type")
+        if prop_type == "select":
+            props[PROP_GENRE] = {"select": {"name": fields["genre"]}}
+        elif prop_type == "multi_select":
+            props[PROP_GENRE] = {"multi_select": [{"name": fields["genre"]}]}
+        elif prop_type == "rich_text":
+            props[PROP_GENRE] = {"rich_text": [{"text": {"content": fields["genre"]}}]}
+
+    if fields.get("year_started") is not None and prop_exists(db_props, PROP_YEAR_STARTED):
+        prop_type = db_props[PROP_YEAR_STARTED].get("type")
+        if prop_type == "number":
+            props[PROP_YEAR_STARTED] = {"number": int(fields["year_started"])}
+        elif prop_type == "rich_text":
+            props[PROP_YEAR_STARTED] = {"rich_text": [{"text": {"content": str(fields["year_started"])}}]}
+
+    if fields.get("rating") is not None and prop_exists(db_props, PROP_RATING):
+        prop_type = db_props[PROP_RATING].get("type")
+        if prop_type == "number":
+            props[PROP_RATING] = {"number": float(fields["rating"])}
+        elif prop_type == "select":
+            # Convert rating to select option (e.g., "5", "4.5", etc.)
+            rating_str = str(round(float(fields["rating"]) * 2) / 2)  # Round to 0.5
+            props[PROP_RATING] = {"select": {"name": rating_str}}
+        elif prop_type == "rich_text":
+            props[PROP_RATING] = {"rich_text": [{"text": {"content": str(fields["rating"])}}]}
 
     return props
 
