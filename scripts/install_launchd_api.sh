@@ -97,3 +97,4 @@ echo "  tail -f /tmp/weread_notion_sync_api.err.log"
 echo ""
 echo "To change interval, set SYNC_INTERVAL in .env (in seconds, default 3600 = 1 hour)"
 
+

@@ -42,6 +42,10 @@ WEREAD_BOOK_LIST_API = f"{WEREAD_API_BASE}/web/shelf/bookList"
 WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readInfo"
 WEREAD_BOOK_READING_API = f"{WEREAD_API_BASE}/web/book/reading"
 WEREAD_USER_READING_API = f"{WEREAD_API_BASE}/web/user/reading"
+# Additional endpoints for bookmarks, reviews, and chapters
+WEREAD_BOOKMARKLIST_API = "https://i.weread.qq.com/book/bookmarklist"
+WEREAD_REVIEW_LIST_API = "https://i.weread.qq.com/review/list"
+WEREAD_CHAPTER_INFO_API = "https://i.weread.qq.com/book/chapterInfos"
 
 
 class WeReadAPI:
@@ -630,6 +634,34 @@ class WeReadAPI:
             else:
                 print(f"[DEBUG] ⚠️  No reading_data returned from any API endpoint for {book_id}")
             
+            # Get detailed read info (includes pages, reading time, etc.)
+            read_info = None
+            print(f"[DEBUG] Fetching read_info for book {book_id}...")
+            read_info = self.get_read_info(book_id)
+            if read_info:
+                print(f"[DEBUG] ✅ Successfully got read_info for {book_id}")
+            
+            # Get bookmarks/highlights
+            bookmark_list = None
+            print(f"[DEBUG] Fetching bookmarks for book {book_id}...")
+            bookmark_list = self.get_bookmark_list(book_id)
+            if bookmark_list:
+                print(f"[DEBUG] ✅ Found {len(bookmark_list)} bookmarks for {book_id}")
+            
+            # Get reviews
+            summary_reviews, regular_reviews = [], []
+            print(f"[DEBUG] Fetching reviews for book {book_id}...")
+            summary_reviews, regular_reviews = self.get_review_list(book_id)
+            if summary_reviews or regular_reviews:
+                print(f"[DEBUG] ✅ Found {len(summary_reviews)} summary reviews and {len(regular_reviews)} regular reviews for {book_id}")
+            
+            # Get chapter info
+            chapter_info = None
+            print(f"[DEBUG] Fetching chapter info for book {book_id}...")
+            chapter_info = self.get_chapter_info(book_id)
+            if chapter_info:
+                print(f"[DEBUG] ✅ Found chapter info for {book_id} ({len(chapter_info)} chapters)")
+            
             # DEBUG: Print all available data
             print(f"\n{'='*60}")
             print(f"[DEBUG] FULL API RESPONSE DATA for book {book_id}")
@@ -663,8 +695,34 @@ class WeReadAPI:
                              book_info.get("pages") or book_info.get("pageNum") or
                              book_info.get("totalPageCount") or book_info.get("maxPage"))
             
-            # Try to get page data from reading_data API
-            if reading_data:
+            # Try to get page data from read_info API (more reliable for pages)
+            if read_info:
+                # Extract current page from read_info
+                if not current_page:
+                    current_page = (read_info.get("currentPage") or 
+                                  read_info.get("readPage") or 
+                                  read_info.get("readPageNum") or
+                                  read_info.get("page"))
+                
+                # Extract total page from read_info
+                if not total_page:
+                    total_page = (read_info.get("totalPage") or 
+                                read_info.get("pageCount") or
+                                read_info.get("totalPages") or
+                                read_info.get("maxPage") or
+                                read_info.get("pageNum"))
+                
+                # Update percent from read_info if available
+                if not percent or percent == 0:
+                    percent = (read_info.get("readPercentage") or 
+                             read_info.get("progress") or
+                             read_info.get("readPercent") or
+                             read_info.get("readingProgress"))
+                
+                print(f"[DEBUG] From read_info API: current_page={current_page}, total_page={total_page}, percent={percent}")
+            
+            # Try to get page data from reading_data API (fallback)
+            if reading_data and (not current_page or not total_page):
                 # Extract current page from reading_data
                 if not current_page:
                     current_page = (reading_data.get("currentPage") or 
@@ -854,6 +912,35 @@ class WeReadAPI:
                 print(f"[DEBUG] Book {book_id} - book_info keys: {list(book_info.keys())}")
                 print(f"[DEBUG] Book {book_id} - book_item keys: {list(book_item.keys()) if book_item else 'None'}")
             
+            # Format reading time from read_info
+            reading_time_formatted = None
+            if read_info and read_info.get("readingTime"):
+                reading_time_seconds = read_info.get("readingTime", 0)
+                hours = reading_time_seconds // 3600
+                minutes = (reading_time_seconds % 3600) // 60
+                if hours > 0:
+                    reading_time_formatted = f"{hours}时{minutes}分" if minutes > 0 else f"{hours}时"
+                elif minutes > 0:
+                    reading_time_formatted = f"{minutes}分"
+            
+            # Combine bookmarks and reviews
+            all_bookmarks = []
+            if bookmark_list:
+                all_bookmarks.extend(bookmark_list)
+            if regular_reviews:
+                all_bookmarks.extend(regular_reviews)
+            
+            # Sort all bookmarks by chapter and position
+            if all_bookmarks:
+                all_bookmarks = sorted(
+                    all_bookmarks,
+                    key=lambda x: (
+                        x.get("chapterUid", 1),
+                        0 if (not x.get("range") or x.get("range", "").split("-")[0] == "") 
+                        else int(x.get("range", "0-0").split("-")[0]),
+                    ),
+                )
+            
             return {
                 "title": title,
                 "author": author,
@@ -868,11 +955,102 @@ class WeReadAPI:
                 "genre": genre,
                 "year_started": year_started,
                 "rating": float(rating) if rating else None,
+                # New fields for bookmarks, reviews, quotes, and callouts
+                "bookmarks": all_bookmarks,  # Combined bookmarks and regular reviews
+                "summary_reviews": summary_reviews,  # Summary/commentary reviews
+                "chapter_info": chapter_info,  # Chapter structure
+                "read_info": read_info,  # Full reading info including readingTime
+                "reading_time": reading_time_formatted,  # Formatted reading time
             }
         except Exception as e:
             print(f"[ERROR] Failed to get data for book {book_id}: {e}")
             import traceback
             traceback.print_exc()
+            return None
+    
+    def get_bookmark_list(self, book_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Get bookmarks/highlights for a book"""
+        try:
+            response = self.session.get(
+                WEREAD_BOOKMARKLIST_API,
+                params={"bookId": book_id}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if "updated" in data:
+                # Sort by chapterUid and position
+                updated = data.get("updated", [])
+                updated = sorted(
+                    updated,
+                    key=lambda x: (x.get("chapterUid", 1), int(x.get("range", "0-0").split("-")[0]) if x.get("range") else 0),
+                )
+                return updated
+            return None
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch bookmarks for book {book_id}: {e}")
+            return None
+    
+    def get_review_list(self, book_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Get reviews for a book. Returns (summary_reviews, regular_reviews)"""
+        try:
+            response = self.session.get(
+                WEREAD_REVIEW_LIST_API,
+                params={"bookId": book_id, "listType": 11, "mine": 1, "syncKey": 0}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            reviews = data.get("reviews", [])
+            # Filter summary reviews (type 4)
+            summary = list(filter(lambda x: x.get("review", {}).get("type") == 4, reviews))
+            # Filter regular reviews (type 1)
+            regular_reviews = list(filter(lambda x: x.get("review", {}).get("type") == 1, reviews))
+            # Transform regular reviews to match bookmark format
+            regular_reviews = list(map(lambda x: x.get("review"), regular_reviews))
+            regular_reviews = list(map(lambda x: {**x, "markText": x.pop("content", "")}, regular_reviews))
+            
+            return summary, regular_reviews
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
+            return [], []
+    
+    def get_chapter_info(self, book_id: str) -> Optional[Dict[int, Dict[str, Any]]]:
+        """Get chapter information for a book"""
+        try:
+            body = {"bookIds": [book_id], "synckeys": [0], "teenmode": 0}
+            response = self.session.post(WEREAD_CHAPTER_INFO_API, json=body)
+            response.raise_for_status()
+            data = response.json()
+            
+            if (
+                data
+                and "data" in data
+                and len(data["data"]) == 1
+                and "updated" in data["data"][0]
+            ):
+                update = data["data"][0]["updated"]
+                return {item["chapterUid"]: item for item in update}
+            return None
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
+            return None
+    
+    def get_read_info(self, book_id: str) -> Optional[Dict[str, Any]]:
+        """Get detailed reading information including progress, pages, and reading time"""
+        try:
+            response = self.session.get(
+                WEREAD_READ_INFO_API,
+                params={"bookId": book_id, "readingDetail": 1, "readingBookIndex": 1, "finishedDate": 1}
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            if data:
+                return data
+            return None
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch read info for book {book_id}: {e}")
             return None
 
 

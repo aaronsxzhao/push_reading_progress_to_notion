@@ -83,3 +83,4 @@ tail -f /tmp/weread_notion_sync_api.out.log
 - Check your internet connection
 - WeRead API might be temporarily unavailable
 
+

@@ -45,3 +45,4 @@ Then export cookies for `weread.qq.com` and copy the cookie string.
 
 ⚠️ **Never commit your cookies to git!** They're like passwords - keep them in `.env` only.
 
+

@@ -37,3 +37,4 @@ echo "  1. git status (should NOT show .env)"
 echo "  2. git diff (review changes)"
 echo "  3. This script passes ✅"
 
+

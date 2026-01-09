@@ -40,6 +40,275 @@ from weread_notion_sync import (
 )
 
 
+# Helper functions for creating Notion blocks
+def get_heading(level: int, content: str) -> Dict[str, Any]:
+    """Create a heading block"""
+    if level == 1:
+        heading = "heading_1"
+    elif level == 2:
+        heading = "heading_2"
+    else:
+        heading = "heading_3"
+    return {
+        "type": heading,
+        heading: {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {
+                        "content": content,
+                    },
+                }
+            ],
+            "color": "default",
+            "is_toggleable": False,
+        },
+    }
+
+
+def get_table_of_contents() -> Dict[str, Any]:
+    """Create a table of contents block"""
+    return {"type": "table_of_contents", "table_of_contents": {"color": "default"}}
+
+
+def get_quote(content: str) -> Dict[str, Any]:
+    """Create a quote block"""
+    return {
+        "type": "quote",
+        "quote": {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {"content": content},
+                }
+            ],
+            "color": "default",
+        },
+    }
+
+
+def get_callout(content: str, style: Optional[int] = None, color_style: Optional[int] = None, review_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Create a callout block (for highlights/bookmarks)
+    
+    Args:
+        content: The text content
+        style: Highlight style (0=line, 1=background, 2=wavy)
+        color_style: Color style (1=red, 2=purple, 3=blue, 4=green, 5=yellow)
+        review_id: If present, indicates this is a note/review
+    """
+    # Set emoji based on style and review_id
+    emoji = "〰️"  # Default (wavy line)
+    if style == 0:
+        emoji = "💡"  # Line
+    elif style == 1:
+        emoji = "⭐"  # Background
+    
+    # If reviewId is present, it's a note
+    if review_id is not None:
+        emoji = "✍️"  # Note
+    
+    # Set color based on color_style
+    color = "default"
+    if color_style == 1:
+        color = "red"
+    elif color_style == 2:
+        color = "purple"
+    elif color_style == 3:
+        color = "blue"
+    elif color_style == 4:
+        color = "green"
+    elif color_style == 5:
+        color = "yellow"
+    
+    return {
+        "type": "callout",
+        "callout": {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {
+                        "content": content,
+                    },
+                }
+            ],
+            "icon": {"emoji": emoji},
+            "color": color,
+        },
+    }
+
+
+def clear_page_blocks(notion: Client, page_id: str):
+    """Clear all blocks from a Notion page (except the page itself)"""
+    try:
+        # Get all blocks
+        has_more = True
+        block_ids = []
+        
+        while has_more:
+            response = notion.blocks.children.list(block_id=page_id)
+            blocks = response.get("results", [])
+            block_ids.extend([b["id"] for b in blocks])
+            has_more = response.get("has_more", False)
+        
+        # Delete all blocks
+        for block_id in block_ids:
+            try:
+                time.sleep(0.1)  # Rate limiting
+                notion.blocks.delete(block_id=block_id)
+            except Exception as e:
+                print(f"[WARNING] Failed to delete block {block_id}: {e}")
+        
+        if block_ids:
+            print(f"[INFO] Cleared {len(block_ids)} existing blocks from page")
+    except Exception as e:
+        print(f"[WARNING] Failed to clear blocks: {e}")
+
+
+def add_blocks_to_page(notion: Client, page_id: str, blocks: list, clear_existing: bool = False):
+    """
+    Add blocks to a Notion page (handles 100 block limit per request)
+    
+    Args:
+        notion: Notion client
+        page_id: Page ID to add blocks to
+        blocks: List of block objects to add
+        clear_existing: If True, clear existing blocks before adding new ones
+    """
+    if not blocks:
+        return
+    
+    # Clear existing blocks if requested
+    if clear_existing:
+        clear_page_blocks(notion, page_id)
+    
+    results = []
+    # Notion API limits to 100 blocks per request
+    for i in range(0, len(blocks), 100):
+        time.sleep(0.3)  # Rate limiting
+        chunk = blocks[i:i + 100]
+        try:
+            response = notion.blocks.children.append(block_id=page_id, children=chunk)
+            results.extend(response.get("results", []))
+        except Exception as e:
+            print(f"[ERROR] Failed to add blocks chunk {i//100 + 1}: {e}")
+            # Continue with next chunk even if one fails
+            continue
+    
+    return results
+
+
+def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list] = None, colors: Optional[list] = None) -> list:
+    """
+    Create Notion blocks for book content (bookmarks, reviews, quotes, callouts)
+    
+    Args:
+        book_data: Book data dictionary with bookmarks, reviews, chapter_info
+        styles: Optional list of allowed highlight styles (filter)
+        colors: Optional list of allowed highlight colors (filter)
+    """
+    blocks = []
+    chapter_info = book_data.get("chapter_info")
+    bookmarks = book_data.get("bookmarks", [])
+    summary_reviews = book_data.get("summary_reviews", [])
+    
+    if not bookmarks and not summary_reviews:
+        return blocks
+    
+    # Group bookmarks by chapter
+    if chapter_info:
+        # Add table of contents
+        blocks.append(get_table_of_contents())
+        
+        # Group bookmarks by chapter
+        bookmarks_by_chapter = {}
+        for bookmark in bookmarks:
+            chapter_uid = bookmark.get("chapterUid", 1)
+            if chapter_uid not in bookmarks_by_chapter:
+                bookmarks_by_chapter[chapter_uid] = []
+            bookmarks_by_chapter[chapter_uid].append(bookmark)
+        
+        # Add chapters and their bookmarks
+        for chapter_uid, chapter_bookmarks in sorted(bookmarks_by_chapter.items()):
+            if chapter_uid in chapter_info:
+                chapter_data = chapter_info[chapter_uid]
+                chapter_title = chapter_data.get("title", f"Chapter {chapter_uid}")
+                chapter_level = chapter_data.get("level", 2)
+                blocks.append(get_heading(chapter_level, chapter_title))
+            
+            # Add bookmarks for this chapter
+            for bookmark in chapter_bookmarks:
+                # Apply style/color filters if provided
+                if bookmark.get("reviewId") is None:
+                    if styles is not None and bookmark.get("style") not in styles:
+                        continue
+                    if colors is not None and bookmark.get("colorStyle") not in colors:
+                        continue
+                
+                mark_text = bookmark.get("markText", "")
+                if not mark_text:
+                    continue
+                
+                # Split long text into chunks (Notion has limits)
+                for j in range(0, len(mark_text), 2000):
+                    chunk = mark_text[j:j + 2000]
+                    blocks.append(get_callout(
+                        chunk,
+                        bookmark.get("style"),
+                        bookmark.get("colorStyle"),
+                        bookmark.get("reviewId")
+                    ))
+                
+                # Add abstract/quote if present
+                abstract = bookmark.get("abstract")
+                if abstract:
+                    blocks.append(get_quote(abstract))
+    else:
+        # No chapter info - add bookmarks in order
+        for bookmark in bookmarks:
+            # Apply style/color filters if provided
+            if bookmark.get("reviewId") is None:
+                if styles is not None and bookmark.get("style") not in styles:
+                    continue
+                if colors is not None and bookmark.get("colorStyle") not in colors:
+                    continue
+            
+            mark_text = bookmark.get("markText", "")
+            if not mark_text:
+                continue
+            
+            # Split long text into chunks
+            for j in range(0, len(mark_text), 2000):
+                chunk = mark_text[j:j + 2000]
+                blocks.append(get_callout(
+                    chunk,
+                    bookmark.get("style"),
+                    bookmark.get("colorStyle"),
+                    bookmark.get("reviewId")
+                ))
+    
+    # Add summary reviews
+    if summary_reviews:
+        blocks.append(get_heading(1, "点评"))
+        for review_item in summary_reviews:
+            review = review_item.get("review", {})
+            content = review.get("content", "")
+            if not content:
+                continue
+            
+            # Split long text into chunks
+            for j in range(0, len(content), 2000):
+                chunk = content[j:j + 2000]
+                blocks.append(get_callout(
+                    chunk,
+                    review_item.get("style"),
+                    review_item.get("colorStyle"),
+                    review.get("reviewId")
+                ))
+    
+    return blocks
+
+
 def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None):
     """Fetch books from WeRead API and sync to Notion - processes one at a time with progress monitoring"""
     import time
@@ -175,8 +444,41 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 book_data["status"] = status_map.get(book_data.get("status"), STATUS_TBR)
                 book_data["source"] = SOURCE_WEREAD
                 
-                # Sync to Notion
-                upsert_page(notion, database_id, db_props, book_data)
+                # Sync to Notion - get page ID
+                page_id = upsert_page(notion, database_id, db_props, book_data)
+                
+                # Add bookmarks, reviews, quotes, and callouts as blocks
+                if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews")):
+                    print(f"[{i}/{total_to_process}] Adding bookmarks and reviews to page...")
+                    try:
+                        # Get optional style/color filters from env vars
+                        styles = None
+                        colors = None
+                        styles_str = env("WEREAD_STYLES")
+                        colors_str = env("WEREAD_COLORS")
+                        if styles_str:
+                            try:
+                                styles = [int(s.strip()) for s in styles_str.split(",")]
+                            except:
+                                pass
+                        if colors_str:
+                            try:
+                                colors = [int(c.strip()) for c in colors_str.split(",")]
+                            except:
+                                pass
+                        
+                        # Check if we should clear existing blocks (default: True to avoid duplicates)
+                        clear_existing = env("WEREAD_CLEAR_BLOCKS", "true").lower() == "true"
+                        
+                        blocks = create_book_content_blocks(book_data, styles=styles, colors=colors)
+                        if blocks:
+                            add_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
+                            print(f"[{i}/{total_to_process}] ✅ Added {len(blocks)} blocks (bookmarks/reviews)")
+                    except Exception as e:
+                        print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
+                        import traceback
+                        traceback.print_exc()
+                
                 synced_count += 1
                 
                 book_time = time.time() - book_start_time

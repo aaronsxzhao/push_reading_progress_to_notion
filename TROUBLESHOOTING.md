@@ -70,3 +70,4 @@ WEREAD_ROOT=/path/to/your/Obsidian/WeRead
 - Make sure you have books in your WeRead account
 - Check that cookies include `wr_skey` (most important)
 
+
