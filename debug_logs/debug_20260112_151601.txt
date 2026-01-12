@@ -1,0 +1,1740 @@
+Debug Log - 2026-01-12 15:16:01
+================================================================================
+
+[15:16:01] [API] Initializing WeRead API client...[15:16:01] [API] ✅ All required cookies present: wr_skey, wr_vid, wr_rt[15:16:01] [API] ⚠️  Missing recommended cookies: wr_uid[15:16:01] [API]    These may help with cookie validation and refresh[15:16:01] [API] Found wr_skey cookie (length: 8)[15:16:01] [API] Loaded 8 total cookies: wr_skey, wr_avatar, wr_fp, wr_name, wr_vid, wr_rt, wr_localvid, wr_gid[15:16:01] [API] Validating cookies...[15:16:04] [API] ✅ Cookie validation successful[15:16:04] [API] ✅ wr_name cookie present (good for cookie refresh validation)[15:16:04] [API] Fetching shelf data...[15:16:05] [API] Found 144 books in 'books' field (with full info)[15:16:05] [API] Found 111 books with progress data[15:16:05] [API] Total books in shelf: 144[15:16:05] [API] Combined 144 books with full info and progress data[15:16:05] [TEST] Found matching book: '被讨厌的勇气：“自我启发之父”阿德勒的哲学课' (bookId: 25615385)[15:16:05] [TEST] Filtered to 1 book(s) matching title '被讨厌的勇气' (from 144 total)[15:16:05] [API] Limiting to first 1 book(s) for testing[15:16:05] 
+============================================================[15:16:05] [PROGRESS] Processing 1 book(s) one at a time...[15:16:05] ============================================================
+[15:16:05] [1/1] 📖 Processing book 25615385...[15:16:09] [DEBUG] Fetching 高亮划线 (highlights WITHOUT thoughts) from bookmarklist API for book 25615385...[15:16:09] [DEBUG] ========== FULL BOOKMARKLIST API RESPONSE ==========[15:16:09] [DEBUG] URL: https://weread.qq.com/web/book/bookmarklist?bookId=25615385[15:16:09] [DEBUG] Response Status: 200[15:16:09] [DEBUG] Full JSON Response:[15:16:09] {}[15:16:09] [DEBUG] ========== END OF BOOKMARKLIST API RESPONSE ==========[15:16:09] [DEBUG] Bookmarklist API response keys: [][15:16:09] [DEBUG] No 'updated' or 'bookmarks' field found. Trying with synckey=0 parameter...[15:16:10] [DEBUG] ========== FULL BOOKMARKLIST API RESPONSE (with synckey) ==========[15:16:10] [DEBUG] URL: https://weread.qq.com/web/book/bookmarklist?bookId=25615385&synckey=0[15:16:10] [DEBUG] Response Status: 200[15:16:10] [DEBUG] Full JSON Response:[15:16:10] {}[15:16:10] [DEBUG] ========== END OF BOOKMARKLIST API RESPONSE (with synckey) ==========[15:16:10] [DEBUG] Bookmarklist API (with synckey) response keys: [][15:16:10] [DEBUG] ⚠️  No bookmarks found in bookmarklist API response[15:16:10] [DEBUG] Full response structure:[15:16:10] [DEBUG] ⚠️  No highlights found from bookmarklist API[15:16:10] [DEBUG] Fetching all notes and reviews from review API for book 25615385...[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=172[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=170[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=170[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=168[15:16:11] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=166[15:16:11] [DEBUG] ✅ Found notes from review API for 25615385:[15:16:11] [DEBUG]   - 划线笔记 (Type 1 - underline/highlight notes): 8[15:16:11] [DEBUG]   - 页面笔记 (Type 2 - page notes): 0[15:16:11] [DEBUG]   - 章节笔记 (Type 3 - chapter notes): 0[15:16:11] [DEBUG]   - 书籍书评 (Type 4 - book reviews): 0[15:16:12] [DEBUG] Review API (Type 1) breakdown:[15:16:12] [DEBUG]   - Plain highlights (no content): 0[15:16:12] [DEBUG]   - Highlights with thoughts (has content): 8[15:16:12] [DEBUG] ✅ Highlights breakdown:[15:16:12] [DEBUG]   - Plain highlights (no thoughts): 0[15:16:12] [DEBUG]   - Highlights with thoughts: 8[15:16:12] [DEBUG]   - Total: 8[15:16:12] 
+================================================================================[15:16:12] 📚 微信读书笔记详情 - 被讨厌的勇气：“自我启发之父”阿德勒的哲学课[15:16:12] ================================================================================
+[15:16:12] 📝 划线笔记 (Underline/Highlight Notes): 8 条[15:16:12] --------------------------------------------------------------------------------[15:16:12]   1. [笔记] 章节166 | 下划线 | 默认[15:16:12]      位置: 3500-3570[15:16:12]      内容: 现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。[15:16:12]   2. [笔记] 章节168 | 下划线 | 默认[15:16:12]      位置: 7345-7390[15:16:12]      内容: 关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活[15:16:12]   3. [笔记] 章节170 | 下划线 | 默认[15:16:12]      位置: 29110-29282[15:16:12]      内容: 青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？
+哲人：不生气。
+青年：不许撒谎！[15:16:12]   4. [笔记] 章节170 | 下划线 | 默认[15:16:12]      位置: 31860-31913[15:16:12]      内容: 不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点[15:16:12]   5. [笔记] 章节172 | 下划线 | 默认[15:16:12]      位置: 5200-5227[15:16:12]      内容: 我们“并不是为了满足别人的期待而活着”。[15:16:12]   6. [笔记] 章节174 | 下划线 | 默认[15:16:12]      位置: 1994-2108[15:16:12]      内容: 但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。[15:16:12]   7. [笔记] 章节174 | 下划线 | 默认[15:16:12]      位置: 10595-10669[15:16:12]      内容: 不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入[15:16:12]   8. [笔记] 章节174 | 下划线 | 默认[15:16:12]      位置: 23382-23413[15:16:12]      内容: 人只有在能够感觉自己有价值的时候才可以获得勇气。[15:16:12] 📄 页面笔记: 无
+[15:16:12] 📑 章节笔记: 无
+[15:16:12] ⭐ 书籍书评: 无
+[15:16:12] ================================================================================
+[15:16:12] 
+============================================================[15:16:12] 📖 FULL BOOK DATA (Book 1)[15:16:12] ============================================================[15:16:12] {
+  "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+  "author": "岸见一郎 古贺史健",
+  "current_page": null,
+  "total_page": null,
+  "status": "Read",
+  "started_at": "2025-12-22 19:06:48+08:00",
+  "last_read_at": "2026-01-11 00:00:00+08:00",
+  "date_finished": "2026-01-11 23:25:09+08:00",
+  "source": "WeRead",
+  "cover_image": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/t6_25615385.jpg",
+  "genre": "心理-积极心理学",
+  "year_started": 2025,
+  "rating": null,
+  "bookmarks": [
+    {
+      "bookId": "25615385",
+      "content": "世界还是那个世界，你变了，会觉得世界也变了。",
+      "bookVersion": 769561529,
+      "range": "3500-3570",
+      "abstract": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 166,
+      "chapterName": "引言",
+      "chapterIdx": 9,
+      "reviewId": "53320557_85Dwv5HBH",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766573903,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "引言",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "omg",
+      "bookVersion": 769561529,
+      "range": "7345-7390",
+      "abstract": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 168,
+      "chapterName": "不为人知的心理学“第三巨头”",
+      "chapterIdx": 11,
+      "reviewId": "53320557_85DxyBzYu",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766574870,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "不为人知的心理学“第三巨头”",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "笑死了",
+      "bookVersion": 769561529,
+      "range": "29110-29282",
+      "abstract": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UdDYN1p",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767522231,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "我还是道行浅，受教了老师",
+      "bookVersion": 769561529,
+      "range": "31860-31913",
+      "abstract": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UmMx1ZY",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767530603,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "每天一次醍醐灌顶",
+      "bookVersion": 769561529,
+      "range": "5200-5227",
+      "abstract": "我们“并不是为了满足别人的期待而活着”。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 172,
+      "chapterName": "自由就是不再寻求认可？",
+      "chapterIdx": 15,
+      "reviewId": "53320557_85YjO0bfQ",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767755077,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "自由就是不再寻求认可？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "我们“并不是为了满足别人的期待而活着”。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "正确的",
+      "bookVersion": 769561529,
+      "range": "1994-2108",
+      "abstract": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZMxQo7G",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767838207,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "很好理解，很难做到",
+      "bookVersion": 769561529,
+      "range": "10595-10669",
+      "abstract": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZTxXr09",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767844621,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "事情越做越做，因为底气越来越足",
+      "bookVersion": 769561529,
+      "range": "23382-23413",
+      "abstract": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_860kreXOw",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767869258,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "isPlainHighlight": false
+    }
+  ],
+  "plain_highlights": [],
+  "highlights_with_thoughts": [
+    {
+      "bookId": "25615385",
+      "content": "事情越做越做，因为底气越来越足",
+      "bookVersion": 769561529,
+      "range": "23382-23413",
+      "abstract": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_860kreXOw",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767869258,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "很好理解，很难做到",
+      "bookVersion": 769561529,
+      "range": "10595-10669",
+      "abstract": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZTxXr09",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767844621,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "正确的",
+      "bookVersion": 769561529,
+      "range": "1994-2108",
+      "abstract": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZMxQo7G",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767838207,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "每天一次醍醐灌顶",
+      "bookVersion": 769561529,
+      "range": "5200-5227",
+      "abstract": "我们“并不是为了满足别人的期待而活着”。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 172,
+      "chapterName": "自由就是不再寻求认可？",
+      "chapterIdx": 15,
+      "reviewId": "53320557_85YjO0bfQ",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767755077,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "自由就是不再寻求认可？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "我们“并不是为了满足别人的期待而活着”。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "我还是道行浅，受教了老师",
+      "bookVersion": 769561529,
+      "range": "31860-31913",
+      "abstract": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UmMx1ZY",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767530603,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "笑死了",
+      "bookVersion": 769561529,
+      "range": "29110-29282",
+      "abstract": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UdDYN1p",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767522231,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "omg",
+      "bookVersion": 769561529,
+      "range": "7345-7390",
+      "abstract": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 168,
+      "chapterName": "不为人知的心理学“第三巨头”",
+      "chapterIdx": 11,
+      "reviewId": "53320557_85DxyBzYu",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766574870,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "不为人知的心理学“第三巨头”",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "世界还是那个世界，你变了，会觉得世界也变了。",
+      "bookVersion": 769561529,
+      "range": "3500-3570",
+      "abstract": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 166,
+      "chapterName": "引言",
+      "chapterIdx": 9,
+      "reviewId": "53320557_85Dwv5HBH",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766573903,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "引言",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "isPlainHighlight": false
+    }
+  ],
+  "summary_reviews": [],
+  "page_notes": [],
+  "chapter_notes": [],
+  "chapter_info": {
+    "1": {
+      "chapterUid": 1,
+      "chapterIdx": 1,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_1",
+      "title": "封面",
+      "wordCount": 1,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/coverpage.xhtml"
+      ]
+    },
+    "159": {
+      "chapterUid": 159,
+      "chapterIdx": 2,
+      "updateTime": 1760166846,
+      "readAhead": 0,
+      "tar": "",
+      "title": "版权信息",
+      "wordCount": 763,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/copyright.xhtml",
+        "Text/Section0001.xhtml"
+      ]
+    },
+    "160": {
+      "chapterUid": 160,
+      "chapterIdx": 3,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "文前",
+      "wordCount": 324,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0002.xhtml"
+      ]
+    },
+    "161": {
+      "chapterUid": 161,
+      "chapterIdx": 4,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "本书的赞誉",
+      "wordCount": 795,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0003.xhtml"
+      ]
+    },
+    "162": {
+      "chapterUid": 162,
+      "chapterIdx": 5,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序一 勇气的心理学",
+      "wordCount": 1370,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0004.xhtml"
+      ]
+    },
+    "163": {
+      "chapterUid": 163,
+      "chapterIdx": 6,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序二 自我的枷锁和解放",
+      "wordCount": 1716,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0005.xhtml"
+      ]
+    },
+    "164": {
+      "chapterUid": 164,
+      "chapterIdx": 7,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序三 人唯有在能够感觉自己有价值时，才有勇气",
+      "wordCount": 1208,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0006.xhtml"
+      ]
+    },
+    "165": {
+      "chapterUid": 165,
+      "chapterIdx": 8,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "译者序",
+      "wordCount": 1017,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0007.xhtml"
+      ]
+    },
+    "166": {
+      "chapterUid": 166,
+      "chapterIdx": 9,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_9",
+      "title": "引言",
+      "wordCount": 2346,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0008.xhtml"
+      ]
+    },
+    "167": {
+      "chapterUid": 167,
+      "chapterIdx": 10,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_10",
+      "title": "第一夜 我们的不幸是谁的错？",
+      "wordCount": 182,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0009.xhtml",
+        "Text/Section0009_0001.xhtml"
+      ]
+    },
+    "168": {
+      "chapterUid": 168,
+      "chapterIdx": 11,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "不为人知的心理学“第三巨头”",
+      "wordCount": 12981,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0009_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "再怎么“找原因”，也没法改变一个人",
+          "anchor": "sigil_toc_id_4",
+          "level": 2
+        },
+        {
+          "title": "心理创伤并不存在",
+          "anchor": "sigil_toc_id_5",
+          "level": 2
+        },
+        {
+          "title": "愤怒都是捏造出来的",
+          "anchor": "sigil_toc_id_6",
+          "level": 2
+        },
+        {
+          "title": "弗洛伊德说错了",
+          "anchor": "sigil_toc_id_7",
+          "level": 2
+        },
+        {
+          "title": "苏格拉底和阿德勒",
+          "anchor": "sigil_toc_id_8",
+          "level": 2
+        },
+        {
+          "title": "你想“变成别人”吗？",
+          "anchor": "sigil_toc_id_9",
+          "level": 2
+        },
+        {
+          "title": "你的不幸，皆是自己“选择”的",
+          "anchor": "sigil_toc_id_10",
+          "level": 2
+        },
+        {
+          "title": "人们常常下定决心“不改变”",
+          "anchor": "sigil_toc_id_11",
+          "level": 2
+        },
+        {
+          "title": "你的人生取决于“当下”",
+          "anchor": "sigil_toc_id_12",
+          "level": 2
+        }
+      ]
+    },
+    "169": {
+      "chapterUid": 169,
+      "chapterIdx": 12,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_12",
+      "title": "第二夜 一切烦恼都来自人际关系",
+      "wordCount": 170,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0019.xhtml",
+        "Text/Section0019_0001.xhtml"
+      ]
+    },
+    "170": {
+      "chapterUid": 170,
+      "chapterIdx": 13,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "为什么讨厌自己？",
+      "wordCount": 21616,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0019_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "一切烦恼都是人际关系的烦恼",
+          "anchor": "sigil_toc_id_13",
+          "level": 2
+        },
+        {
+          "title": "自卑感来自主观的臆造",
+          "anchor": "sigil_toc_id_14",
+          "level": 2
+        },
+        {
+          "title": "自卑情结只是一种借口",
+          "anchor": "sigil_toc_id_15",
+          "level": 2
+        },
+        {
+          "title": "越自负的人越自卑",
+          "anchor": "sigil_toc_id_16",
+          "level": 2
+        },
+        {
+          "title": "人生不是与他人的比赛",
+          "anchor": "sigil_toc_id_17",
+          "level": 2
+        },
+        {
+          "title": "在意你长相的，只有你自己",
+          "anchor": "sigil_toc_id_18",
+          "level": 2
+        },
+        {
+          "title": "人际关系中的“权力斗争”与复仇",
+          "anchor": "sigil_toc_id_19",
+          "level": 2
+        },
+        {
+          "title": "承认错误，不代表你失败了",
+          "anchor": "sigil_toc_id_20",
+          "level": 2
+        },
+        {
+          "title": "人生的三大课题：交友课题、工作课题以及爱的课题",
+          "anchor": "sigil_toc_id_21",
+          "level": 2
+        },
+        {
+          "title": "浪漫的红线和坚固的锁链",
+          "anchor": "sigil_toc_id_22",
+          "level": 2
+        },
+        {
+          "title": "“人生谎言”教我们学会逃避",
+          "anchor": "sigil_toc_id_23",
+          "level": 2
+        },
+        {
+          "title": "阿德勒心理学是“勇气的心理学”",
+          "anchor": "sigil_toc_id_24",
+          "level": 2
+        }
+      ]
+    },
+    "171": {
+      "chapterUid": 171,
+      "chapterIdx": 14,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_14",
+      "title": "第三夜 让干涉你生活的人见鬼去",
+      "wordCount": 107,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0032.xhtml",
+        "Text/Section0032_0001.xhtml"
+      ]
+    },
+    "172": {
+      "chapterUid": 172,
+      "chapterIdx": 15,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "自由就是不再寻求认可？",
+      "wordCount": 15174,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0032_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "要不要活在别人的期待中？",
+          "anchor": "sigil_toc_id_25",
+          "level": 2
+        },
+        {
+          "title": "把自己和别人的“人生课题”分开来",
+          "anchor": "sigil_toc_id_26",
+          "level": 2
+        },
+        {
+          "title": "即使父母也得放下孩子的课题",
+          "anchor": "sigil_toc_id_27",
+          "level": 2
+        },
+        {
+          "title": "放下别人的课题，烦恼轻轻飞走",
+          "anchor": "sigil_toc_id_28",
+          "level": 2
+        },
+        {
+          "title": "砍断“格尔迪奥斯绳结”",
+          "anchor": "sigil_toc_id_29",
+          "level": 2
+        },
+        {
+          "title": "对认可的追求，扼杀了自由",
+          "anchor": "sigil_toc_id_30",
+          "level": 2
+        },
+        {
+          "title": "自由就是被别人讨厌",
+          "anchor": "sigil_toc_id_31",
+          "level": 2
+        },
+        {
+          "title": "人际关系“王牌”，握在你自己手里",
+          "anchor": "sigil_toc_id_32",
+          "level": 2
+        }
+      ]
+    },
+    "173": {
+      "chapterUid": 173,
+      "chapterIdx": 16,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_16",
+      "title": "第四夜 要有被讨厌的勇气",
+      "wordCount": 139,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0041.xhtml",
+        "Text/Section0041_0001.xhtml"
+      ]
+    },
+    "174": {
+      "chapterUid": 174,
+      "chapterIdx": 17,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "个体心理学和整体论",
+      "wordCount": 15591,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0041_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "人际关系的终极目标",
+          "anchor": "sigil_toc_id_33",
+          "level": 2
+        },
+        {
+          "title": "“拼命寻求认可”反而是以自我为中心？",
+          "anchor": "sigil_toc_id_34",
+          "level": 2
+        },
+        {
+          "title": "你不是世界的中心，只是世界地图的中心",
+          "anchor": "sigil_toc_id_35",
+          "level": 2
+        },
+        {
+          "title": "在更广阔的天地寻找自己的位置",
+          "anchor": "sigil_toc_id_36",
+          "level": 2
+        },
+        {
+          "title": "批评不好……表扬也不行？",
+          "anchor": "sigil_toc_id_37",
+          "level": 2
+        },
+        {
+          "title": "有鼓励才有勇气",
+          "anchor": "sigil_toc_id_38",
+          "level": 2
+        },
+        {
+          "title": "有价值就有勇气",
+          "anchor": "sigil_toc_id_39",
+          "level": 2
+        },
+        {
+          "title": "只要存在着，就有价值",
+          "anchor": "sigil_toc_id_40",
+          "level": 2
+        },
+        {
+          "title": "无论在哪里，都可以有平等的关系",
+          "anchor": "sigil_toc_id_41",
+          "level": 2
+        }
+      ]
+    },
+    "175": {
+      "chapterUid": 175,
+      "chapterIdx": 18,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_18",
+      "title": "第五夜 认真的人生“活在当下”",
+      "wordCount": 133,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0051.xhtml",
+        "Text/Section0051_0001.xhtml"
+      ]
+    },
+    "176": {
+      "chapterUid": 176,
+      "chapterIdx": 19,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_19",
+      "title": "过多的自我意识，反而会束缚自己",
+      "wordCount": 20668,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0051_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "不是肯定自我，而是接纳自我",
+          "anchor": "sigil_toc_id_42",
+          "level": 2
+        },
+        {
+          "title": "信用和信赖有何区别？",
+          "anchor": "sigil_toc_id_43",
+          "level": 2
+        },
+        {
+          "title": "工作的本质是对他人的贡献",
+          "anchor": "sigil_toc_id_44",
+          "level": 2
+        },
+        {
+          "title": "年轻人也有胜过长者之处",
+          "anchor": "sigil_toc_id_45",
+          "level": 2
+        },
+        {
+          "title": "“工作狂”是人生谎言",
+          "anchor": "sigil_toc_id_46",
+          "level": 2
+        },
+        {
+          "title": "从这一刻起，就能变得幸福",
+          "anchor": "sigil_toc_id_47",
+          "level": 2
+        },
+        {
+          "title": "追求理想者面前的两条路",
+          "anchor": "sigil_toc_id_48",
+          "level": 2
+        },
+        {
+          "title": "甘于平凡的勇气",
+          "anchor": "sigil_toc_id_49",
+          "level": 2
+        },
+        {
+          "title": "人生是一连串的刹那",
+          "anchor": "sigil_toc_id_50",
+          "level": 2
+        },
+        {
+          "title": "舞动人生",
+          "anchor": "sigil_toc_id_51",
+          "level": 2
+        },
+        {
+          "title": "最重要的是“此时此刻”",
+          "anchor": "sigil_toc_id_52",
+          "level": 2
+        },
+        {
+          "title": "对决“人生最大的谎言”",
+          "anchor": "sigil_toc_id_53",
+          "level": 2
+        },
+        {
+          "title": "人生的意义，由你自己决定",
+          "anchor": "sigil_toc_id_54",
+          "level": 2
+        }
+      ]
+    },
+    "177": {
+      "chapterUid": 177,
+      "chapterIdx": 20,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "后记",
+      "wordCount": 2676,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0065.xhtml"
+      ]
+    },
+    "178": {
+      "chapterUid": 178,
+      "chapterIdx": 21,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "作译者简介",
+      "wordCount": 596,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0066.xhtml"
+      ]
+    },
+    "179": {
+      "chapterUid": 179,
+      "chapterIdx": 22,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_22",
+      "title": "推荐阅读·心智讲堂",
+      "wordCount": 337,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0067.xhtml"
+      ]
+    },
+    "180": {
+      "chapterUid": 180,
+      "chapterIdx": 23,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "文后",
+      "wordCount": 4338,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0069.xhtml",
+        "Text/Section0070.xhtml"
+      ]
+    }
+  },
+  "read_info": {
+    "finishedBookCount": 44,
+    "finishedBookIndex": 44,
+    "finishedDate": 1768145109,
+    "readingBookCount": 86,
+    "readingBookDate": 1766401608,
+    "readingProgress": 100,
+    "readingReviewId": "R_53320557_25615385",
+    "canCancelReadstatus": 0,
+    "markedStatus": 4,
+    "readingTime": 15344,
+    "totalReadDay": 16,
+    "recordReadingTime": 0,
+    "continueReadDays": 5,
+    "continueBeginDate": 1767196800,
+    "continueEndDate": 1767542400,
+    "showSummary": 1,
+    "showDetail": 1,
+    "readDetail": {
+      "totalReadingTime": 15344,
+      "totalReadDay": 16,
+      "continueReadDays": 5,
+      "continueBeginDate": 1767196800,
+      "continueEndDate": 1767542400,
+      "beginReadingDate": 1766401608,
+      "lastReadingDate": 1768060800,
+      "longestReadingDate": 1767715200,
+      "avgReadingTime": 959,
+      "longestReadingTime": 4512,
+      "data": [
+        {
+          "readDate": 1766332800,
+          "readTime": 518
+        },
+        {
+          "readDate": 1766419200,
+          "readTime": 529
+        },
+        {
+          "readDate": 1766505600,
+          "readTime": 1104
+        },
+        {
+          "readDate": 1766592000,
+          "readTime": 796
+        },
+        {
+          "readDate": 1766678400,
+          "readTime": 194
+        },
+        {
+          "readDate": 1766851200,
+          "readTime": 60
+        },
+        {
+          "readDate": 1767024000,
+          "readTime": 420
+        },
+        {
+          "readDate": 1767196800,
+          "readTime": 163
+        },
+        {
+          "readDate": 1767283200,
+          "readTime": 985
+        },
+        {
+          "readDate": 1767369600,
+          "readTime": 61
+        },
+        {
+          "readDate": 1767456000,
+          "readTime": 996
+        },
+        {
+          "readDate": 1767542400,
+          "readTime": 312
+        },
+        {
+          "readDate": 1767715200,
+          "readTime": 4512
+        },
+        {
+          "readDate": 1767801600,
+          "readTime": 2609
+        },
+        {
+          "readDate": 1767888000,
+          "readTime": 676
+        },
+        {
+          "readDate": 1768060800,
+          "readTime": 1360
+        }
+      ]
+    },
+    "bookInfo": {
+      "bookId": "25615385",
+      "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+      "author": "岸见一郎 古贺史健",
+      "translator": "渠海霞",
+      "intro": "一名深陷自卑、无能与不幸福的青年，听到了一名哲人主张的“世界无比单纯，人人都能幸福”便来挑战，两人展开了你来我往的思考和辩论，在一夜一夜过去后，青年开始思考，为什么“所谓的自由，就是被别人讨厌”？问题不在于世界是什么样子，在于你是什么样子。",
+      "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+      "version": 769561529,
+      "format": "epub",
+      "type": 0,
+      "soldout": 0,
+      "bookStatus": 1,
+      "payType": 4097,
+      "finished": 1,
+      "maxFreeChapter": 11,
+      "maxFreeInfo": {
+        "maxfreeChapterIdx": 11,
+        "maxfreeChapterUid": 168,
+        "maxfreeChapterRatio": 5
+      },
+      "free": 0,
+      "mcardDiscount": 0,
+      "ispub": 1,
+      "extra_type": 1,
+      "cpid": 4157477,
+      "publishTime": "2017-05-01 00:00:00",
+      "lastChapterIdx": 23,
+      "paperBook": {
+        "skuId": "12809752"
+      },
+      "centPrice": 1990,
+      "readingCount": 13404,
+      "copyrightChapterUids": [
+        159
+      ],
+      "inStoreBookId": "",
+      "blockSaveImg": 0,
+      "language": "zh-wr",
+      "isTraditionalChinese": false,
+      "hideUpdateTime": false,
+      "isEPUBComics": 0,
+      "isVerticalLayout": 0,
+      "isShowTTS": 1,
+      "selfProduceIncentive": false,
+      "webBookControl": 0,
+      "isAutoDownload": 1
+    }
+  },
+  "reading_time": "4时15分"
+}[15:16:12] ============================================================[15:16:13] [INFO] Duplicate found (title: '被讨厌的勇气：“自我启发之父”阿德勒的哲学课', author: '岸见一郎 古贺史健') - updating only: status, last_read_at, date_finished, current_page[15:16:13] [INFO] Updated page 2e61dc1e-e8db-816f-9324-f8ab9840a95f with: ['Status', 'Last Read At', 'Date Finished'][15:16:13] [1/1] Adding bookmarks, notes, and reviews to page...[15:16:48] [INFO] Cleared 22 existing blocks from page[15:16:50] [1/1] ✅ Added 22 blocks (bookmarks/reviews)[15:16:50] ✅ [1/1] 被讨厌的勇气：“自我启发之父”阿德勒的哲学课 | Read | p=None/None | ⏱️  45.2s[15:16:50] 
+[STOPPED] Processed 1 book as requested (limit=1)
+================================================================================
+End of debug log - 2026-01-12 15:16:50
+Total lines captured: 106

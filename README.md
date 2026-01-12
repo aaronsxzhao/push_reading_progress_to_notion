@@ -115,9 +115,7 @@ Logs:
 1. **Run the security check:**
    ```bash
    bash scripts/check_secrets.sh
-   ```
-
-2. **Verify `.env` is not tracked:**
+   ```2. **Verify `.env` is not tracked:**
    ```bash
    git status
    # Should NOT show .env in the output

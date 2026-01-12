@@ -1,0 +1,7 @@
+Debug Log - 2026-01-12 14:50:35
+================================================================================
+
+[14:50:42] [DEBUG] Fetching 高亮划线 (highlights) from bookmarklist API for book 25615385...[14:50:43] [DEBUG] ⚠️  No highlights found from bookmarklist API[14:50:43] [DEBUG] Fetching all notes and reviews from review API for book 25615385...[14:50:43] [DEBUG] ✅ Found notes from review API for 25615385:[14:50:43] [DEBUG]   - 划线笔记 (Type 1 - underline/highlight notes): 8[14:50:43] [DEBUG]   - 页面笔记 (Type 2 - page notes): 0[14:50:43] [DEBUG]   - 章节笔记 (Type 3 - chapter notes): 0[14:50:43] [DEBUG]   - 书籍书评 (Type 4 - book reviews): 0[14:50:44] [DEBUG] Added 8 highlights from review API (Type 1)[14:50:44] [DEBUG] ✅ Total 高亮划线 (highlights): 8 条[14:50:44] [DEBUG]   - From bookmarklist API: 0[14:50:44] [DEBUG]   - From review API (Type 1): 8
+================================================================================
+End of debug log - 2026-01-12 14:51:47
+Total debug lines captured: 12

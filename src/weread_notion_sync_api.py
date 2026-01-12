@@ -704,7 +704,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     if cookie_error_count > 0:
         print(f"          ⚠️  Cookie/Auth Errors: {cookie_error_count}")
     if total_to_process > 0:
-        print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
+    print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
     else:
         print(f"          Total time: {total_time:.1f}s")
     print(f"{'='*60}")

@@ -1,0 +1,4653 @@
+Debug Log - 2026-01-12 15:20:29
+================================================================================
+
+[15:20:29] [API] Initializing WeRead API client...[15:20:29] [API] ✅ All required cookies present: wr_skey, wr_vid, wr_rt[15:20:29] [API] ⚠️  Missing recommended cookies: wr_uid[15:20:29] [API]    These may help with cookie validation and refresh[15:20:29] [API] Found wr_skey cookie (length: 8)[15:20:29] [API] Loaded 8 total cookies: wr_skey, wr_avatar, wr_fp, wr_name, wr_vid, wr_rt, wr_localvid, wr_gid[15:20:29] [API] Validating cookies...[15:20:31] [API] ✅ Cookie validation successful[15:20:31] [API] ✅ wr_name cookie present (good for cookie refresh validation)[15:20:31] [API] Fetching shelf data...[15:20:32] [API] Found 144 books in 'books' field (with full info)[15:20:32] [API] Found 111 books with progress data[15:20:32] [API] Total books in shelf: 144[15:20:32] [API] Combined 144 books with full info and progress data[15:20:32] [TEST] Found matching book: '被讨厌的勇气：“自我启发之父”阿德勒的哲学课' (bookId: 25615385)[15:20:32] [TEST] Filtered to 1 book(s) matching title '被讨厌的勇气' (from 144 total)[15:20:32] [API] Limiting to first 1 book(s) for testing[15:20:32] 
+============================================================[15:20:32] [PROGRESS] Processing 1 book(s) one at a time...[15:20:32] ============================================================
+[15:20:32] [1/1] 📖 Processing book 25615385...[15:20:36] [DEBUG] Fetching 高亮划线 (highlights WITHOUT thoughts) from bookmarklist API for book 25615385...[15:20:36] [DEBUG] ========== FULL BOOKMARKLIST (PRIMARY) API RESPONSE ==========[15:20:36] [DEBUG] URL: https://weread.qq.com/web/book/bookmarklist?bookId=25615385[15:20:36] [DEBUG] Response Status: 200[15:20:36] [DEBUG] Full JSON Response:[15:20:36] {}[15:20:36] [DEBUG] ========== END OF BOOKMARKLIST (PRIMARY) API RESPONSE ==========[15:20:36] [DEBUG] Bookmarklist API response keys: [][15:20:36] [DEBUG] ⚠️  No 'updated' or 'bookmarks' field found in bookmarklist (primary) response[15:20:36] [DEBUG] Full response structure:[15:20:37] [DEBUG] ========== FULL BOOKMARKLIST (WITH SYNCKEY) API RESPONSE ==========[15:20:37] [DEBUG] URL: https://weread.qq.com/web/book/bookmarklist?bookId=25615385&synckey=0[15:20:37] [DEBUG] Response Status: 200[15:20:37] [DEBUG] Full JSON Response:[15:20:37] {}[15:20:37] [DEBUG] ========== END OF BOOKMARKLIST (WITH SYNCKEY) API RESPONSE ==========[15:20:37] [DEBUG] Bookmarklist API response keys: [][15:20:37] [DEBUG] ⚠️  No 'updated' or 'bookmarks' field found in bookmarklist (with synckey) response[15:20:37] [DEBUG] Full response structure:[15:20:38] [DEBUG] Trying notebooks API as fallback...[15:20:39] [DEBUG] ========== NOTEBOOKS API RESPONSE ==========[15:20:39] [DEBUG] Full JSON Response:[15:20:39] {
+  "synckey": 1768199029,
+  "totalBookCount": 44,
+  "noBookReviewCount": 0,
+  "books": [
+    {
+      "bookId": "25615385",
+      "book": {
+        "bookId": "25615385",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/t6_25615385.jpg",
+        "version": 769561529,
+        "format": "epub",
+        "type": 0,
+        "price": 19.9,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 1990,
+        "categories": [
+          {
+            "categoryId": 800000,
+            "subCategoryId": 800001,
+            "categoryType": 0,
+            "title": "心理-积极心理学"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 11,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 11,
+          "maxFreeChapterUid": 168,
+          "maxFreeChapterRatio": 5
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 4157477,
+        "publishTime": "2017-05-01 00:00:00",
+        "lastChapterIdx": 23,
+        "paperBook": {
+          "skuId": "12809752"
+        },
+        "copyrightChapterUids": [
+          159
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 8,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 11,
+      "bookmarkCount": 0,
+      "sort": 1768144356
+    },
+    {
+      "bookId": "23437971",
+      "book": {
+        "bookId": "23437971",
+        "title": "生育制度",
+        "author": "费孝通",
+        "cover": "https://cdn.weread.qq.com/weread/cover/0/yuewen_23437971/t6_yuewen_234379711750822804.jpg",
+        "version": 115087336,
+        "format": "epub",
+        "type": 0,
+        "price": 49.8,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4980,
+        "categories": [
+          {
+            "categoryId": 900000,
+            "subCategoryId": 900002,
+            "categoryType": 0,
+            "title": "社会文化-社科"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 13,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 13,
+          "maxFreeChapterUid": 95,
+          "maxFreeChapterRatio": 93
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": -3319053,
+        "publishTime": "2025-06-01 00:00:00",
+        "lastChapterIdx": 59,
+        "paperBook": {
+          "skuId": "13408344"
+        },
+        "copyrightChapterUids": [
+          84
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 3,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1765333900
+    },
+    {
+      "bookId": "859634",
+      "book": {
+        "bookId": "859634",
+        "title": "淘宝天猫店是如何运营的：网店从0到千万实操手册",
+        "author": "贾真",
+        "cover": "https://cdn.weread.qq.com/weread/cover/43/YueWen_859634/t6_YueWen_859634.jpg",
+        "version": 508987829,
+        "format": "epub",
+        "type": 0,
+        "price": 19.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1999,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 10,
+          "maxFreeChapterRatio": 37
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 48492,
+        "publishTime": "2017-05-01 00:00:00",
+        "lastChapterIdx": 57,
+        "paperBook": {
+          "skuId": "12195750"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1764556562
+    },
+    {
+      "bookId": "914501",
+      "book": {
+        "bookId": "914501",
+        "title": "认知突围：做复杂时代的明白人",
+        "author": "蔡垒磊",
+        "cover": "https://cdn.weread.qq.com/weread/cover/82/YueWen_914501/t6_YueWen_914501.jpg",
+        "version": 135361566,
+        "format": "epub",
+        "type": 0,
+        "price": 23.4,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 2340,
+        "categories": [
+          {
+            "categoryId": 1000000,
+            "subCategoryId": 1000004,
+            "categoryType": 0,
+            "title": "个人成长-人生哲学"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 51,
+          "maxFreeChapterRatio": 65
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2017-09-01 00:00:00",
+        "lastChapterIdx": 45,
+        "paperBook": {
+          "skuId": "12137213"
+        },
+        "copyrightChapterUids": [
+          46
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 5,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 2,
+      "bookmarkCount": 0,
+      "sort": 1764470915
+    },
+    {
+      "bookId": "3300131382",
+      "book": {
+        "bookId": "3300131382",
+        "title": "摆摊式创业：会摆摊就会做生意",
+        "author": "黄碧云",
+        "cover": "https://cdn.weread.qq.com/weread/cover/27/cpplatform_4854acdloxmoa6u1jv3rfj/t6_cpplatform_4854acdloxmoa6u1jv3rfj1737103219.jpg",
+        "version": 190168007,
+        "format": "epub",
+        "type": 0,
+        "price": 35.9,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 3590,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 8,
+          "maxFreeChapterRatio": 27
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2024-11-01 00:00:00",
+        "lastChapterIdx": 50,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 3,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 7,
+      "bookmarkCount": 0,
+      "sort": 1764344351
+    },
+    {
+      "bookId": "921568",
+      "book": {
+        "bookId": "921568",
+        "title": "原则",
+        "author": "瑞·达利欧",
+        "translator": "刘波,綦相",
+        "cover": "https://cdn.weread.qq.com/weread/cover/23/YueWen_921568/t6_YueWen_921568.jpg",
+        "version": 1344545846,
+        "format": "epub",
+        "type": 0,
+        "price": 58,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 5800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100002,
+            "categoryType": 0,
+            "title": "经济理财-管理"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 59,
+          "maxFreeChapterRatio": 100
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2018-01-01 00:00:00",
+        "lastChapterIdx": 48,
+        "paperBook": {
+          "skuId": "13032545"
+        },
+        "copyrightChapterUids": [
+          51
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 21,
+      "reviewLikeCount": 2,
+      "reviewCommentCount": 0,
+      "noteCount": 8,
+      "bookmarkCount": 0,
+      "sort": 1764298009
+    },
+    {
+      "bookId": "837932",
+      "book": {
+        "bookId": "837932",
+        "title": "穷查理宝典：查理·芒格智慧箴言录（全新增订本）",
+        "author": "彼得·考夫曼",
+        "translator": "李继宏 等",
+        "cover": "https://cdn.weread.qq.com/weread/cover/48/YueWen_837932/t6_YueWen_837932.jpg",
+        "version": 584065300,
+        "format": "epub",
+        "type": 0,
+        "price": 131.6,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 13160,
+        "categories": [
+          {
+            "categoryId": 1000000,
+            "subCategoryId": 1000002,
+            "categoryType": 0,
+            "title": "个人成长-励志成长"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 16,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 16,
+          "maxFreeChapterUid": 98,
+          "maxFreeChapterRatio": 24
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 4525313,
+        "publishTime": "2021-07-01 00:00:00",
+        "lastChapterIdx": 83,
+        "paperBook": {
+          "skuId": "13607690"
+        },
+        "copyrightChapterUids": [
+          84
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 4,
+      "bookmarkCount": 0,
+      "sort": 1763873854
+    },
+    {
+      "bookId": "847196",
+      "book": {
+        "bookId": "847196",
+        "title": "君主论",
+        "author": "尼科洛·马基雅维利",
+        "translator": "王伟",
+        "cover": "https://cdn.weread.qq.com/weread/cover/71/YueWen_847196/t6_YueWen_847196.jpg",
+        "version": 281657799,
+        "format": "epub",
+        "type": 0,
+        "price": 12.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 1299,
+        "categories": [
+          {
+            "categoryId": 1200000,
+            "subCategoryId": 1200002,
+            "categoryType": 0,
+            "title": "政治军事-政治"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 15,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 15,
+          "maxFreeChapterUid": 75,
+          "maxFreeChapterRatio": 24
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 6084363,
+        "publishTime": "2014-11-01 00:00:00",
+        "lastChapterIdx": 63,
+        "paperBook": {
+          "skuId": "13006253"
+        },
+        "copyrightChapterUids": [
+          62
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 3,
+      "bookmarkCount": 0,
+      "sort": 1763733861
+    },
+    {
+      "bookId": "3300108178",
+      "book": {
+        "bookId": "3300108178",
+        "title": "烧掉你的船：将焦虑转化为积极行动的9个策略",
+        "author": "[美]马特·希金斯",
+        "translator": "文隐尘",
+        "cover": "https://cdn.weread.qq.com/weread/cover/21/cpplatform_rgz74vbspt6cpgfgsqdzeq/t6_cpplatform_rgz74vbspt6cpgfgsqdzeq1721896275.jpg",
+        "version": 1802248566,
+        "format": "epub",
+        "type": 0,
+        "price": 35.9,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 3590,
+        "categories": [
+          {
+            "categoryId": 800000,
+            "subCategoryId": 800003,
+            "categoryType": 0,
+            "title": "心理-认知与行为"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 4,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 4,
+          "maxFreeChapterUid": 4,
+          "maxFreeChapterRatio": 61
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2024-06-01 00:00:00",
+        "lastChapterIdx": 14,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 3,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 0,
+      "noteCount": 2,
+      "bookmarkCount": 0,
+      "sort": 1763393442
+    },
+    {
+      "bookId": "23410531",
+      "book": {
+        "bookId": "23410531",
+        "title": "第一本经济学",
+        "author": "罗伯特·墨菲",
+        "translator": "程晔",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/531/23410531/t6_23410531.jpg",
+        "version": 1437598963,
+        "format": "epub",
+        "type": 0,
+        "price": 23.6,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 2360,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 8,
+          "maxFreeChapterRatio": 27
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 15822916,
+        "publishTime": "2018-04-01 00:00:00",
+        "lastChapterIdx": 32,
+        "paperBook": {
+          "skuId": "12331245"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 5,
+      "bookmarkCount": 0,
+      "sort": 1749956326
+    },
+    {
+      "bookId": "40055543",
+      "book": {
+        "bookId": "40055543",
+        "title": "置身事内：中国政府与经济发展",
+        "author": "兰小欢",
+        "cover": "https://cdn.weread.qq.com/weread/cover/52/YueWen_40055543/t6_YueWen_40055543.jpg",
+        "version": 1148463915,
+        "format": "epub",
+        "type": 0,
+        "price": 65,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 6500,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 12,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 12,
+          "maxFreeChapterUid": 12,
+          "maxFreeChapterRatio": 37
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": -1361120,
+        "publishTime": "2021-08-01 00:00:00",
+        "lastChapterIdx": 60,
+        "paperBook": {
+          "skuId": "13643682"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 7,
+      "bookmarkCount": 0,
+      "sort": 1749618900
+    },
+    {
+      "bookId": "23601930",
+      "book": {
+        "bookId": "23601930",
+        "title": "富爸爸穷爸爸",
+        "author": "罗伯特·清崎",
+        "translator": "萧明",
+        "cover": "https://cdn.weread.qq.com/weread/cover/68/YueWen_23601930/t6_YueWen_23601930.jpg",
+        "version": 1432284,
+        "format": "epub",
+        "type": 0,
+        "price": 48,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100003,
+            "categoryType": 0,
+            "title": "经济理财-理财"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 11,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 11,
+          "maxFreeChapterUid": 99,
+          "maxFreeChapterRatio": 26
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 7104280,
+        "publishTime": "2017-09-01 00:00:00",
+        "lastChapterIdx": 41,
+        "paperBook": {
+          "skuId": "12948502"
+        },
+        "copyrightChapterUids": [
+          90
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 3,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 4,
+      "bookmarkCount": 0,
+      "sort": 1749351505
+    },
+    {
+      "bookId": "24925754",
+      "book": {
+        "bookId": "24925754",
+        "title": "周期",
+        "author": "霍华德·马克斯",
+        "translator": "刘建位",
+        "cover": "https://cdn.weread.qq.com/weread/cover/16/YueWen_24925754/t6_YueWen_24925754.jpg",
+        "version": 2132771624,
+        "format": "epub",
+        "type": 0,
+        "price": 52.8,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 5280,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 48,
+          "maxFreeChapterRatio": 98
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2019-02-01 00:00:00",
+        "lastChapterIdx": 24,
+        "paperBook": {
+          "skuId": "13095989"
+        },
+        "copyrightChapterUids": [
+          25
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 6,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 9,
+      "bookmarkCount": 0,
+      "sort": 1749300356
+    },
+    {
+      "bookId": "3300024059",
+      "book": {
+        "bookId": "3300024059",
+        "title": "第一次做生意",
+        "author": "丹牛",
+        "cover": "https://cdn.weread.qq.com/weread/cover/59/3300024059/t6_3300024059.jpg",
+        "version": 1388389797,
+        "format": "epub",
+        "type": 0,
+        "price": 41.4,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4140,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100002,
+            "categoryType": 0,
+            "title": "经济理财-管理"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 9,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 9,
+          "maxFreeChapterUid": 9,
+          "maxFreeChapterRatio": 3
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4157477,
+        "publishTime": "2022-05-01 00:00:00",
+        "lastChapterIdx": 35,
+        "paperBook": {
+          "skuId": "13259521"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1749213494
+    },
+    {
+      "bookId": "3300062502",
+      "book": {
+        "bookId": "3300062502",
+        "title": "芒格之道——查理·芒格股东会讲话1987-2022",
+        "author": "查理·芒格 芒格书院",
+        "translator": "RanRan",
+        "cover": "https://cdn.weread.qq.com/weread/cover/44/cpplatform_tweycmwdgv5kegl9rgght1/t6_cpplatform_tweycmwdgv5kegl9rgght11687684560.jpg",
+        "version": 646448306,
+        "format": "epub",
+        "type": 0,
+        "price": 138.6,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 13860,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 9,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 9,
+          "maxFreeChapterUid": 9,
+          "maxFreeChapterRatio": 74
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2023-06-01 00:00:00",
+        "lastChapterIdx": 32,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1748047864
+    },
+    {
+      "bookId": "3300019461",
+      "book": {
+        "bookId": "3300019461",
+        "title": "财务自由第一课",
+        "author": "帅健翔",
+        "cover": "https://cdn.weread.qq.com/weread/cover/61/3300019461/t6_3300019461.jpg",
+        "version": 1626950242,
+        "format": "epub",
+        "type": 0,
+        "price": 35.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 3599,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100003,
+            "categoryType": 0,
+            "title": "经济理财-理财"
+          }
+        ],
+        "authorVids": "11321700",
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 7,
+          "maxFreeChapterRatio": 80
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 7029174,
+        "publishTime": "2021-03-01 00:00:00",
+        "lastChapterIdx": 30,
+        "paperBook": {
+          "skuId": "13129768"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1747634477
+    },
+    {
+      "bookId": "629864",
+      "book": {
+        "bookId": "629864",
+        "title": "创业维艰：如何完成比难更难的事",
+        "author": "本·霍洛维茨",
+        "translator": "杨晓红,钟莉婷,",
+        "cover": "https://cdn.weread.qq.com/weread/cover/69/YueWen_629864/t6_YueWen_629864.jpg",
+        "version": 125026733,
+        "format": "epub",
+        "type": 0,
+        "price": 18,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          },
+          {
+            "categoryId": 500000,
+            "subCategoryId": 500001,
+            "categoryType": 0,
+            "title": "人物传记-财经人物"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 18,
+          "maxFreeChapterRatio": 19
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2015-03-01 00:00:00",
+        "lastChapterIdx": 50,
+        "paperBook": {
+          "skuId": "11645500"
+        },
+        "copyrightChapterUids": [
+          14
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 6,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1747379709
+    },
+    {
+      "bookId": "573975",
+      "book": {
+        "bookId": "573975",
+        "title": "思考，快与慢",
+        "author": "丹尼尔·卡尼曼",
+        "translator": "胡晓姣,李爱民,何梦莹",
+        "cover": "https://cdn.weread.qq.com/weread/cover/86/YueWen_573975/t6_YueWen_573975.jpg",
+        "version": 1619776872,
+        "format": "epub",
+        "type": 0,
+        "price": 18,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 1800,
+        "categories": [
+          {
+            "categoryId": 1000000,
+            "subCategoryId": 1000006,
+            "categoryType": 0,
+            "title": "个人成长-认知思维"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 58,
+          "maxFreeChapterRatio": 79
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2012-07-01 00:00:00",
+        "lastChapterIdx": 51,
+        "paperBook": {
+          "skuId": "11029168"
+        },
+        "copyrightChapterUids": [
+          52
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 9,
+      "reviewLikeCount": 5,
+      "reviewCommentCount": 1,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1747273963
+    },
+    {
+      "bookId": "26261790",
+      "book": {
+        "bookId": "26261790",
+        "title": "认知红利",
+        "author": "谢春霖",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/790/26261790/t6_26261790.jpg",
+        "version": 1387268822,
+        "format": "epub",
+        "type": 0,
+        "price": 40,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4000,
+        "categories": [
+          {
+            "categoryId": 800000,
+            "subCategoryId": 800003,
+            "categoryType": 0,
+            "title": "心理-认知与行为"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 59,
+          "maxFreeChapterRatio": 36
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 4157477,
+        "publishTime": "2019-07-01 00:00:00",
+        "lastChapterIdx": 29,
+        "paperBook": {
+          "skuId": "12562595"
+        },
+        "copyrightChapterUids": [
+          29
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 8,
+      "reviewLikeCount": 3,
+      "reviewCommentCount": 0,
+      "noteCount": 23,
+      "bookmarkCount": 0,
+      "sort": 1747046546
+    },
+    {
+      "bookId": "41452812",
+      "book": {
+        "bookId": "41452812",
+        "title": "社会心理学（第8版）",
+        "author": "[美]戴维·迈尔斯",
+        "translator": "侯玉波,乐国安,张智勇等",
+        "cover": "https://cdn.weread.qq.com/weread/cover/53/YueWen_41452812/t6_YueWen_41452812.jpg",
+        "version": 1005417000,
+        "format": "epub",
+        "type": 0,
+        "price": 68,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 6800,
+        "categories": [
+          {
+            "categoryId": 800000,
+            "subCategoryId": 800002,
+            "categoryType": 0,
+            "title": "心理-社会心理学"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 35,
+          "maxFreeChapterRatio": 65
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2010-04-01 00:00:00",
+        "lastChapterIdx": 27,
+        "paperBook": {
+          "skuId": "11878532"
+        },
+        "copyrightChapterUids": [
+          29
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 2,
+      "reviewCommentCount": 0,
+      "noteCount": 2,
+      "bookmarkCount": 0,
+      "sort": 1714976237
+    },
+    {
+      "bookId": "3300024284",
+      "book": {
+        "bookId": "3300024284",
+        "title": "毛泽东选集（全四卷）",
+        "author": "",
+        "cover": "https://cdn.weread.qq.com/weread/cover/84/3300024284/t6_3300024284.jpg",
+        "version": 1784912880,
+        "format": "epub",
+        "type": 0,
+        "price": 48,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 34701313,
+        "centPrice": 4800,
+        "categories": [
+          {
+            "categoryId": 1200000,
+            "subCategoryId": 1200002,
+            "categoryType": 0,
+            "title": "政治军事-政治"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 15,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 15,
+          "maxFreeChapterUid": 233,
+          "maxFreeChapterRatio": 63
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4553516,
+        "publishTime": "1991-06-01 00:00:00",
+        "lastChapterIdx": 165,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          220
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1714463746
+    },
+    {
+      "bookId": "3300014120",
+      "book": {
+        "bookId": "3300014120",
+        "title": "经济学：第18版（翻译版）",
+        "author": "〔美〕保罗·萨缪尔森 威廉·诺德豪斯著",
+        "cover": "https://cdn.weread.qq.com/weread/cover/20/3300014120/t6_3300014120.jpg",
+        "version": 646818407,
+        "format": "epub",
+        "type": 0,
+        "price": 88,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 8800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 25,
+          "maxFreeChapterRatio": 1
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2008-01-01 00:00:00",
+        "lastChapterIdx": 90,
+        "paperBook": {
+          "skuId": "11492824"
+        },
+        "copyrightChapterUids": [
+          106
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 2,
+      "bookmarkCount": 0,
+      "sort": 1714370897
+    },
+    {
+      "bookId": "24907597",
+      "book": {
+        "bookId": "24907597",
+        "title": "逻辑十九讲",
+        "author": "威廉姆·沃克·阿特金森",
+        "translator": "李奇",
+        "cover": "https://cdn.weread.qq.com/weread/cover/61/YueWen_24907597/t6_YueWen_24907597.jpg",
+        "version": 756802263,
+        "format": "epub",
+        "type": 0,
+        "price": 11.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1199,
+        "categories": [
+          {
+            "categoryId": 600000,
+            "subCategoryId": 600003,
+            "categoryType": 0,
+            "title": "哲学宗教-逻辑学"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 5,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 5,
+          "maxFreeChapterUid": 5,
+          "maxFreeChapterRatio": 33
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 7118399,
+        "publishTime": "2018-12-01 00:00:00",
+        "lastChapterIdx": 21,
+        "paperBook": {
+          "skuId": "12458037"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 4,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 8,
+      "bookmarkCount": 0,
+      "sort": 1714306584
+    },
+    {
+      "bookId": "850893",
+      "book": {
+        "bookId": "850893",
+        "title": "运营之光：我的互联网运营方法论与自白",
+        "author": "黄有璨",
+        "cover": "https://cdn.weread.qq.com/weread/cover/31/YueWen_850893/t6_YueWen_850893.jpg",
+        "version": 1486919018,
+        "format": "epub",
+        "type": 0,
+        "price": 19.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1999,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 55,
+          "maxFreeChapterRatio": 77
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 48492,
+        "publishTime": "2016-09-01 00:00:00",
+        "lastChapterIdx": 47,
+        "paperBook": {
+          "skuId": "12030614"
+        },
+        "copyrightChapterUids": [
+          47
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 4,
+      "bookmarkCount": 0,
+      "sort": 1713968021
+    },
+    {
+      "bookId": "3300014116",
+      "book": {
+        "bookId": "3300014116",
+        "title": "聪明的投资者（第4版，注疏点评版）",
+        "author": "[美]本杰明·格雷厄姆 [美]贾森·兹威格　著",
+        "translator": "王中华 黄一义",
+        "cover": "https://cdn.weread.qq.com/weread/cover/16/3300014116/t6_3300014116.jpg",
+        "version": 1996847886,
+        "format": "epub",
+        "type": 0,
+        "price": 88,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 8800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100003,
+            "categoryType": 0,
+            "title": "经济理财-理财"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 12,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 12,
+          "maxFreeChapterUid": 12,
+          "maxFreeChapterRatio": 25
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2016-03-01 00:00:00",
+        "lastChapterIdx": 60,
+        "paperBook": {
+          "skuId": "11895364"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1713161922
+    },
+    {
+      "bookId": "29790406",
+      "book": {
+        "bookId": "29790406",
+        "title": "韦伯作品集：经济与社会（第一卷）",
+        "author": "马克斯·韦伯",
+        "translator": "阎克文",
+        "cover": "https://cdn.weread.qq.com/weread/cover/39/YueWen_29790406/t6_YueWen_29790406.jpg",
+        "version": 846951260,
+        "format": "epub",
+        "type": 0,
+        "price": 98,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 9800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 6,
+          "maxFreeChapterRatio": 83
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 7,
+        "cpid": -1361120,
+        "publishTime": "2019-10-01 00:00:00",
+        "lastChapterIdx": 18,
+        "paperBook": {
+          "skuId": "12717170"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 6,
+      "bookmarkCount": 0,
+      "sort": 1712469608
+    },
+    {
+      "bookId": "34889362",
+      "book": {
+        "bookId": "34889362",
+        "title": "超级用户增长：低成本实现私域用户持续复购",
+        "author": "晏涛",
+        "cover": "https://cdn.weread.qq.com/weread/cover/11/YueWen_34889362/t6_YueWen_34889362.jpg",
+        "version": 2016492340,
+        "format": "epub",
+        "type": 0,
+        "price": 23.2,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 2320,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 8,
+          "maxFreeChapterRatio": 100
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": -48349,
+        "publishTime": "2020-12-01 00:00:00",
+        "lastChapterIdx": 67,
+        "paperBook": {
+          "skuId": "13017398"
+        },
+        "copyrightChapterUids": [],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1711604289
+    },
+    {
+      "bookId": "33628204",
+      "book": {
+        "bookId": "33628204",
+        "title": "认知觉醒：开启自我改变的原动力",
+        "author": "周岭",
+        "cover": "https://cdn.weread.qq.com/weread/cover/86/YueWen_33628204/t6_YueWen_33628204.jpg",
+        "version": 832611521,
+        "format": "epub",
+        "type": 0,
+        "price": 59.8,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 5980,
+        "categories": [
+          {
+            "categoryId": 800000,
+            "subCategoryId": 800003,
+            "categoryType": 0,
+            "title": "心理-认知与行为"
+          }
+        ],
+        "authorVids": "16842345",
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 51,
+          "maxFreeChapterRatio": 70
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 5256588,
+        "publishTime": "2020-06-01 00:00:00",
+        "lastChapterIdx": 17,
+        "paperBook": {
+          "skuId": "13649916"
+        },
+        "copyrightChapterUids": [
+          35
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 9,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 3,
+      "noteCount": 4,
+      "bookmarkCount": 0,
+      "sort": 1679196871
+    },
+    {
+      "bookId": "34156605",
+      "book": {
+        "bookId": "34156605",
+        "title": "百万富翁快车道",
+        "author": "MJ·德马科",
+        "translator": "郑磊,王占新",
+        "cover": "https://cdn.weread.qq.com/weread/cover/66/YueWen_34156605/t6_YueWen_34156605.jpg",
+        "version": 806100580,
+        "format": "epub",
+        "type": 0,
+        "price": 41.4,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4140,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100001,
+            "categoryType": 0,
+            "title": "经济理财-财经"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 61,
+          "maxFreeChapterRatio": 91
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2017-05-01 00:00:00",
+        "lastChapterIdx": 60,
+        "paperBook": {
+          "skuId": "12070757"
+        },
+        "copyrightChapterUids": [
+          53
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 3,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1678124621
+    },
+    {
+      "bookId": "32765485",
+      "book": {
+        "bookId": "32765485",
+        "title": "钝感力（典藏版）",
+        "author": "[日]渡边淳一",
+        "translator": "李迎跃",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/485/32765485/t6_32765485.jpg",
+        "version": 752382377,
+        "format": "epub",
+        "type": 0,
+        "price": 29.5,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 2950,
+        "categories": [
+          {
+            "categoryId": 1000000,
+            "subCategoryId": 1000004,
+            "categoryType": 0,
+            "title": "个人成长-人生哲学"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 5,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 5,
+          "maxFreeChapterUid": 5,
+          "maxFreeChapterRatio": 41
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4326988,
+        "publishTime": "2019-05-10 00:00:00",
+        "lastChapterIdx": 20,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-wr",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1662907168
+    },
+    {
+      "bookId": "3300017874",
+      "book": {
+        "bookId": "3300017874",
+        "title": "厌女（增订本）",
+        "author": "[日]上野千鹤子",
+        "translator": "王兰",
+        "cover": "https://cdn.weread.qq.com/weread/cover/94/cpplatform_akrjnymgoxljkqszganvbx/t6_cpplatform_akrjnymgoxljkqszganvbx1682248200.jpg",
+        "version": 2086244339,
+        "format": "epub",
+        "type": 0,
+        "price": 66,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 6600,
+        "categories": [
+          {
+            "categoryId": 900000,
+            "subCategoryId": 900002,
+            "categoryType": 0,
+            "title": "社会文化-社科"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 130,
+          "maxFreeChapterRatio": 75
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 14792401,
+        "publishTime": "2023-04-01 00:00:00",
+        "lastChapterIdx": 26,
+        "paperBook": {
+          "skuId": "12622250"
+        },
+        "copyrightChapterUids": [
+          126
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1655133853
+    },
+    {
+      "bookId": "830305",
+      "book": {
+        "bookId": "830305",
+        "title": "疯传：让你的产品、思想、行为像病毒一样入侵",
+        "author": "乔纳·伯杰",
+        "translator": "刘生敏,廖建桥",
+        "cover": "https://cdn.weread.qq.com/weread/cover/55/YueWen_830305/t6_YueWen_830305.jpg",
+        "version": 1136634846,
+        "format": "epub",
+        "type": 0,
+        "price": 13.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1399,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 60,
+          "maxFreeChapterRatio": 60
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 48492,
+        "publishTime": "2014-01-01 00:00:00",
+        "lastChapterIdx": 54,
+        "paperBook": {
+          "skuId": "12643697"
+        },
+        "copyrightChapterUids": [
+          54
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 1,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 19,
+      "reviewLikeCount": 7,
+      "reviewCommentCount": 0,
+      "noteCount": 3,
+      "bookmarkCount": 0,
+      "sort": 1654351641
+    },
+    {
+      "bookId": "566431",
+      "book": {
+        "bookId": "566431",
+        "title": "从0到1：开启商业与未来的秘密",
+        "author": "彼得·蒂尔 布莱克·马斯特斯",
+        "translator": "高玉芳",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/431/566431/t6_566431.jpg",
+        "version": 2079734700,
+        "format": "epub",
+        "type": 0,
+        "price": 18,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100002,
+            "categoryType": 0,
+            "title": "经济理财-管理"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 88,
+          "maxFreeChapterRatio": 77
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2015-01-20 00:00:00",
+        "lastChapterIdx": 81,
+        "paperBook": {
+          "skuId": "11614401"
+        },
+        "copyrightChapterUids": [
+          82
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1653793186
+    },
+    {
+      "bookId": "858305",
+      "book": {
+        "bookId": "858305",
+        "title": "向上管理：如何正确汇报工作？",
+        "author": "蒋巍巍",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/305/858305/t6_858305.jpg",
+        "version": 236250071,
+        "format": "epub",
+        "type": 0,
+        "price": 9.5,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 950,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100002,
+            "categoryType": 0,
+            "title": "经济理财-管理"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 19,
+          "maxFreeChapterRatio": 1
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 18653785,
+        "publishTime": "2015-08-01 00:00:00",
+        "lastChapterIdx": 16,
+        "paperBook": {
+          "skuId": "11741424"
+        },
+        "copyrightChapterUids": [
+          14
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 23,
+      "reviewLikeCount": 106,
+      "reviewCommentCount": 2,
+      "noteCount": 8,
+      "bookmarkCount": 0,
+      "sort": 1653604765
+    },
+    {
+      "bookId": "602706",
+      "book": {
+        "bookId": "602706",
+        "title": "定位：有史以来对美国营销影响最大的观念",
+        "author": "特劳特",
+        "translator": "谢伟山,苑爱冬",
+        "cover": "https://cdn.weread.qq.com/weread/cover/45/YueWen_602706/t6_YueWen_602706.jpg",
+        "version": 1806509320,
+        "format": "epub",
+        "type": 0,
+        "price": 18,
+        "originalPrice": 0,
+        "soldout": 1,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 1,
+        "centPrice": 1800,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 10,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 10,
+          "maxFreeChapterUid": 205,
+          "maxFreeChapterRatio": 24
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 0,
+        "publishTime": "2013-12-01 00:00:00",
+        "lastChapterIdx": 196,
+        "paperBook": {
+          "skuId": ""
+        },
+        "copyrightChapterUids": [
+          197
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": true,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 14,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1652982060
+    },
+    {
+      "bookId": "39452317",
+      "book": {
+        "bookId": "39452317",
+        "title": "脑子不会好好睡",
+        "author": "盖伊·勒施齐纳",
+        "translator": "高天羽",
+        "cover": "https://cdn.weread.qq.com/weread/cover/2/YueWen_39452317/t6_YueWen_39452317.jpg",
+        "version": 53616387,
+        "format": "epub",
+        "type": 0,
+        "price": 59,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 5900,
+        "categories": [
+          {
+            "categoryId": 2100000,
+            "subCategoryId": 2100001,
+            "categoryType": 0,
+            "title": "医学健康-健康"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 5,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 5,
+          "maxFreeChapterUid": 5,
+          "maxFreeChapterRatio": 90
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 25523719,
+        "publishTime": "2021-07-01 00:00:00",
+        "lastChapterIdx": 26,
+        "paperBook": {
+          "skuId": "12881151"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1628428624
+    },
+    {
+      "bookId": "28165041",
+      "book": {
+        "bookId": "28165041",
+        "title": "俞军产品方法论",
+        "author": "俞军等",
+        "cover": "https://cdn.weread.qq.com/weread/cover/47/YueWen_28165041/t6_YueWen_28165041.jpg",
+        "version": 1503387723,
+        "format": "epub",
+        "type": 0,
+        "price": 39,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 3900,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 11,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 11,
+          "maxFreeChapterUid": 50,
+          "maxFreeChapterRatio": 47
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2020-01-01 00:00:00",
+        "lastChapterIdx": 43,
+        "paperBook": {
+          "skuId": "12771376"
+        },
+        "copyrightChapterUids": [
+          41
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 2,
+      "bookmarkCount": 0,
+      "sort": 1628056904
+    },
+    {
+      "bookId": "932498",
+      "book": {
+        "bookId": "932498",
+        "title": "存在主义咖啡馆：自由、存在和杏子鸡尾酒",
+        "author": "莎拉·贝克韦尔",
+        "translator": "沈敏一",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/498/932498/t6_932498.jpg",
+        "version": 393680825,
+        "format": "epub",
+        "type": 0,
+        "price": 43.8,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 4380,
+        "categories": [
+          {
+            "categoryId": 600000,
+            "subCategoryId": 600008,
+            "categoryType": 0,
+            "title": "哲学宗教-哲学读物"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 40,
+          "maxFreeChapterRatio": 18
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 16379935,
+        "publishTime": "2017-12-01 00:00:00",
+        "lastChapterIdx": 36,
+        "paperBook": {
+          "skuId": "12278502"
+        },
+        "copyrightChapterUids": [
+          36
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1626834208
+    },
+    {
+      "bookId": "609288",
+      "book": {
+        "bookId": "609288",
+        "title": "菊与刀",
+        "author": "本尼迪克特",
+        "translator": "潘星汉",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/288/609288/t6_609288.jpg",
+        "version": 2105535206,
+        "format": "epub",
+        "type": 0,
+        "price": 4,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 400,
+        "categories": [
+          {
+            "categoryId": 900000,
+            "subCategoryId": 900003,
+            "categoryType": 0,
+            "title": "社会文化-文化"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 4,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 4,
+          "maxFreeChapterUid": 4,
+          "maxFreeChapterRatio": 43
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 1,
+        "cpid": 7118399,
+        "publishTime": "2012-01-01 00:00:00",
+        "lastChapterIdx": 15,
+        "paperBook": {
+          "skuId": "12376304"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1626611196
+    },
+    {
+      "bookId": "922228",
+      "book": {
+        "bookId": "922228",
+        "title": "增长黑客",
+        "author": "肖恩·埃利斯 摩根·布朗",
+        "translator": "张溪梦",
+        "cover": "https://cdn.weread.qq.com/weread/cover/7/YueWen_922228/t6_YueWen_922228.jpg",
+        "version": 1827498180,
+        "format": "epub",
+        "type": 0,
+        "price": 35.4,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 3540,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 5,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 5,
+          "maxFreeChapterUid": 31,
+          "maxFreeChapterRatio": 67
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2018-01-01 00:00:00",
+        "lastChapterIdx": 27,
+        "paperBook": {
+          "skuId": "12267682"
+        },
+        "copyrightChapterUids": [
+          28
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh-CN",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 4,
+      "bookmarkCount": 0,
+      "sort": 1626176683
+    },
+    {
+      "bookId": "857316",
+      "book": {
+        "bookId": "857316",
+        "title": "上瘾：让用户养成使用习惯的四大产品逻辑",
+        "author": "尼尔·埃亚尔 瑞安·胡佛",
+        "translator": "杨晓红等",
+        "cover": "https://cdn.weread.qq.com/weread/cover/18/YueWen_857316/t6_YueWen_857316.jpg",
+        "version": 303200881,
+        "format": "epub",
+        "type": 0,
+        "price": 13.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 1399,
+        "categories": [
+          {
+            "categoryId": 1100000,
+            "subCategoryId": 1100004,
+            "categoryType": 0,
+            "title": "经济理财-商业"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 6,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 6,
+          "maxFreeChapterUid": 19,
+          "maxFreeChapterRatio": 3
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 4525313,
+        "publishTime": "2017-05-01 00:00:00",
+        "lastChapterIdx": 20,
+        "paperBook": {
+          "skuId": "12167128"
+        },
+        "copyrightChapterUids": [
+          15
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 2,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 1,
+      "bookmarkCount": 0,
+      "sort": 1624963813
+    },
+    {
+      "bookId": "932108",
+      "book": {
+        "bookId": "932108",
+        "title": "卡拉马佐夫兄弟（套装上下册）（译文名著精选）",
+        "author": "陀思妥耶夫斯基",
+        "translator": "荣如德",
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/108/932108/t6_932108.jpg",
+        "version": 1126870721,
+        "format": "epub",
+        "type": 0,
+        "price": 87.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 4097,
+        "centPrice": 8799,
+        "categories": [
+          {
+            "categoryId": 300000,
+            "subCategoryId": 300013,
+            "categoryType": 0,
+            "title": "文学-外国文学"
+          },
+          {
+            "categoryId": 100000,
+            "subCategoryId": 100001,
+            "categoryType": 0,
+            "title": "精品小说-社会小说"
+          },
+          {
+            "categoryId": 300000,
+            "subCategoryId": 300014,
+            "categoryType": 0,
+            "title": "文学-世界名著"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 13,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 13,
+          "maxFreeChapterUid": 13,
+          "maxFreeChapterRatio": 52
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 9030183,
+        "publishTime": "2011-05-01 00:00:00",
+        "lastChapterIdx": 96,
+        "paperBook": {
+          "skuId": "10637407"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 1,
+      "sort": 1607928561
+    },
+    {
+      "bookId": "857983",
+      "book": {
+        "bookId": "857983",
+        "title": "荒原狼（黑塞作品01）",
+        "author": "[德]赫尔曼·黑塞",
+        "translator": "萧逢年",
+        "cover": "https://cdn.weread.qq.com/weread/cover/98/YueWen_857983/t6_YueWen_857983.jpg",
+        "version": 1396951049,
+        "format": "epub",
+        "type": 0,
+        "price": 5.99,
+        "originalPrice": 0,
+        "soldout": 1,
+        "bookStatus": 1,
+        "payingStatus": 1,
+        "payType": 1,
+        "centPrice": 599,
+        "categories": [
+          {
+            "categoryId": 300000,
+            "subCategoryId": 300004,
+            "categoryType": 0,
+            "title": "文学-经典作品"
+          }
+        ],
+        "hasLecture": 0,
+        "finished": 1,
+        "maxFreeChapter": 7,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 7,
+          "maxFreeChapterUid": 7,
+          "maxFreeChapterRatio": 33
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 0,
+        "publishTime": "2013-08-01 00:00:00",
+        "lastChapterIdx": 10,
+        "paperBook": {
+          "skuId": "11927066"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": true,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 1,
+      "reviewLikeCount": 1,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 0,
+      "sort": 1605613524
+    },
+    {
+      "bookId": "912317",
+      "book": {
+        "bookId": "912317",
+        "title": "玫瑰的名字",
+        "author": "翁贝托·埃科",
+        "translator": "沈萼梅,刘锡荣",
+        "cover": "https://cdn.weread.qq.com/weread/cover/15/YueWen_912317/t6_YueWen_912317.jpg",
+        "version": 829194355,
+        "format": "epub",
+        "type": 0,
+        "price": 57.99,
+        "originalPrice": 0,
+        "soldout": 0,
+        "bookStatus": 1,
+        "payingStatus": 2,
+        "payType": 1048577,
+        "centPrice": 5799,
+        "categories": [
+          {
+            "categoryId": 100000,
+            "subCategoryId": 100008,
+            "categoryType": 0,
+            "title": "精品小说-悬疑推理"
+          }
+        ],
+        "hasLecture": 1,
+        "finished": 1,
+        "maxFreeChapter": 8,
+        "maxFreeInfo": {
+          "maxFreeChapterIdx": 8,
+          "maxFreeChapterUid": 8,
+          "maxFreeChapterRatio": 51
+        },
+        "free": 0,
+        "mcardDiscount": 0,
+        "ispub": 1,
+        "extra_type": 5,
+        "cpid": 9030183,
+        "publishTime": "2015-01-01 00:00:00",
+        "lastChapterIdx": 54,
+        "paperBook": {
+          "skuId": "11593148"
+        },
+        "copyrightChapterUids": [
+          2
+        ],
+        "inStoreBookId": "",
+        "blockSaveImg": 0,
+        "language": "zh",
+        "isTraditionalChinese": false,
+        "hideUpdateTime": false,
+        "isEPUBComics": 0,
+        "isVerticalLayout": 0,
+        "isShowTTS": 1,
+        "webBookControl": 0,
+        "selfProduceIncentive": false,
+        "isAutoDownload": 1
+      },
+      "reviewCount": 0,
+      "reviewLikeCount": 0,
+      "reviewCommentCount": 0,
+      "noteCount": 0,
+      "bookmarkCount": 1,
+      "sort": 1582534383
+    }
+  ]
+}[15:20:39] [DEBUG] ========== END OF NOTEBOOKS API RESPONSE ==========[15:20:39] [DEBUG] ❌ All highlight endpoints failed for book 25615385[15:20:39] [DEBUG] ⚠️  No highlights found from bookmarklist API[15:20:39] [DEBUG] Fetching all notes and reviews from review API for book 25615385...[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=174[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=172[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=170[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=170[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=168[15:20:39] [DEBUG] Found highlight with thought in review API (Type 1, has content): chapterUid=166[15:20:39] [DEBUG] ✅ Found notes from review API for 25615385:[15:20:39] [DEBUG]   - 划线笔记 (Type 1 - underline/highlight notes): 8[15:20:39] [DEBUG]   - 页面笔记 (Type 2 - page notes): 0[15:20:39] [DEBUG]   - 章节笔记 (Type 3 - chapter notes): 0[15:20:39] [DEBUG]   - 书籍书评 (Type 4 - book reviews): 0[15:20:40] [DEBUG] Review API (Type 1) breakdown:[15:20:40] [DEBUG]   - Plain highlights (no content): 0[15:20:40] [DEBUG]   - Highlights with thoughts (has content): 8[15:20:40] [DEBUG] ✅ Highlights breakdown:[15:20:40] [DEBUG]   - Plain highlights (no thoughts): 0[15:20:40] [DEBUG]   - Highlights with thoughts: 8[15:20:40] [DEBUG]   - Total: 8[15:20:40] 
+================================================================================[15:20:40] 📚 微信读书笔记详情 - 被讨厌的勇气：“自我启发之父”阿德勒的哲学课[15:20:40] ================================================================================
+[15:20:40] 📝 划线笔记 (Underline/Highlight Notes): 8 条[15:20:40] --------------------------------------------------------------------------------[15:20:40]   1. [笔记] 章节166 | 下划线 | 默认[15:20:40]      位置: 3500-3570[15:20:40]      内容: 现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。[15:20:40]   2. [笔记] 章节168 | 下划线 | 默认[15:20:40]      位置: 7345-7390[15:20:40]      内容: 关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活[15:20:40]   3. [笔记] 章节170 | 下划线 | 默认[15:20:40]      位置: 29110-29282[15:20:40]      内容: 青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？
+哲人：不生气。
+青年：不许撒谎！[15:20:40]   4. [笔记] 章节170 | 下划线 | 默认[15:20:40]      位置: 31860-31913[15:20:40]      内容: 不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点[15:20:40]   5. [笔记] 章节172 | 下划线 | 默认[15:20:40]      位置: 5200-5227[15:20:40]      内容: 我们“并不是为了满足别人的期待而活着”。[15:20:40]   6. [笔记] 章节174 | 下划线 | 默认[15:20:40]      位置: 1994-2108[15:20:40]      内容: 但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。[15:20:40]   7. [笔记] 章节174 | 下划线 | 默认[15:20:40]      位置: 10595-10669[15:20:40]      内容: 不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入[15:20:40]   8. [笔记] 章节174 | 下划线 | 默认[15:20:40]      位置: 23382-23413[15:20:40]      内容: 人只有在能够感觉自己有价值的时候才可以获得勇气。[15:20:40] 📄 页面笔记: 无
+[15:20:40] 📑 章节笔记: 无
+[15:20:40] ⭐ 书籍书评: 无
+[15:20:40] ================================================================================
+[15:20:40] 
+============================================================[15:20:40] 📖 FULL BOOK DATA (Book 1)[15:20:40] ============================================================[15:20:40] {
+  "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+  "author": "岸见一郎 古贺史健",
+  "current_page": null,
+  "total_page": null,
+  "status": "Read",
+  "started_at": "2025-12-22 19:06:48+08:00",
+  "last_read_at": "2026-01-11 00:00:00+08:00",
+  "date_finished": "2026-01-11 23:25:09+08:00",
+  "source": "WeRead",
+  "cover_image": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/t6_25615385.jpg",
+  "genre": "心理-积极心理学",
+  "year_started": 2025,
+  "rating": null,
+  "bookmarks": [
+    {
+      "bookId": "25615385",
+      "content": "世界还是那个世界，你变了，会觉得世界也变了。",
+      "bookVersion": 769561529,
+      "range": "3500-3570",
+      "abstract": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 166,
+      "chapterName": "引言",
+      "chapterIdx": 9,
+      "reviewId": "53320557_85Dwv5HBH",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766573903,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "引言",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "omg",
+      "bookVersion": 769561529,
+      "range": "7345-7390",
+      "abstract": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 168,
+      "chapterName": "不为人知的心理学“第三巨头”",
+      "chapterIdx": 11,
+      "reviewId": "53320557_85DxyBzYu",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766574870,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "不为人知的心理学“第三巨头”",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "笑死了",
+      "bookVersion": 769561529,
+      "range": "29110-29282",
+      "abstract": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UdDYN1p",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767522231,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "我还是道行浅，受教了老师",
+      "bookVersion": 769561529,
+      "range": "31860-31913",
+      "abstract": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UmMx1ZY",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767530603,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "每天一次醍醐灌顶",
+      "bookVersion": 769561529,
+      "range": "5200-5227",
+      "abstract": "我们“并不是为了满足别人的期待而活着”。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 172,
+      "chapterName": "自由就是不再寻求认可？",
+      "chapterIdx": 15,
+      "reviewId": "53320557_85YjO0bfQ",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767755077,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "自由就是不再寻求认可？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "我们“并不是为了满足别人的期待而活着”。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "正确的",
+      "bookVersion": 769561529,
+      "range": "1994-2108",
+      "abstract": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZMxQo7G",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767838207,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "很好理解，很难做到",
+      "bookVersion": 769561529,
+      "range": "10595-10669",
+      "abstract": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZTxXr09",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767844621,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "事情越做越做，因为底气越来越足",
+      "bookVersion": 769561529,
+      "range": "23382-23413",
+      "abstract": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_860kreXOw",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767869258,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "isPlainHighlight": false
+    }
+  ],
+  "plain_highlights": [],
+  "highlights_with_thoughts": [
+    {
+      "bookId": "25615385",
+      "content": "事情越做越做，因为底气越来越足",
+      "bookVersion": 769561529,
+      "range": "23382-23413",
+      "abstract": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_860kreXOw",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767869258,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "人只有在能够感觉自己有价值的时候才可以获得勇气。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "很好理解，很难做到",
+      "bookVersion": 769561529,
+      "range": "10595-10669",
+      "abstract": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZTxXr09",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767844621,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不是考虑“这个人会给我什么”，而是要必须思考一下“我能给这个人什么”。这就是对共同体的参与和融入",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "正确的",
+      "bookVersion": 769561529,
+      "range": "1994-2108",
+      "abstract": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 174,
+      "chapterName": "个体心理学和整体论",
+      "chapterIdx": 17,
+      "reviewId": "53320557_85ZMxQo7G",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767838207,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "个体心理学和整体论",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "但是，当对他人大发雷霆的时候，那是“作为整体的我”选择了勃然大怒，绝对不是感情这一独立存在——可以说与我的意志无关——发出了怒吼。在这里，如果把“我”和“感情”分离开来认为“感情让我那么做或者受感情驱使”，那就容易陷入人生谎言。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "每天一次醍醐灌顶",
+      "bookVersion": 769561529,
+      "range": "5200-5227",
+      "abstract": "我们“并不是为了满足别人的期待而活着”。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 172,
+      "chapterName": "自由就是不再寻求认可？",
+      "chapterIdx": 15,
+      "reviewId": "53320557_85YjO0bfQ",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767755077,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "自由就是不再寻求认可？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "我们“并不是为了满足别人的期待而活着”。",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "我还是道行浅，受教了老师",
+      "bookVersion": 769561529,
+      "range": "31860-31913",
+      "abstract": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UmMx1ZY",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767530603,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "不，“忍耐”这种想法本身就表明你依然拘泥于权力之争。而是要对对方的行为不做任何反应。我们能做的就只有这一点",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "笑死了",
+      "bookVersion": 769561529,
+      "range": "29110-29282",
+      "abstract": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 170,
+      "chapterName": "为什么讨厌自己？",
+      "chapterIdx": 13,
+      "reviewId": "53320557_85UdDYN1p",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1767522231,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "为什么讨厌自己？",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "青年：那么，我来问问您私愤的事情。如果无缘无故地被人破口大骂，先生您也会生气吧？\n哲人：不生气。\n青年：不许撒谎！",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "omg",
+      "bookVersion": 769561529,
+      "range": "7345-7390",
+      "abstract": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 168,
+      "chapterName": "不为人知的心理学“第三巨头”",
+      "chapterIdx": 11,
+      "reviewId": "53320557_85DxyBzYu",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766574870,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "不为人知的心理学“第三巨头”",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "关键是经历本身不会决定什么。我们给过去的经历“赋予了什么样的意义”，这直接决定了我们的生活",
+      "isPlainHighlight": false
+    },
+    {
+      "bookId": "25615385",
+      "content": "世界还是那个世界，你变了，会觉得世界也变了。",
+      "bookVersion": 769561529,
+      "range": "3500-3570",
+      "abstract": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "type": 1,
+      "onlyVisibleOneBook": 1,
+      "chapterUid": 166,
+      "chapterName": "引言",
+      "chapterIdx": 9,
+      "reviewId": "53320557_85Dwv5HBH",
+      "userVid": 53320557,
+      "topics": [],
+      "createTime": 1766573903,
+      "isLike": 0,
+      "isReposted": 0,
+      "book": {
+        "bookId": "25615385",
+        "format": "epub",
+        "version": 769561529,
+        "soldout": 0,
+        "bookStatus": 1,
+        "type": 0,
+        "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+        "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+        "author": "岸见一郎 古贺史健",
+        "translator": "渠海霞",
+        "payType": 4097
+      },
+      "chapterTitle": "引言",
+      "author": {
+        "userVid": 53320557,
+        "name": "AaronZ",
+        "avatar": "https://res.weread.qq.com/wravatar/WV0027-OVSMJr0LIQxDNTZfjPiPPfc/0",
+        "isFollowing": 1,
+        "isFollower": 1,
+        "isBlacking": 0,
+        "isBlackBy": 0,
+        "isHide": 0,
+        "nick": "AaronZ",
+        "isV": 0,
+        "roleTags": [],
+        "followPromote": "",
+        "isDeepV": true,
+        "deepVTitle": "资深会员",
+        "signature": "",
+        "medalInfo": {
+          "id": "M6-0-100",
+          "desc": "收到的赞",
+          "title": "收到的赞",
+          "levelIndex": 100
+        }
+      },
+      "markText": "现在，你眼中的世界呈现出复杂怪异的一片混沌。但是，如果你自身发生了变化，世界就会恢复其简单姿态。因为，问题不在于世界如何，而在于你自己怎样。",
+      "isPlainHighlight": false
+    }
+  ],
+  "summary_reviews": [],
+  "page_notes": [],
+  "chapter_notes": [],
+  "chapter_info": {
+    "1": {
+      "chapterUid": 1,
+      "chapterIdx": 1,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_1",
+      "title": "封面",
+      "wordCount": 1,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/coverpage.xhtml"
+      ]
+    },
+    "159": {
+      "chapterUid": 159,
+      "chapterIdx": 2,
+      "updateTime": 1760166846,
+      "readAhead": 0,
+      "tar": "",
+      "title": "版权信息",
+      "wordCount": 763,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/copyright.xhtml",
+        "Text/Section0001.xhtml"
+      ]
+    },
+    "160": {
+      "chapterUid": 160,
+      "chapterIdx": 3,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "文前",
+      "wordCount": 324,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0002.xhtml"
+      ]
+    },
+    "161": {
+      "chapterUid": 161,
+      "chapterIdx": 4,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "本书的赞誉",
+      "wordCount": 795,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0003.xhtml"
+      ]
+    },
+    "162": {
+      "chapterUid": 162,
+      "chapterIdx": 5,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序一 勇气的心理学",
+      "wordCount": 1370,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0004.xhtml"
+      ]
+    },
+    "163": {
+      "chapterUid": 163,
+      "chapterIdx": 6,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序二 自我的枷锁和解放",
+      "wordCount": 1716,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0005.xhtml"
+      ]
+    },
+    "164": {
+      "chapterUid": 164,
+      "chapterIdx": 7,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "推荐序三 人唯有在能够感觉自己有价值时，才有勇气",
+      "wordCount": 1208,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0006.xhtml"
+      ]
+    },
+    "165": {
+      "chapterUid": 165,
+      "chapterIdx": 8,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "译者序",
+      "wordCount": 1017,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0007.xhtml"
+      ]
+    },
+    "166": {
+      "chapterUid": 166,
+      "chapterIdx": 9,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_9",
+      "title": "引言",
+      "wordCount": 2346,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0008.xhtml"
+      ]
+    },
+    "167": {
+      "chapterUid": 167,
+      "chapterIdx": 10,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_10",
+      "title": "第一夜 我们的不幸是谁的错？",
+      "wordCount": 182,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0009.xhtml",
+        "Text/Section0009_0001.xhtml"
+      ]
+    },
+    "168": {
+      "chapterUid": 168,
+      "chapterIdx": 11,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "不为人知的心理学“第三巨头”",
+      "wordCount": 12981,
+      "price": 0,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0009_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "再怎么“找原因”，也没法改变一个人",
+          "anchor": "sigil_toc_id_4",
+          "level": 2
+        },
+        {
+          "title": "心理创伤并不存在",
+          "anchor": "sigil_toc_id_5",
+          "level": 2
+        },
+        {
+          "title": "愤怒都是捏造出来的",
+          "anchor": "sigil_toc_id_6",
+          "level": 2
+        },
+        {
+          "title": "弗洛伊德说错了",
+          "anchor": "sigil_toc_id_7",
+          "level": 2
+        },
+        {
+          "title": "苏格拉底和阿德勒",
+          "anchor": "sigil_toc_id_8",
+          "level": 2
+        },
+        {
+          "title": "你想“变成别人”吗？",
+          "anchor": "sigil_toc_id_9",
+          "level": 2
+        },
+        {
+          "title": "你的不幸，皆是自己“选择”的",
+          "anchor": "sigil_toc_id_10",
+          "level": 2
+        },
+        {
+          "title": "人们常常下定决心“不改变”",
+          "anchor": "sigil_toc_id_11",
+          "level": 2
+        },
+        {
+          "title": "你的人生取决于“当下”",
+          "anchor": "sigil_toc_id_12",
+          "level": 2
+        }
+      ]
+    },
+    "169": {
+      "chapterUid": 169,
+      "chapterIdx": 12,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_12",
+      "title": "第二夜 一切烦恼都来自人际关系",
+      "wordCount": 170,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0019.xhtml",
+        "Text/Section0019_0001.xhtml"
+      ]
+    },
+    "170": {
+      "chapterUid": 170,
+      "chapterIdx": 13,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "为什么讨厌自己？",
+      "wordCount": 21616,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0019_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "一切烦恼都是人际关系的烦恼",
+          "anchor": "sigil_toc_id_13",
+          "level": 2
+        },
+        {
+          "title": "自卑感来自主观的臆造",
+          "anchor": "sigil_toc_id_14",
+          "level": 2
+        },
+        {
+          "title": "自卑情结只是一种借口",
+          "anchor": "sigil_toc_id_15",
+          "level": 2
+        },
+        {
+          "title": "越自负的人越自卑",
+          "anchor": "sigil_toc_id_16",
+          "level": 2
+        },
+        {
+          "title": "人生不是与他人的比赛",
+          "anchor": "sigil_toc_id_17",
+          "level": 2
+        },
+        {
+          "title": "在意你长相的，只有你自己",
+          "anchor": "sigil_toc_id_18",
+          "level": 2
+        },
+        {
+          "title": "人际关系中的“权力斗争”与复仇",
+          "anchor": "sigil_toc_id_19",
+          "level": 2
+        },
+        {
+          "title": "承认错误，不代表你失败了",
+          "anchor": "sigil_toc_id_20",
+          "level": 2
+        },
+        {
+          "title": "人生的三大课题：交友课题、工作课题以及爱的课题",
+          "anchor": "sigil_toc_id_21",
+          "level": 2
+        },
+        {
+          "title": "浪漫的红线和坚固的锁链",
+          "anchor": "sigil_toc_id_22",
+          "level": 2
+        },
+        {
+          "title": "“人生谎言”教我们学会逃避",
+          "anchor": "sigil_toc_id_23",
+          "level": 2
+        },
+        {
+          "title": "阿德勒心理学是“勇气的心理学”",
+          "anchor": "sigil_toc_id_24",
+          "level": 2
+        }
+      ]
+    },
+    "171": {
+      "chapterUid": 171,
+      "chapterIdx": 14,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_14",
+      "title": "第三夜 让干涉你生活的人见鬼去",
+      "wordCount": 107,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0032.xhtml",
+        "Text/Section0032_0001.xhtml"
+      ]
+    },
+    "172": {
+      "chapterUid": 172,
+      "chapterIdx": 15,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "自由就是不再寻求认可？",
+      "wordCount": 15174,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0032_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "要不要活在别人的期待中？",
+          "anchor": "sigil_toc_id_25",
+          "level": 2
+        },
+        {
+          "title": "把自己和别人的“人生课题”分开来",
+          "anchor": "sigil_toc_id_26",
+          "level": 2
+        },
+        {
+          "title": "即使父母也得放下孩子的课题",
+          "anchor": "sigil_toc_id_27",
+          "level": 2
+        },
+        {
+          "title": "放下别人的课题，烦恼轻轻飞走",
+          "anchor": "sigil_toc_id_28",
+          "level": 2
+        },
+        {
+          "title": "砍断“格尔迪奥斯绳结”",
+          "anchor": "sigil_toc_id_29",
+          "level": 2
+        },
+        {
+          "title": "对认可的追求，扼杀了自由",
+          "anchor": "sigil_toc_id_30",
+          "level": 2
+        },
+        {
+          "title": "自由就是被别人讨厌",
+          "anchor": "sigil_toc_id_31",
+          "level": 2
+        },
+        {
+          "title": "人际关系“王牌”，握在你自己手里",
+          "anchor": "sigil_toc_id_32",
+          "level": 2
+        }
+      ]
+    },
+    "173": {
+      "chapterUid": 173,
+      "chapterIdx": 16,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_16",
+      "title": "第四夜 要有被讨厌的勇气",
+      "wordCount": 139,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0041.xhtml",
+        "Text/Section0041_0001.xhtml"
+      ]
+    },
+    "174": {
+      "chapterUid": 174,
+      "chapterIdx": 17,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "个体心理学和整体论",
+      "wordCount": 15591,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0041_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "人际关系的终极目标",
+          "anchor": "sigil_toc_id_33",
+          "level": 2
+        },
+        {
+          "title": "“拼命寻求认可”反而是以自我为中心？",
+          "anchor": "sigil_toc_id_34",
+          "level": 2
+        },
+        {
+          "title": "你不是世界的中心，只是世界地图的中心",
+          "anchor": "sigil_toc_id_35",
+          "level": 2
+        },
+        {
+          "title": "在更广阔的天地寻找自己的位置",
+          "anchor": "sigil_toc_id_36",
+          "level": 2
+        },
+        {
+          "title": "批评不好……表扬也不行？",
+          "anchor": "sigil_toc_id_37",
+          "level": 2
+        },
+        {
+          "title": "有鼓励才有勇气",
+          "anchor": "sigil_toc_id_38",
+          "level": 2
+        },
+        {
+          "title": "有价值就有勇气",
+          "anchor": "sigil_toc_id_39",
+          "level": 2
+        },
+        {
+          "title": "只要存在着，就有价值",
+          "anchor": "sigil_toc_id_40",
+          "level": 2
+        },
+        {
+          "title": "无论在哪里，都可以有平等的关系",
+          "anchor": "sigil_toc_id_41",
+          "level": 2
+        }
+      ]
+    },
+    "175": {
+      "chapterUid": 175,
+      "chapterIdx": 18,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_18",
+      "title": "第五夜 认真的人生“活在当下”",
+      "wordCount": 133,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0051.xhtml",
+        "Text/Section0051_0001.xhtml"
+      ]
+    },
+    "176": {
+      "chapterUid": 176,
+      "chapterIdx": 19,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_19",
+      "title": "过多的自我意识，反而会束缚自己",
+      "wordCount": 20668,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 2,
+      "files": [
+        "Text/Section0051_0002.xhtml"
+      ],
+      "anchors": [
+        {
+          "title": "不是肯定自我，而是接纳自我",
+          "anchor": "sigil_toc_id_42",
+          "level": 2
+        },
+        {
+          "title": "信用和信赖有何区别？",
+          "anchor": "sigil_toc_id_43",
+          "level": 2
+        },
+        {
+          "title": "工作的本质是对他人的贡献",
+          "anchor": "sigil_toc_id_44",
+          "level": 2
+        },
+        {
+          "title": "年轻人也有胜过长者之处",
+          "anchor": "sigil_toc_id_45",
+          "level": 2
+        },
+        {
+          "title": "“工作狂”是人生谎言",
+          "anchor": "sigil_toc_id_46",
+          "level": 2
+        },
+        {
+          "title": "从这一刻起，就能变得幸福",
+          "anchor": "sigil_toc_id_47",
+          "level": 2
+        },
+        {
+          "title": "追求理想者面前的两条路",
+          "anchor": "sigil_toc_id_48",
+          "level": 2
+        },
+        {
+          "title": "甘于平凡的勇气",
+          "anchor": "sigil_toc_id_49",
+          "level": 2
+        },
+        {
+          "title": "人生是一连串的刹那",
+          "anchor": "sigil_toc_id_50",
+          "level": 2
+        },
+        {
+          "title": "舞动人生",
+          "anchor": "sigil_toc_id_51",
+          "level": 2
+        },
+        {
+          "title": "最重要的是“此时此刻”",
+          "anchor": "sigil_toc_id_52",
+          "level": 2
+        },
+        {
+          "title": "对决“人生最大的谎言”",
+          "anchor": "sigil_toc_id_53",
+          "level": 2
+        },
+        {
+          "title": "人生的意义，由你自己决定",
+          "anchor": "sigil_toc_id_54",
+          "level": 2
+        }
+      ]
+    },
+    "177": {
+      "chapterUid": 177,
+      "chapterIdx": 20,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "后记",
+      "wordCount": 2676,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0065.xhtml"
+      ]
+    },
+    "178": {
+      "chapterUid": 178,
+      "chapterIdx": 21,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "作译者简介",
+      "wordCount": 596,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0066.xhtml"
+      ]
+    },
+    "179": {
+      "chapterUid": 179,
+      "chapterIdx": 22,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "https://res.weread.qq.com/wrco/tar_CB_25615385_22",
+      "title": "推荐阅读·心智讲堂",
+      "wordCount": 337,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0067.xhtml"
+      ]
+    },
+    "180": {
+      "chapterUid": 180,
+      "chapterIdx": 23,
+      "updateTime": 1739530633,
+      "readAhead": 0,
+      "tar": "",
+      "title": "文后",
+      "wordCount": 4338,
+      "price": -1,
+      "paid": 0,
+      "isMPChapter": 0,
+      "level": 1,
+      "files": [
+        "Text/Section0069.xhtml",
+        "Text/Section0070.xhtml"
+      ]
+    }
+  },
+  "read_info": {
+    "finishedBookCount": 44,
+    "finishedBookIndex": 44,
+    "finishedDate": 1768145109,
+    "readingBookCount": 86,
+    "readingBookDate": 1766401608,
+    "readingProgress": 100,
+    "readingReviewId": "R_53320557_25615385",
+    "canCancelReadstatus": 0,
+    "markedStatus": 4,
+    "readingTime": 15344,
+    "totalReadDay": 16,
+    "recordReadingTime": 0,
+    "continueReadDays": 5,
+    "continueBeginDate": 1767196800,
+    "continueEndDate": 1767542400,
+    "showSummary": 1,
+    "showDetail": 1,
+    "readDetail": {
+      "totalReadingTime": 15344,
+      "totalReadDay": 16,
+      "continueReadDays": 5,
+      "continueBeginDate": 1767196800,
+      "continueEndDate": 1767542400,
+      "beginReadingDate": 1766401608,
+      "lastReadingDate": 1768060800,
+      "longestReadingDate": 1767715200,
+      "avgReadingTime": 959,
+      "longestReadingTime": 4512,
+      "data": [
+        {
+          "readDate": 1766332800,
+          "readTime": 518
+        },
+        {
+          "readDate": 1766419200,
+          "readTime": 529
+        },
+        {
+          "readDate": 1766505600,
+          "readTime": 1104
+        },
+        {
+          "readDate": 1766592000,
+          "readTime": 796
+        },
+        {
+          "readDate": 1766678400,
+          "readTime": 194
+        },
+        {
+          "readDate": 1766851200,
+          "readTime": 60
+        },
+        {
+          "readDate": 1767024000,
+          "readTime": 420
+        },
+        {
+          "readDate": 1767196800,
+          "readTime": 163
+        },
+        {
+          "readDate": 1767283200,
+          "readTime": 985
+        },
+        {
+          "readDate": 1767369600,
+          "readTime": 61
+        },
+        {
+          "readDate": 1767456000,
+          "readTime": 996
+        },
+        {
+          "readDate": 1767542400,
+          "readTime": 312
+        },
+        {
+          "readDate": 1767715200,
+          "readTime": 4512
+        },
+        {
+          "readDate": 1767801600,
+          "readTime": 2609
+        },
+        {
+          "readDate": 1767888000,
+          "readTime": 676
+        },
+        {
+          "readDate": 1768060800,
+          "readTime": 1360
+        }
+      ]
+    },
+    "bookInfo": {
+      "bookId": "25615385",
+      "title": "被讨厌的勇气：“自我启发之父”阿德勒的哲学课",
+      "author": "岸见一郎 古贺史健",
+      "translator": "渠海霞",
+      "intro": "一名深陷自卑、无能与不幸福的青年，听到了一名哲人主张的“世界无比单纯，人人都能幸福”便来挑战，两人展开了你来我往的思考和辩论，在一夜一夜过去后，青年开始思考，为什么“所谓的自由，就是被别人讨厌”？问题不在于世界是什么样子，在于你是什么样子。",
+      "cover": "https://wfqqreader-1252317822.image.myqcloud.com/cover/385/25615385/s_25615385.jpg",
+      "version": 769561529,
+      "format": "epub",
+      "type": 0,
+      "soldout": 0,
+      "bookStatus": 1,
+      "payType": 4097,
+      "finished": 1,
+      "maxFreeChapter": 11,
+      "maxFreeInfo": {
+        "maxfreeChapterIdx": 11,
+        "maxfreeChapterUid": 168,
+        "maxfreeChapterRatio": 5
+      },
+      "free": 0,
+      "mcardDiscount": 0,
+      "ispub": 1,
+      "extra_type": 1,
+      "cpid": 4157477,
+      "publishTime": "2017-05-01 00:00:00",
+      "lastChapterIdx": 23,
+      "paperBook": {
+        "skuId": "12809752"
+      },
+      "centPrice": 1990,
+      "readingCount": 13407,
+      "copyrightChapterUids": [
+        159
+      ],
+      "inStoreBookId": "",
+      "blockSaveImg": 0,
+      "language": "zh-wr",
+      "isTraditionalChinese": false,
+      "hideUpdateTime": false,
+      "isEPUBComics": 0,
+      "isVerticalLayout": 0,
+      "isShowTTS": 1,
+      "selfProduceIncentive": false,
+      "webBookControl": 0,
+      "isAutoDownload": 1
+    }
+  },
+  "reading_time": "4时15分"
+}[15:20:40] ============================================================[15:20:43] [INFO] Creating new page (title: '被讨厌的勇气：“自我启发之父”阿德勒的哲学课', author: '岸见一郎 古贺史健')[15:20:43] [1/1] Adding bookmarks, notes, and reviews to page...[15:20:46] [1/1] ✅ Added 22 blocks (bookmarks/reviews)[15:20:46] ✅ [1/1] 被讨厌的勇气：“自我启发之父”阿德勒的哲学课 | Read | p=None/None | ⏱️  13.4s[15:20:46] 
+[STOPPED] Processed 1 book as requested (limit=1)
+================================================================================
+End of debug log - 2026-01-12 15:20:46
+Total lines captured: 111
