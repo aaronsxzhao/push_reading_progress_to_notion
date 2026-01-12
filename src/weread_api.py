@@ -45,6 +45,7 @@ WEREAD_USER_READING_API = f"{WEREAD_API_BASE}/web/user/reading"
 # Additional endpoints for bookmarks, reviews, and chapters - matching obsidian plugin
 WEREAD_BOOKMARKLIST_API = f"{WEREAD_API_BASE}/web/book/bookmarklist"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
 WEREAD_REVIEW_LIST_API = f"{WEREAD_API_BASE}/web/review/list"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
+WEREAD_NOTE_LIST_API = f"{WEREAD_API_BASE}/web/book/note"  # Try note endpoint for highlights without thoughts
 WEREAD_CHAPTER_INFO_API = f"{WEREAD_API_BASE}/web/book/chapterInfos"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
 WEREAD_GET_PROGRESS_API = f"{WEREAD_API_BASE}/web/book/getProgress"  # Obsidian plugin: /web/book/getProgress
 
@@ -225,7 +226,6 @@ class WeReadAPI:
                 WEREAD_SHELF_API,
                 params={"synckey": 0, "lectureSynckey": 0}
             )
-            print(f"[DEBUG] Shelf API status code: {response.status_code}")
             
             # Check for HTTP 401 first
             if response.status_code == 401:
@@ -262,32 +262,12 @@ class WeReadAPI:
                 
                 return {}, [], []
             
-            # Print full response for debugging (only if successful)
-            print(f"[DEBUG] Shelf API full response (first 3000 chars):")
-            response_str = json.dumps(data, indent=2, ensure_ascii=False, default=str)
-            print(response_str[:3000])
-            if len(response_str) > 3000:
-                print(f"... (truncated, total length: {len(response_str)} chars)")
-            
-            # Debug: show what fields are in the response
-            print(f"[DEBUG] Shelf API response keys: {list(data.keys())}")
-            if "bookCount" in data:
-                print(f"[DEBUG] Total book count: {data.get('bookCount')}")
-            if "pureBookCount" in data:
-                print(f"[DEBUG] Pure book count: {data.get('pureBookCount')}")
-            
             # Shelf API returns data directly, not wrapped in errcode/errmsg
             # The 'books' field contains ALL books with full info (title, author, etc.)
             all_books = []
             if "books" in data:
                 all_books = data.get("books", [])
-                print(f"[API] Found {len(all_books)} books in 'books' field (with full info)")
-                # Debug first book structure
-                if all_books:
-                    first_book = all_books[0]
-                    print(f"[DEBUG] First book in 'books' field keys: {list(first_book.keys())}")
-                    if "bookInfo" in first_book:
-                        print(f"[DEBUG] First book bookInfo keys: {list(first_book['bookInfo'].keys())}")
+                print(f"[API] Found {len(all_books)} books in 'books' field")
             
             # bookProgress contains reading progress for books that have been read
             book_progress = []
@@ -323,27 +303,82 @@ class WeReadAPI:
         """
         Get all notebooks (books with notes/highlights).
         Returns list of book data.
+        Matches obsidian-weread-plugin implementation.
         """
         try:
             # Obsidian plugin uses: GET /api/user/notebook (no params)
             response = self.session.get(
                 WEREAD_NOTEBOOKS_API
             )
+            
+            # Check for 401 status first (matching obsidian plugin)
+            if response.status_code == 401:
+                try:
+                    data = response.json()
+                    if data.get("errcode") == -2012:
+                        # 登录超时 -2012
+                        print("[API] Cookie expired (errcode -2012) - need fresh cookies")
+                        return []
+                    else:
+                        print(f"[API ERROR] Notebooks 401 error: {data.get('errcode', 'Unknown')}")
+                        return []
+                except:
+                    print("[API ERROR] Notebooks 401 error - unable to parse response")
+                    return []
+            
             response.raise_for_status()
             data = response.json()
             
-            # Obsidian plugin checks for errcode == -2012 for cookie expiration
-            if data.get("errcode") == -2012:
+            # Print full response for inspection
+            print(f"\n[DEBUG] getNotebooks full response:")
+            print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+            print()
+            
+            # Check for errcode == -2012 even if status is not 401 (matching obsidian plugin)
+            if data.get("errcode") == -2012 or data.get("errCode") == -2012:
                 print("[API] Cookie expired (errcode -2012) - need fresh cookies")
                 return []
             
-            if data.get("errcode") == 0:
+            # Check for set-cookie header (obsidian plugin uses this to refresh cookies)
+            resp_cookie = response.headers.get('set-cookie') or response.headers.get('Set-Cookie')
+            if resp_cookie:
+                # Note: We don't update cookies automatically here, but we could
+                pass
+            
+            # Try different response formats (obsidian plugin uses resp.json.books)
+            if data.get("errcode") == 0 or data.get("errCode") == 0:
+                books = data.get("books", [])
+                if books:
+                    return books
+            
+            # If no errcode or errcode is 0 but no books, check if data itself is a list
+            if isinstance(data, list):
+                return data
+            
+            # Check if there's a different structure
+            if "books" in data:
                 books = data.get("books", [])
                 return books
+            
+            # If we get here, print the error but also return what we can
+            errcode = data.get("errcode") or data.get("errCode")
+            errmsg = data.get("errmsg") or data.get("errMsg")
+            if errcode or errmsg:
+                print(f"[API ERROR] Notebooks: {errmsg or 'Unknown error'} (errcode: {errcode})")
             else:
-                print(f"[API ERROR] Notebooks: {data.get('errmsg', 'Unknown error')}")
-                return []
+                print(f"[API WARNING] Notebooks: Unexpected response structure. Keys: {list(data.keys())}")
+            return []
         except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                try:
+                    data = e.response.json()
+                    if data.get("errcode") == -2012:
+                        print("[API] Cookie expired (errcode -2012) - need fresh cookies")
+                    else:
+                        print(f"[API ERROR] Notebooks 401: {data.get('errcode', 'Unknown')}")
+                except:
+                    print("[API ERROR] Notebooks 401 - unable to parse error response")
+                return []
             if e.response.status_code == 404:
                 print(f"[API WARNING] Notebooks endpoint not found (404). Trying shelf endpoint...")
                 return []
@@ -352,6 +387,58 @@ class WeReadAPI:
         except Exception as e:
             print(f"[API ERROR] Failed to fetch notebooks: {e}")
             return []
+    
+    def get_single_notebook_data(self, book_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get notebook data for a single book using syncNotebook approach.
+        This is different from get_notebooks() - it fetches detailed notebook data for one book.
+        Matches obsidian-weread-plugin syncNotebook pattern.
+        """
+        try:
+            # Try different endpoints that might be used by syncNotebook
+            endpoints_to_try = [
+                (f"{WEREAD_API_BASE}/api/user/notebook/{book_id}", {}),
+                (f"{WEREAD_API_BASE}/web/book/notebook", {"bookId": book_id}),
+                (f"{WEREAD_API_BASE}/api/book/notebook", {"bookId": book_id}),
+                (f"{WEREAD_API_BASE}/web/user/notebook", {"bookId": book_id}),
+            ]
+            
+            for endpoint, params in endpoints_to_try:
+                try:
+                    response = self.session.get(endpoint, params=params if params else None)
+                    
+                    # Check for auth errors first
+                    if self._check_auth_error(response, f"Single Notebook API ({endpoint})"):
+                        continue
+                    
+                    if response.status_code == 404:
+                        continue  # Try next endpoint
+                    
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    # Print full response for inspection
+                    print(f"\n[DEBUG] get_single_notebook_data response from {endpoint}:")
+                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str)[:2000])  # Limit output
+                    print()
+                    
+                    # Return the data structure for inspection
+                    return data
+                except requests.exceptions.HTTPError as e:
+                    if e.response.status_code == 404:
+                        continue  # Try next endpoint
+                    # For other errors, try next endpoint
+                    continue
+                except Exception as e:
+                    # Try next endpoint
+                    continue
+            
+            # If all endpoints failed, return None
+            print(f"[API WARNING] Could not find single notebook endpoint for book {book_id}")
+            return None
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch single notebook for book {book_id}: {e}")
+            return None
     
     def get_book_detail(self, book_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed book information - try multiple endpoints"""
@@ -418,33 +505,24 @@ class WeReadAPI:
         for endpoint_path, params in endpoints_to_try:
             try:
                 url = f"{WEREAD_API_BASE}{endpoint_path}"
-                print(f"[DEBUG] Trying reading data endpoint: {endpoint_path} for book {book_id}")
                 response = self.session.get(url, params=params)
-                print(f"[DEBUG] {endpoint_path} - status: {response.status_code}")
                 
                 # Skip 404s silently (endpoint doesn't exist)
                 if response.status_code == 404:
-                    print(f"[DEBUG] {endpoint_path} - 404 Not Found, trying next endpoint...")
                     continue
                 
                 response.raise_for_status()
                 data = response.json()
                 
-                print(f"[DEBUG] {endpoint_path} response keys: {list(data.keys())}")
-                
                 # Check for error response
                 if "errCode" in data:
                     err_code = data.get("errCode")
                     if err_code != 0:
-                        err_msg = data.get("errMsg", "Unknown")
-                        print(f"[DEBUG] {endpoint_path} error: errCode={err_code}, errMsg={err_msg}")
                         continue  # Try next endpoint
                 
                 if "errcode" in data:
                     err_code = data.get("errcode")
                     if err_code != 0:
-                        err_msg = data.get("errmsg", "Unknown")
-                        print(f"[DEBUG] {endpoint_path} error: errcode={err_code}, errmsg={err_msg}")
                         continue  # Try next endpoint
                 
                 # Try different response formats
@@ -459,10 +537,8 @@ class WeReadAPI:
                         "readPercentage", "progress", "currentChapter", "chapterIdx"
                     ])
                     if has_useful_data:
-                        print(f"[DEBUG] ✅ {endpoint_path} - Found reading data with keys: {list(reading_data.keys())}")
                         return reading_data
                     else:
-                        print(f"[DEBUG] {endpoint_path} - Response doesn't contain reading progress fields")
                         continue
                 
                 # If no nested data but errcode is 0, return the whole response if it looks useful
@@ -472,25 +548,19 @@ class WeReadAPI:
                         "readPercentage", "progress", "currentChapter", "chapterIdx"
                     ])
                     if has_useful_data:
-                        print(f"[DEBUG] ✅ {endpoint_path} - Returning full response with reading data")
                         return data
                 
-                print(f"[DEBUG] {endpoint_path} - No useful reading data found")
                 continue  # Try next endpoint
                 
             except requests.exceptions.HTTPError as e:
                 # Skip 404s (endpoint doesn't exist)
                 if hasattr(e.response, 'status_code') and e.response.status_code == 404:
-                    print(f"[DEBUG] {endpoint_path} - 404 Not Found, trying next endpoint...")
                     continue
-                print(f"[DEBUG] {endpoint_path} HTTP error: {e}")
                 continue  # Try next endpoint
             except Exception as e:
-                print(f"[DEBUG] {endpoint_path} exception: {e}")
                 continue  # Try next endpoint
         
         # If all endpoints failed, return None
-        print(f"[DEBUG] ❌ All reading data endpoints failed for book {book_id}")
         return None
     
     def get_all_books_with_progress(self) -> List[Dict[str, Any]]:
@@ -532,7 +602,7 @@ class WeReadAPI:
                                 "has_full_info": True
                             }
         except Exception as e:
-            print(f"[DEBUG] bookList API not available: {e}")
+            pass
         
         # Also check bookList in shelf response if available
         if "bookList" in shelf_data:
@@ -757,54 +827,27 @@ class WeReadAPI:
             
             # Get reading data - try multiple endpoints
             reading_data = None
-            print(f"[DEBUG] Attempting to fetch reading_data for book {book_id}...")
             reading_data = self.get_reading_data(book_id)
-            if reading_data:
-                print(f"[DEBUG] ✅ Successfully got reading_data for {book_id} from API")
-            else:
-                print(f"[DEBUG] ⚠️  No reading_data returned from any API endpoint for {book_id}")
             
             # Get detailed read info (includes pages, reading time, etc.)
             read_info = None
-            print(f"[DEBUG] Fetching read_info for book {book_id}...")
             read_info = self.get_read_info(book_id)
-            if read_info:
-                print(f"[DEBUG] ✅ Successfully got read_info for {book_id}")
             
             # Get bookmarks/highlights
             bookmark_list = None
-            print(f"[DEBUG] Fetching bookmarks for book {book_id}...")
             bookmark_list = self.get_bookmark_list(book_id)
-            if bookmark_list:
-                print(f"[DEBUG] ✅ Found {len(bookmark_list)} bookmarks for {book_id}")
+            
+            # Try to get notes (highlights without thoughts) separately
+            note_list = None
+            note_list = self.get_note_list(book_id)
             
             # Get all types of notes and reviews
             summary_reviews, regular_reviews, page_notes, chapter_notes = [], [], [], []
-            print(f"[DEBUG] Fetching all notes and reviews for book {book_id}...")
             summary_reviews, regular_reviews, page_notes, chapter_notes = self.get_review_list(book_id)
-            if summary_reviews or regular_reviews or page_notes or chapter_notes:
-                print(f"[DEBUG] ✅ Found notes for {book_id}:")
-                print(f"[DEBUG]   - 划线笔记 (underline/highlight notes): {len(regular_reviews)}")
-                print(f"[DEBUG]   - 页面笔记 (page notes): {len(page_notes)}")
-                print(f"[DEBUG]   - 章节笔记 (chapter notes): {len(chapter_notes)}")
-                print(f"[DEBUG]   - 书籍书评 (book reviews): {len(summary_reviews)}")
             
             # Get chapter info
             chapter_info = None
-            print(f"[DEBUG] Fetching chapter info for book {book_id}...")
             chapter_info = self.get_chapter_info(book_id)
-            if chapter_info:
-                print(f"[DEBUG] ✅ Found chapter info for {book_id} ({len(chapter_info)} chapters)")
-            
-            # DEBUG: Print all available data
-            print(f"\n{'='*60}")
-            print(f"[DEBUG] FULL API RESPONSE DATA for book {book_id}")
-            print(f"{'='*60}")
-            print(f"\n1. book_info (from book_item or detail):")
-            print(json.dumps(book_info, indent=2, ensure_ascii=False, default=str))
-            print(f"\n2. book_item (from shelf/bookList with progress data):")
-            print(json.dumps(book_item, indent=2, ensure_ascii=False, default=str) if book_item else "None")
-            print(f"{'='*60}\n")
             
             # Extract progress from book_item (which contains bookProgress data)
             current_page = None
@@ -853,8 +896,6 @@ class WeReadAPI:
                              read_info.get("readPercent") or
                              read_info.get("readingProgress"))
                 
-                print(f"[DEBUG] From read_info API: current_page={current_page}, total_page={total_page}, percent={percent}")
-            
             # Try to get page data from reading_data API (fallback)
             if reading_data and (not current_page or not total_page):
                 # Extract current page from reading_data
@@ -877,54 +918,37 @@ class WeReadAPI:
                     percent = (reading_data.get("readPercentage") or 
                              reading_data.get("progress") or
                              reading_data.get("readPercent"))
-                
-                print(f"[DEBUG] From reading_data API: current_page={current_page}, total_page={total_page}, percent={percent}")
             
             # Calculate current page from percent if we have total but not current
             if percent is not None and total_page and not current_page:
                 current_page = int(round((percent / 100.0) * total_page))
-                print(f"[DEBUG] Calculated current_page from percent: {current_page} = {percent}% of {total_page}")
             
             # If we have current_page but not total_page, try to estimate from percent
             if current_page and percent is not None and percent > 0 and not total_page:
                 total_page = int(round((current_page / (percent / 100.0))))
-                print(f"[DEBUG] Estimated total_page from current_page and percent: {total_page} = {current_page} / ({percent}%)")
             
-            print(f"[DEBUG] Book {book_id} - EXTRACTED: total_page={total_page}, current_page={current_page}, percent={percent}, chapterIdx={chapter_idx}, lastChapterIdx={last_chapter_idx}")
             
             # Check for finishReading flag - ONLY this flag determines if book is read
             is_finished = False
             if book_info and book_info.get("finishReading") == 1:
                 is_finished = True
-                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_info")
             elif book_item and book_item.get("finishReading") == 1:
                 is_finished = True
-                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_item")
             elif book_item and "book" in book_item and book_item["book"].get("finishReading") == 1:
                 is_finished = True
-                print(f"[DEBUG] Book {book_id} - finishReading=1 in book_item.book")
             elif reading_data and reading_data.get("finishReading") == 1:
                 is_finished = True
-                print(f"[DEBUG] Book {book_id} - finishReading=1 in reading_data")
             
             # Determine status - ONLY finishReading=1 means "Read"
             # Progress < 5% is considered "To Be Read"
             if is_finished:
                 status = "Read"
-                print(f"[DEBUG] Book {book_id} - marked as Read (finishReading = 1)")
             elif percent is not None and percent >= 5:
                 status = "Currently Reading"
-                print(f"[DEBUG] Book {book_id} - marked as Currently Reading (progress = {percent}%)")
             elif current_page and total_page and (current_page / total_page * 100) >= 5:
                 status = "Currently Reading"
-                calculated_percent = (current_page / total_page * 100)
-                print(f"[DEBUG] Book {book_id} - marked as Currently Reading (calculated progress = {calculated_percent:.1f}%)")
             else:
                 status = "To Be Read"
-                if percent is not None:
-                    print(f"[DEBUG] Book {book_id} - marked as To Be Read (progress = {percent}% < 5%)")
-                else:
-                    print(f"[DEBUG] Book {book_id} - marked as To Be Read (no progress or < 5%)")
             
             # Extract dates from read_info API response
             # Date Started: read_info.readDetail.beginReadingDate
@@ -955,49 +979,32 @@ class WeReadAPI:
                             parsed = parsed.replace(tzinfo=local_tz)
                         return parsed
                 except Exception as e:
-                    print(f"[DEBUG] Book {book_id} - failed to parse {field_name}: {e}")
                     return None
             
             # Priority 1: Extract dates from read_info.readDetail and read_info.finishedDate
             if read_info:
-                print(f"[DEBUG] Book {book_id} - read_info keys: {list(read_info.keys())}")
-                
                 # Get readDetail (nested object)
                 read_detail = read_info.get("readDetail")
                 if read_detail:
-                    print(f"[DEBUG] Book {book_id} - readDetail keys: {list(read_detail.keys())}")
-                    
                     # Date Started: read_info.readDetail.beginReadingDate
                     if read_detail.get("beginReadingDate"):
                         started_at = parse_date_field(read_detail.get("beginReadingDate"), "readDetail.beginReadingDate")
-                        if started_at:
-                            print(f"[DEBUG] Book {book_id} - found beginReadingDate in readDetail: {started_at}")
                     
                     # Last Read At: read_info.readDetail.lastReadingDate
                     if read_detail.get("lastReadingDate"):
                         last_read_at = parse_date_field(read_detail.get("lastReadingDate"), "readDetail.lastReadingDate")
-                        if last_read_at:
-                            print(f"[DEBUG] Book {book_id} - found lastReadingDate in readDetail: {last_read_at}")
                 
                 # Date Finished: read_info.finishedDate
                 if read_info.get("finishedDate"):
                     date_finished = parse_date_field(read_info.get("finishedDate"), "finishedDate")
-                    if date_finished:
-                        print(f"[DEBUG] Book {book_id} - found finishedDate: {date_finished}")
             
             # Fallback: Use old logic if dates not found in read_info
             if not started_at or not last_read_at:
                 # Collect all possible start times to find the earliest (first read)
                 start_times = []
                 
-                # Debug: print raw date data
-                if book_item and book_item.get("updateTime"):
-                    print(f"[DEBUG] Book {book_id} - updateTime (raw): {book_item.get('updateTime')}")
-                
                 if reading_data:
-                    print(f"[DEBUG] Book {book_id} - reading_data keys: {list(reading_data.keys())}")
                     if not started_at and reading_data.get("startTime"):
-                        print(f"[DEBUG] Book {book_id} - startTime (raw): {reading_data.get('startTime')}")
                         parsed_start = parse_date_field(reading_data.get("startTime"), "startTime")
                         if parsed_start:
                             start_times.append(parsed_start)
@@ -1023,12 +1030,10 @@ class WeReadAPI:
                 # Use earliest start time as started_at if we still don't have it
                 if not started_at and start_times:
                     started_at = min(start_times)
-                    print(f"[DEBUG] Book {book_id} - final started_at (from fallback): {started_at}")
             
             # If date_finished not found but book is finished, use last_read_at as fallback
             if not date_finished and status == "Read" and last_read_at:
                 date_finished = last_read_at
-                print(f"[DEBUG] Book {book_id} - book is finished but no finishedDate, using last_read_at: {date_finished}")
             
             # Get title and author
             title = book_info.get("title") or book_info.get("name") or f"Book {book_id}"
@@ -1055,10 +1060,6 @@ class WeReadAPI:
                 except:
                     pass
             
-            # Debug: print if we don't have title
-            if not title or title == f"Book {book_id}":
-                print(f"[DEBUG] Book {book_id} - book_info keys: {list(book_info.keys())}")
-                print(f"[DEBUG] Book {book_id} - book_item keys: {list(book_item.keys()) if book_item else 'None'}")
             
             # Format reading time from read_info
             reading_time_formatted = None
@@ -1071,10 +1072,13 @@ class WeReadAPI:
                 elif minutes > 0:
                     reading_time_formatted = f"{minutes}分"
             
-            # Combine bookmarks and reviews
+            # Combine bookmarks, notes, and reviews
             all_bookmarks = []
             if bookmark_list:
                 all_bookmarks.extend(bookmark_list)
+            if note_list:
+                # Add notes (highlights without thoughts) to bookmarks
+                all_bookmarks.extend(note_list)
             if regular_reviews:
                 all_bookmarks.extend(regular_reviews)
             
@@ -1104,7 +1108,8 @@ class WeReadAPI:
                 "year_started": year_started,
                 "rating": float(rating) if rating else None,
                 # New fields for bookmarks, reviews, quotes, and callouts
-                "bookmarks": all_bookmarks,  # Combined bookmarks and regular reviews (划线笔记)
+                "bookmarks": all_bookmarks,  # Combined bookmarks, notes, and regular reviews (划线笔记)
+                "notes": note_list or [],  # Highlights without thoughts (纯划线，无想法)
                 "summary_reviews": summary_reviews,  # Summary/commentary reviews (书籍书评)
                 "page_notes": page_notes,  # Page notes (页面笔记)
                 "chapter_notes": chapter_notes,  # Chapter notes (章节笔记)
@@ -1145,8 +1150,7 @@ class WeReadAPI:
                     print(f"{'='*80}\n")
                     return True
         except Exception as e:
-            # If we can't check the response, log it but don't fail
-            print(f"[DEBUG] Error checking auth status: {e}")
+            pass
         return False
     
     def get_bookmark_list(self, book_id: str) -> Optional[List[Dict[str, Any]]]:
@@ -1181,6 +1185,67 @@ class WeReadAPI:
             return None
         except Exception as e:
             print(f"[API ERROR] Failed to fetch bookmarks for book {book_id}: {e}")
+            return None
+    
+    def get_note_list(self, book_id: str) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get notes (highlights without thoughts) for a book.
+        This might be separate from reviews - trying /web/book/note endpoint.
+        """
+        try:
+            # Try different possible endpoints for notes
+            endpoints_to_try = [
+                (f"{WEREAD_API_BASE}/web/book/note", {"bookId": book_id}),
+                (f"{WEREAD_API_BASE}/web/book/notes", {"bookId": book_id}),
+                (f"{WEREAD_API_BASE}/api/book/note", {"bookId": book_id}),
+            ]
+            
+            for endpoint, params in endpoints_to_try:
+                try:
+                    response = self.session.get(endpoint, params=params)
+                    
+                    # Check for auth errors first
+                    if self._check_auth_error(response, f"Note List API ({endpoint})"):
+                        continue
+                    
+                    if response.status_code == 404:
+                        continue  # Try next endpoint
+                    
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    # Print full response for inspection
+                    print(f"\n[DEBUG] get_note_list response from {endpoint}:")
+                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str)[:1000])  # Limit output
+                    print()
+                    
+                    # Try different response formats
+                    if isinstance(data, list):
+                        return data
+                    if "notes" in data:
+                        return data.get("notes", [])
+                    if "data" in data and isinstance(data.get("data"), list):
+                        return data.get("data", [])
+                    if "bookmarks" in data:
+                        return data.get("bookmarks", [])
+                    
+                    # If we got here, return the data structure as-is for inspection
+                    print(f"[DEBUG] Note API returned unexpected structure. Keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                    return data if isinstance(data, list) else []
+                except requests.exceptions.HTTPError as e:
+                    if e.response.status_code == 404:
+                        continue  # Try next endpoint
+                    # For other errors, try next endpoint
+                    continue
+                except Exception as e:
+                    # Try next endpoint
+                    continue
+            
+            # If all endpoints failed, return None
+            print(f"[API WARNING] Could not find note endpoint for book {book_id}")
+            return None
+        except Exception as e:
+            print(f"[API ERROR] Failed to fetch notes for book {book_id}: {e}")
             return None
     
     def get_review_list(self, book_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:

@@ -28,6 +28,7 @@ from weread_api import WeReadAPI, env
 
 # Import Notion helpers from the main sync script
 import sys
+import os
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -350,111 +351,17 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
 
 def print_all_notes(book_data: Dict[str, Any], book_title: str):
     """
-    Print all types of notes from WeRead:
-    - 划线笔记 (underline/highlight notes)
-    - 页面笔记 (page notes)
-    - 章节笔记 (chapter notes)
-    - 书籍书评 (book reviews)
+    Print summary of all types of notes from WeRead (simplified output)
     """
-    print(f"\n{'='*80}")
-    print(f"📚 微信读书笔记详情 - {book_title}")
-    print(f"{'='*80}\n")
-    
-    # 1. 划线笔记 (underline/highlight notes) - from bookmarks
     bookmarks = book_data.get("bookmarks", [])
-    if bookmarks:
-        print(f"📝 划线笔记 (Underline/Highlight Notes): {len(bookmarks)} 条")
-        print("-" * 80)
-        for idx, bookmark in enumerate(bookmarks, 1):
-            mark_text = bookmark.get("markText", "").strip()
-            chapter_uid = bookmark.get("chapterUid", "?")
-            range_info = bookmark.get("range", "")
-            style = bookmark.get("style", 0)
-            color_style = bookmark.get("colorStyle", 0)
-            review_id = bookmark.get("reviewId")
-            
-            style_names = {0: "下划线", 1: "背景高亮", 2: "波浪线"}
-            color_names = {1: "红色", 2: "紫色", 3: "蓝色", 4: "绿色", 5: "黄色"}
-            
-            note_type = "笔记" if review_id else "划线"
-            style_name = style_names.get(style, f"样式{style}")
-            color_name = color_names.get(color_style, "默认")
-            
-            print(f"  {idx}. [{note_type}] 章节{chapter_uid} | {style_name} | {color_name}")
-            if range_info:
-                print(f"     位置: {range_info}")
-            if mark_text:
-                # Truncate long text
-                display_text = mark_text[:200] + "..." if len(mark_text) > 200 else mark_text
-                print(f"     内容: {display_text}")
-            print()
-    else:
-        print("📝 划线笔记: 无\n")
-    
-    # 2. 页面笔记 (page notes)
     page_notes = book_data.get("page_notes", [])
-    if page_notes:
-        print(f"📄 页面笔记 (Page Notes): {len(page_notes)} 条")
-        print("-" * 80)
-        for idx, note in enumerate(page_notes, 1):
-            content = note.get("content", "").strip()
-            page = note.get("page", note.get("pageNum", "?"))
-            create_time = note.get("createTime", note.get("createTime", ""))
-            
-            print(f"  {idx}. 第 {page} 页")
-            if create_time:
-                print(f"     时间: {create_time}")
-            if content:
-                display_text = content[:200] + "..." if len(content) > 200 else content
-                print(f"     内容: {display_text}")
-            print()
-    else:
-        print("📄 页面笔记: 无\n")
-    
-    # 3. 章节笔记 (chapter notes)
     chapter_notes = book_data.get("chapter_notes", [])
-    if chapter_notes:
-        print(f"📑 章节笔记 (Chapter Notes): {len(chapter_notes)} 条")
-        print("-" * 80)
-        for idx, note in enumerate(chapter_notes, 1):
-            content = note.get("content", "").strip()
-            chapter_uid = note.get("chapterUid", "?")
-            create_time = note.get("createTime", note.get("createTime", ""))
-            
-            print(f"  {idx}. 章节 {chapter_uid}")
-            if create_time:
-                print(f"     时间: {create_time}")
-            if content:
-                display_text = content[:200] + "..." if len(content) > 200 else content
-                print(f"     内容: {display_text}")
-            print()
-    else:
-        print("📑 章节笔记: 无\n")
-    
-    # 4. 书籍书评 (book reviews)
     summary_reviews = book_data.get("summary_reviews", [])
-    if summary_reviews:
-        print(f"⭐ 书籍书评 (Book Reviews): {len(summary_reviews)} 条")
-        print("-" * 80)
-        for idx, review_item in enumerate(summary_reviews, 1):
-            review = review_item.get("review", {})
-            content = review.get("content", "").strip()
-            create_time = review.get("createTime", review.get("createTime", ""))
-            rating = review.get("rating", "")
-            
-            print(f"  {idx}. 书评")
-            if rating:
-                print(f"     评分: {rating} 星")
-            if create_time:
-                print(f"     时间: {create_time}")
-            if content:
-                display_text = content[:300] + "..." if len(content) > 300 else content
-                print(f"     内容: {display_text}")
-            print()
-    else:
-        print("⭐ 书籍书评: 无\n")
     
-    print(f"{'='*80}\n")
+    total_notes = len(bookmarks) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
+    
+    if total_notes > 0:
+        print(f"   📝 Notes: {len(bookmarks)} 划线, {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
 
 
 def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None):
@@ -472,6 +379,58 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         print("\n❌ Cookie validation failed. Please update your cookies in .env file.")
         print("   The sync will continue but may fail with authentication errors.\n")
         # Continue anyway - let individual API calls handle errors
+    
+    # Test getNotebooks API (matching obsidian plugin) and print response
+    print("\n" + "=" * 80)
+    print("[TEST] Calling getNotebooks API (matching obsidian plugin)")
+    print("=" * 80)
+    try:
+        notebooks = client.get_notebooks()
+        print(f"\n[RESPONSE] getNotebooks returned {len(notebooks) if notebooks else 0} notebooks")
+        if notebooks and len(notebooks) > 0:
+            print(f"\n[RESPONSE] First notebook structure:")
+            print(json.dumps(notebooks[0], indent=2, ensure_ascii=False, default=str))
+            if len(notebooks) > 1:
+                print(f"\n[RESPONSE] ... and {len(notebooks) - 1} more notebooks")
+        else:
+            print("[RESPONSE] No notebooks returned (empty list or None)")
+    except Exception as e:
+        print(f"[ERROR] Failed to call getNotebooks: {e}")
+        import traceback
+        traceback.print_exc()
+    print("=" * 80 + "\n")
+    
+    # Test get_single_notebook_data API (matching syncNotebook approach) if we have a test book
+    if test_book_title:
+        print("\n" + "=" * 80)
+        print("[TEST] Testing get_single_notebook_data (syncNotebook approach)")
+        print("=" * 80)
+        # First find the book ID from shelf
+        shelf_data, all_books_list, book_progress_list = client.get_shelf()
+        test_book_id = None
+        for book_item in all_books_list:
+            book_info = book_item.get("book", {})
+            title = book_info.get("title") or book_info.get("name") or ""
+            if test_book_title.lower() in title.lower():
+                test_book_id = book_item.get("bookId")
+                print(f"[TEST] Found test book: '{title}' (bookId: {test_book_id})")
+                break
+        
+        if test_book_id:
+            try:
+                notebook_data = client.get_single_notebook_data(test_book_id)
+                if notebook_data:
+                    print(f"\n[RESPONSE] get_single_notebook_data returned data for book {test_book_id}")
+                    print(json.dumps(notebook_data, indent=2, ensure_ascii=False, default=str)[:2000])
+                else:
+                    print(f"[RESPONSE] get_single_notebook_data returned None for book {test_book_id}")
+            except Exception as e:
+                print(f"[ERROR] Failed to call get_single_notebook_data: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"[TEST] Could not find book with title containing '{test_book_title}'")
+        print("=" * 80 + "\n")
     
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
@@ -503,11 +462,6 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 "book": book_info,
                 "has_full_info": True
             }
-            # Debug first book
-            if len(books_map) == 1:
-                print(f"[DEBUG] First book in map: bookId={book_id}")
-                print(f"[DEBUG] First book info keys: {list(book_info.keys())}")
-                print(f"[DEBUG] First book title: {book_info.get('title')}, author: {book_info.get('author')}")
     
     # Build a map of book_id -> progress from bookProgress
     progress_map = {}
@@ -606,18 +560,16 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             book_data = client.get_single_book_data(book_id, book_item)
             
             if book_data:
-                # Print all notes in a formatted way
-                book_title = book_data.get("title", f"Book {book_id}")
-                print_all_notes(book_data, book_title)
+                # Print notes summary (simplified)
+                bookmarks = book_data.get("bookmarks", [])
+                notes = book_data.get("notes", [])  # Highlights without thoughts
+                page_notes = book_data.get("page_notes", [])
+                chapter_notes = book_data.get("chapter_notes", [])
+                summary_reviews = book_data.get("summary_reviews", [])
+                total_notes = len(bookmarks) + len(notes) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
                 
-                # Print full data for first book or if limit is 1
-                if i == 1 or limit == 1:
-                    print("\n" + "=" * 60)
-                    print(f"📖 FULL BOOK DATA (Book {i})")
-                    print("=" * 60)
-                    print(json.dumps(book_data, indent=2, ensure_ascii=False, default=str))
-                    print("=" * 60)
-                    print()
+                if total_notes > 0:
+                    print(f"   📝 Notes: {len(notes)} 纯划线, {len(bookmarks)} 划线(含想法), {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
                 
                 # Map status values
                 status_map = {
@@ -704,7 +656,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     if cookie_error_count > 0:
         print(f"          ⚠️  Cookie/Auth Errors: {cookie_error_count}")
     if total_to_process > 0:
-    print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
+        print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
     else:
         print(f"          Total time: {total_time:.1f}s")
     print(f"{'='*60}")
@@ -744,11 +696,38 @@ def main():
     
     # Optional test book title for troubleshooting (set WEREAD_TEST_BOOK_TITLE in .env)
     # Example: WEREAD_TEST_BOOK_TITLE=被讨厌的勇气
-    test_book_title = env("WEREAD_TEST_BOOK_TITLE")
-    if test_book_title:
-        test_book_title = test_book_title.strip()
-        if not test_book_title:
+    # To disable: comment out the line in .env, unset the variable, or set it to empty
+    test_book_title_raw = os.environ.get("WEREAD_TEST_BOOK_TITLE")
+    test_book_title = None
+    
+    # Check if it's set and not empty
+    if test_book_title_raw:
+        test_book_title = str(test_book_title_raw).strip()
+        # Treat empty string, "none", "null", "false" as disabled
+        if not test_book_title or test_book_title.lower() in ("none", "null", "false", "off", "disable", "0"):
             test_book_title = None
+        else:
+            # If it's set, check if it's commented in .env file
+            env_file = Path(__file__).parent.parent / ".env"
+            if env_file.exists():
+                with open(env_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        stripped = line.strip()
+                        # Check if line is commented out
+                        if stripped.startswith('#') and 'WEREAD_TEST_BOOK_TITLE' in stripped:
+                            print(f"\n[WARNING] WEREAD_TEST_BOOK_TITLE is set in environment but commented in .env")
+                            print(f"[WARNING] Unsetting it to disable the filter...")
+                            os.environ.pop("WEREAD_TEST_BOOK_TITLE", None)
+                            test_book_title = None
+                            break
+    
+    # Debug: show if test_book_title is being used
+    if test_book_title:
+        print(f"\n[DEBUG] ⚠️  Test book title filter is ACTIVE: '{test_book_title}'")
+        print(f"[DEBUG] To disable: unset WEREAD_TEST_BOOK_TITLE or comment it out in .env")
+        print(f"[DEBUG] Current env value: {repr(test_book_title_raw)}\n")
+    else:
+        print(f"[DEBUG] Test book title filter is DISABLED (processing all books)")
     
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
