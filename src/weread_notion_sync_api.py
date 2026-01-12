@@ -309,7 +309,7 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
     return blocks
 
 
-def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None):
+def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None):
     """Fetch books from WeRead API and sync to Notion - processes one at a time with progress monitoring"""
     import time
     start_time = time.time()
@@ -397,6 +397,30 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     if not all_book_items:
         print("[ERROR] No books found!")
         return
+    
+    # Filter by test book title if specified (for troubleshooting)
+    if test_book_title:
+        original_count = len(all_book_items)
+        filtered_items = []
+        for book_item in all_book_items:
+            book_info = book_item.get("book", {})
+            title = book_info.get("title") or book_info.get("name") or ""
+            # Case-insensitive partial match
+            if test_book_title.lower() in title.lower():
+                filtered_items.append(book_item)
+                print(f"[TEST] Found matching book: '{title}' (bookId: {book_item.get('bookId')})")
+        
+        if filtered_items:
+            all_book_items = filtered_items
+            print(f"[TEST] Filtered to {len(all_book_items)} book(s) matching title '{test_book_title}' (from {original_count} total)")
+        else:
+            print(f"[TEST] ⚠️  No books found matching title '{test_book_title}'")
+            print(f"[TEST] Available book titles (first 10):")
+            for i, book_item in enumerate(all_book_items[:10], 1):
+                book_info = book_item.get("book", {})
+                title = book_info.get("title") or book_info.get("name") or f"Book {book_item.get('bookId')}"
+                print(f"[TEST]   {i}. {title}")
+            return
     
     # Apply limit
     if limit is not None and limit > 0:
@@ -532,6 +556,14 @@ def main():
         except ValueError:
             limit = None
     
+    # Optional test book title for troubleshooting (set WEREAD_TEST_BOOK_TITLE in .env)
+    # Example: WEREAD_TEST_BOOK_TITLE=被讨厌的勇气
+    test_book_title = env("WEREAD_TEST_BOOK_TITLE")
+    if test_book_title:
+        test_book_title = test_book_title.strip()
+        if not test_book_title:
+            test_book_title = None
+    
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
     if not WEREAD_COOKIES:
@@ -540,7 +572,7 @@ def main():
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)
     
-    sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit)
+    sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit, test_book_title=test_book_title)
 
 
 if __name__ == "__main__":
