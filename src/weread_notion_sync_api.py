@@ -575,7 +575,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 book_info = book_item.get("book", {})
                 title = book_info.get("title") or book_info.get("name") or f"Book {book_item.get('bookId')}"
                 print(f"[TEST]   {i}. {title}")
-            return
+            return  # Only return if no books found
     
     # Apply limit
     if limit is not None and limit > 0:
