@@ -792,95 +792,109 @@ class WeReadAPI:
                 else:
                     print(f"[DEBUG] Book {book_id} - marked as To Be Read (no progress or < 5%)")
             
-            # Extract dates - prioritize first read time as started_at
+            # Extract dates from read_info API response
+            # Date Started: read_info.readDetail.beginReadingDate
+            # Date Finished: read_info.finishedDate
+            # Last Read At: read_info.readDetail.lastReadingDate
             started_at = None
-            first_read_at = None  # First time reading this book
             last_read_at = None
             date_finished = None
             
-            # Collect all possible start times to find the earliest (first read)
-            start_times = []
-            
-            # Debug: print raw date data
-            if book_item and book_item.get("updateTime"):
-                print(f"[DEBUG] Book {book_id} - updateTime (raw): {book_item.get('updateTime')}")
-            
-            if reading_data:
-                print(f"[DEBUG] Book {book_id} - reading_data keys: {list(reading_data.keys())}")
-                if reading_data.get("startTime"):
-                    print(f"[DEBUG] Book {book_id} - startTime (raw): {reading_data.get('startTime')}")
-                    try:
-                        start_time_raw = reading_data["startTime"]
-                        # Handle Unix timestamp (seconds) - use local timezone
-                        if isinstance(start_time_raw, (int, float)):
-                            local_tz = dateutil.tz.tzlocal()
-                            if start_time_raw > 1e10:  # Milliseconds timestamp
-                                start_time = datetime.fromtimestamp(start_time_raw / 1000, tz=local_tz)
-                            else:  # Seconds timestamp
-                                start_time = datetime.fromtimestamp(start_time_raw, tz=local_tz)
-                        else:
-                            start_time = dtparser.parse(str(start_time_raw))
-                            # Ensure local timezone if naive
-                            if start_time.tzinfo is None:
-                                start_time = start_time.replace(tzinfo=dateutil.tz.tzlocal())
-                        start_times.append(start_time)
-                        started_at = start_time
-                        print(f"[DEBUG] Book {book_id} - parsed startTime: {start_time}")
-                    except Exception as e:
-                        print(f"[DEBUG] Book {book_id} - failed to parse startTime: {e}")
-                
-                if reading_data.get("lastReadTime") or reading_data.get("updateTime"):
-                    try:
-                        last_read_raw = reading_data.get("lastReadTime") or reading_data.get("updateTime")
-                        if isinstance(last_read_raw, (int, float)):
-                            local_tz = dateutil.tz.tzlocal()
-                            if last_read_raw > 1e10:  # Milliseconds
-                                last_read_at = datetime.fromtimestamp(last_read_raw / 1000, tz=local_tz)
-                            else:  # Seconds
-                                last_read_at = datetime.fromtimestamp(last_read_raw, tz=local_tz)
-                        else:
-                            last_read_at = dtparser.parse(str(last_read_raw))
-                            # Ensure local timezone if naive
-                            if last_read_at.tzinfo is None:
-                                last_read_at = last_read_at.replace(tzinfo=dateutil.tz.tzlocal())
-                    except Exception as e:
-                        print(f"[DEBUG] Book {book_id} - failed to parse lastReadTime: {e}")
-            
-            # Also check book_item for updateTime (from bookProgress) - this is Unix timestamp
-            if book_item and book_item.get("updateTime"):
+            # Helper function to parse date from various formats
+            def parse_date_field(date_value, field_name):
+                """Parse date field from API response - handles timestamps and strings"""
+                if date_value is None:
+                    return None
                 try:
-                    update_time_raw = book_item["updateTime"]
-                    # updateTime is typically Unix timestamp in seconds - use local timezone
-                    if isinstance(update_time_raw, (int, float)):
-                        local_tz = dateutil.tz.tzlocal()
-                        if update_time_raw > 1e10:  # Milliseconds timestamp
-                            update_time = datetime.fromtimestamp(update_time_raw / 1000, tz=local_tz)
+                    local_tz = dateutil.tz.tzlocal()
+                    if isinstance(date_value, (int, float)):
+                        # Handle Unix timestamp (seconds or milliseconds)
+                        if date_value > 1e10:  # Milliseconds timestamp
+                            return datetime.fromtimestamp(date_value / 1000, tz=local_tz)
                         else:  # Seconds timestamp
-                            update_time = datetime.fromtimestamp(update_time_raw, tz=local_tz)
-                        print(f"[DEBUG] Book {book_id} - parsed updateTime: {update_time} (from timestamp {update_time_raw})")
-                        if not last_read_at:
-                            last_read_at = update_time
-                        # Use updateTime as potential first read if we don't have startTime
-                        if not start_times:
-                            start_times.append(update_time)
+                            return datetime.fromtimestamp(date_value, tz=local_tz)
                     else:
                         # Try parsing as string
-                        update_time = dtparser.parse(str(update_time_raw))
-                        if not last_read_at:
-                            last_read_at = update_time
-                        if not start_times:
-                            start_times.append(update_time)
+                        parsed = dtparser.parse(str(date_value))
+                        # Ensure local timezone if naive
+                        if parsed.tzinfo is None:
+                            parsed = parsed.replace(tzinfo=local_tz)
+                        return parsed
                 except Exception as e:
-                    print(f"[DEBUG] Book {book_id} - failed to parse updateTime: {e}")
+                    print(f"[DEBUG] Book {book_id} - failed to parse {field_name}: {e}")
+                    return None
             
-            # Use earliest start time as first_read_at and started_at
-            if start_times:
-                first_read_at = min(start_times)
-                started_at = first_read_at
-                print(f"[DEBUG] Book {book_id} - final started_at: {started_at}")
+            # Priority 1: Extract dates from read_info.readDetail and read_info.finishedDate
+            if read_info:
+                print(f"[DEBUG] Book {book_id} - read_info keys: {list(read_info.keys())}")
+                
+                # Get readDetail (nested object)
+                read_detail = read_info.get("readDetail")
+                if read_detail:
+                    print(f"[DEBUG] Book {book_id} - readDetail keys: {list(read_detail.keys())}")
+                    
+                    # Date Started: read_info.readDetail.beginReadingDate
+                    if read_detail.get("beginReadingDate"):
+                        started_at = parse_date_field(read_detail.get("beginReadingDate"), "readDetail.beginReadingDate")
+                        if started_at:
+                            print(f"[DEBUG] Book {book_id} - found beginReadingDate in readDetail: {started_at}")
+                    
+                    # Last Read At: read_info.readDetail.lastReadingDate
+                    if read_detail.get("lastReadingDate"):
+                        last_read_at = parse_date_field(read_detail.get("lastReadingDate"), "readDetail.lastReadingDate")
+                        if last_read_at:
+                            print(f"[DEBUG] Book {book_id} - found lastReadingDate in readDetail: {last_read_at}")
+                
+                # Date Finished: read_info.finishedDate
+                if read_info.get("finishedDate"):
+                    date_finished = parse_date_field(read_info.get("finishedDate"), "finishedDate")
+                    if date_finished:
+                        print(f"[DEBUG] Book {book_id} - found finishedDate: {date_finished}")
             
-            if status == "Read" and last_read_at:
+            # Fallback: Use old logic if dates not found in read_info
+            if not started_at or not last_read_at:
+                # Collect all possible start times to find the earliest (first read)
+                start_times = []
+                
+                # Debug: print raw date data
+                if book_item and book_item.get("updateTime"):
+                    print(f"[DEBUG] Book {book_id} - updateTime (raw): {book_item.get('updateTime')}")
+                
+                if reading_data:
+                    print(f"[DEBUG] Book {book_id} - reading_data keys: {list(reading_data.keys())}")
+                    if not started_at and reading_data.get("startTime"):
+                        print(f"[DEBUG] Book {book_id} - startTime (raw): {reading_data.get('startTime')}")
+                        parsed_start = parse_date_field(reading_data.get("startTime"), "startTime")
+                        if parsed_start:
+                            start_times.append(parsed_start)
+                            if not started_at:
+                                started_at = parsed_start
+                    
+                    if not last_read_at and (reading_data.get("lastReadTime") or reading_data.get("updateTime")):
+                        last_read_raw = reading_data.get("lastReadTime") or reading_data.get("updateTime")
+                        parsed_last = parse_date_field(last_read_raw, "lastReadTime/updateTime")
+                        if parsed_last:
+                            last_read_at = parsed_last
+                
+                # Also check book_item for updateTime (from bookProgress) - this is Unix timestamp
+                if book_item and book_item.get("updateTime"):
+                    parsed_update = parse_date_field(book_item.get("updateTime"), "updateTime")
+                    if parsed_update:
+                        if not last_read_at:
+                            last_read_at = parsed_update
+                        # Use updateTime as potential first read if we don't have startTime
+                        if not started_at:
+                            start_times.append(parsed_update)
+                
+                # Use earliest start time as started_at if we still don't have it
+                if not started_at and start_times:
+                    started_at = min(start_times)
+                    print(f"[DEBUG] Book {book_id} - final started_at (from fallback): {started_at}")
+            
+            # If date_finished not found but book is finished, use last_read_at as fallback
+            if not date_finished and status == "Read" and last_read_at:
                 date_finished = last_read_at
+                print(f"[DEBUG] Book {book_id} - book is finished but no finishedDate, using last_read_at: {date_finished}")
             
             # Get title and author
             title = book_info.get("title") or book_info.get("name") or f"Book {book_id}"

@@ -145,4 +145,3 @@ git rm --cached .env
 git commit -m "Remove accidentally committed .env"
 # Then immediately rotate your Notion token in Notion settings
 ```
-
