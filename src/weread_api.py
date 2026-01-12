@@ -30,22 +30,23 @@ def env(name: str, default: Optional[str] = None) -> str:
     return str(v).strip()
 
 
-# WeRead API endpoints
+# WeRead API endpoints - matching obsidian-weread-plugin (https://github.com/zhaohongxuan/obsidian-weread-plugin)
 WEREAD_API_BASE = "https://weread.qq.com"
-WEREAD_NOTEBOOKS_API = f"{WEREAD_API_BASE}/web/notebooks"
+WEREAD_NOTEBOOKS_API = f"{WEREAD_API_BASE}/api/user/notebook"  # Obsidian plugin uses this
 WEREAD_SHELF_API = f"{WEREAD_API_BASE}/web/shelf/sync"
 WEREAD_BOOK_INFO_API = f"{WEREAD_API_BASE}/web/book/bookDetail"
-WEREAD_BOOK_INFO_API_V2 = f"{WEREAD_API_BASE}/web/book/info"
+WEREAD_BOOK_INFO_API_V2 = f"{WEREAD_API_BASE}/web/book/info"  # Obsidian plugin: /web/book/info
 WEREAD_READING_DATA_API = f"{WEREAD_API_BASE}/web/readingData"
 WEREAD_BOOK_LIST_API = f"{WEREAD_API_BASE}/web/shelf/bookList"
 # Alternative endpoints to try for reading data
-WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readInfo"
+WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readinfo"  # Obsidian plugin: readinfo (lowercase)
 WEREAD_BOOK_READING_API = f"{WEREAD_API_BASE}/web/book/reading"
 WEREAD_USER_READING_API = f"{WEREAD_API_BASE}/web/user/reading"
-# Additional endpoints for bookmarks, reviews, and chapters
-WEREAD_BOOKMARKLIST_API = "https://i.weread.qq.com/book/bookmarklist"
-WEREAD_REVIEW_LIST_API = "https://i.weread.qq.com/review/list"
-WEREAD_CHAPTER_INFO_API = "https://i.weread.qq.com/book/chapterInfos"
+# Additional endpoints for bookmarks, reviews, and chapters - matching obsidian plugin
+WEREAD_BOOKMARKLIST_API = f"{WEREAD_API_BASE}/web/book/bookmarklist"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
+WEREAD_REVIEW_LIST_API = f"{WEREAD_API_BASE}/web/review/list"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
+WEREAD_CHAPTER_INFO_API = f"{WEREAD_API_BASE}/web/book/chapterInfos"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
+WEREAD_GET_PROGRESS_API = f"{WEREAD_API_BASE}/web/book/getProgress"  # Obsidian plugin: /web/book/getProgress
 
 
 class WeReadAPI:
@@ -97,16 +98,122 @@ class WeReadAPI:
             
             self.session.cookies.update(cookie_dict)
             
-            # Validate cookies
+            # Validate cookies - based on obsidian-weread-plugin requirements
+            # Required cookies for all API endpoints (HighlightResponse, BookReviewResponse, 
+            # ChapterResponse, BookReadInfoResponse, BookDetailResponse, BookProgressResponse)
             required_cookies = ["wr_skey", "wr_vid", "wr_rt"]
             missing = [c for c in required_cookies if c not in cookie_dict]
+            
             if missing:
-                print(f"[WARNING] Missing cookies: {', '.join(missing)}")
-            if "wr_skey" not in cookie_dict:
-                print("[WARNING] wr_skey cookie not found. This is the most important cookie for authentication.")
+                error_msg = f"\n{'='*80}\n"
+                error_msg += f"❌ MISSING REQUIRED COOKIES\n"
+                error_msg += f"{'='*80}\n"
+                error_msg += f"Missing: {', '.join(missing)}\n"
+                error_msg += f"\nThese cookies are REQUIRED for all WeRead API endpoints:\n"
+                error_msg += f"  - wr_skey: Authentication key (MOST IMPORTANT)\n"
+                error_msg += f"  - wr_vid: Session ID\n"
+                error_msg += f"  - wr_rt: Refresh token\n"
+                error_msg += f"\n🔧 SOLUTION:\n"
+                error_msg += f"  1. Open https://weread.qq.com in your browser\n"
+                error_msg += f"  2. Log in to your account\n"
+                error_msg += f"  3. Press F12 → Application tab → Cookies → weread.qq.com\n"
+                error_msg += f"  4. Copy ALL cookie values (especially wr_skey, wr_vid, wr_rt)\n"
+                error_msg += f"  5. Update WEREAD_COOKIES in your .env file\n"
+                error_msg += f"  6. Format: wr_skey=xxx; wr_vid=xxx; wr_rt=xxx\n"
+                error_msg += f"\nSee scripts/get_weread_cookies.md for detailed instructions\n"
+                error_msg += f"{'='*80}\n"
+                print(error_msg)
+                raise ValueError(f"Missing required cookies: {', '.join(missing)}. See error message above for details.")
+            
+            # Check for wr_skey specifically (most important)
+            if "wr_skey" not in cookie_dict or not cookie_dict["wr_skey"]:
+                raise ValueError("wr_skey cookie is required but missing or empty. This is the most important cookie for authentication.")
+            
+            # Optional but recommended cookies (used by obsidian-weread-plugin for validation)
+            recommended_cookies = ["wr_name", "wr_localvid", "wr_gid", "wr_uid"]
+            missing_recommended = [c for c in recommended_cookies if c not in cookie_dict]
+            
+            print(f"[API] ✅ All required cookies present: {', '.join(required_cookies)}")
+            if missing_recommended:
+                print(f"[API] ⚠️  Missing recommended cookies: {', '.join(missing_recommended)}")
+                print(f"[API]    These may help with cookie validation and refresh")
             else:
-                print(f"[API] Found wr_skey cookie (length: {len(cookie_dict['wr_skey'])})")
-            print(f"[API] Loaded {len(cookie_dict)} cookies: {', '.join(cookie_dict.keys())}")
+                print(f"[API] ✅ All recommended cookies present")
+            
+            print(f"[API] Found wr_skey cookie (length: {len(cookie_dict['wr_skey'])})")
+            print(f"[API] Loaded {len(cookie_dict)} total cookies: {', '.join(cookie_dict.keys())}")
+            
+            # Store cookie dict for validation
+            self.cookie_dict = cookie_dict
+    
+    def validate_cookies(self) -> bool:
+        """
+        Validate cookies by making a test API call.
+        Based on obsidian-weread-plugin validation method (see api.ts).
+        Returns True if cookies are valid, False otherwise.
+        """
+        try:
+            # First check if we have wr_name cookie (used by obsidian plugin for validation)
+            has_wr_name = "wr_name" in self.cookie_dict and self.cookie_dict.get("wr_name")
+            
+            response = self.session.get(
+                WEREAD_SHELF_API,
+                params={"synckey": 0, "lectureSynckey": 0},
+                timeout=10
+            )
+            
+            # Check for 401 or auth errors
+            if response.status_code == 401:
+                self._check_auth_error(response, "Cookie Validation (Shelf API)")
+                return False
+            
+            # Check response data for error codes (obsidian plugin checks for -2012: 登录超时)
+            try:
+                data = response.json()
+                if "errCode" in data:
+                    err_code = data.get("errCode")
+                    err_msg = data.get("errMsg", "Unknown error")
+                    
+                    # Error code -2012 is "登录超时" (login timeout) - same as obsidian plugin
+                    if err_code in [-2010, -2012, -1, 401, 403]:
+                        print(f"\n{'='*80}")
+                        print(f"❌ COOKIE VALIDATION FAILED")
+                        print(f"{'='*80}")
+                        print(f"Error Code: {err_code}")
+                        print(f"Error Message: {err_msg}")
+                        if err_code == -2012:
+                            print(f"\n⚠️  This is error -2012 (登录超时 - Login Timeout)")
+                            print(f"   Your cookies have expired. Get fresh cookies from browser.")
+                        print(f"\n🔧 SOLUTION:")
+                        print(f"   1. Open https://weread.qq.com in your browser")
+                        print(f"   2. Make sure you're logged in")
+                        print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                        print(f"   4. Update WEREAD_COOKIES in your .env file")
+                        print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
+                        print(f"   6. Optional but recommended: wr_name, wr_localvid, wr_gid")
+                        print(f"{'='*80}\n")
+                        return False
+            except:
+                pass
+            
+            # Check for set-cookie header (obsidian plugin uses this to refresh cookies)
+            set_cookie = response.headers.get('set-cookie') or response.headers.get('Set-Cookie')
+            if set_cookie and not has_wr_name:
+                print("[API] ⚠️  Received set-cookie header - cookies may need refresh")
+            
+            if response.status_code == 200:
+                print("[API] ✅ Cookie validation successful")
+                # Check if we have wr_name (used by obsidian plugin for validation)
+                if has_wr_name:
+                    print("[API] ✅ wr_name cookie present (good for cookie refresh validation)")
+                return True
+            else:
+                print(f"[API] ⚠️  Cookie validation returned status {response.status_code}")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            print(f"[API] ⚠️  Cookie validation failed: {e}")
+            return False
     
     def get_shelf(self) -> Tuple[Dict[str, Any], List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
@@ -119,6 +226,12 @@ class WeReadAPI:
                 params={"synckey": 0, "lectureSynckey": 0}
             )
             print(f"[DEBUG] Shelf API status code: {response.status_code}")
+            
+            # Check for HTTP 401 first
+            if response.status_code == 401:
+                self._check_auth_error(response, "Shelf API")
+                return {}, [], []
+            
             response.raise_for_status()
             data = response.json()
             
@@ -130,10 +243,22 @@ class WeReadAPI:
                 print(f"[DEBUG] Full error response:")
                 print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
                 
-                # If it's an auth error, suggest checking cookies
-                if err_code in [-2010, -1, 401, 403]:
-                    print(f"[TROUBLESHOOTING] This looks like an authentication error.")
-                    print(f"[TROUBLESHOOTING] Your cookies may be expired. Get fresh cookies from browser.")
+                # If it's an auth error, show detailed help
+                if err_code in [-2010, -2012, -1, 401, 403]:
+                    print(f"\n{'='*80}")
+                    print(f"❌ AUTHENTICATION ERROR - Shelf API")
+                    print(f"{'='*80}")
+                    print(f"Error Code: {err_code}")
+                    print(f"Error Message: {err_msg}")
+                    print(f"\n🔧 SOLUTION:")
+                    print(f"   1. Open https://weread.qq.com in your browser")
+                    print(f"   2. Make sure you're logged in")
+                    print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                    print(f"   4. Update WEREAD_COOKIES in your .env file")
+                    print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
+                    print(f"   6. Optional but recommended: wr_localvid, wr_gid")
+                    print(f"\n💡 TIP: Check your .env file - make sure all cookies are present and not truncated")
+                    print(f"{'='*80}\n")
                 
                 return {}, [], []
             
@@ -200,12 +325,17 @@ class WeReadAPI:
         Returns list of book data.
         """
         try:
+            # Obsidian plugin uses: GET /api/user/notebook (no params)
             response = self.session.get(
-                WEREAD_NOTEBOOKS_API,
-                params={"count": 1000}  # Get up to 1000 books
+                WEREAD_NOTEBOOKS_API
             )
             response.raise_for_status()
             data = response.json()
+            
+            # Obsidian plugin checks for errcode == -2012 for cookie expiration
+            if data.get("errcode") == -2012:
+                print("[API] Cookie expired (errcode -2012) - need fresh cookies")
+                return []
             
             if data.get("errcode") == 0:
                 books = data.get("books", [])
@@ -648,12 +778,16 @@ class WeReadAPI:
             if bookmark_list:
                 print(f"[DEBUG] ✅ Found {len(bookmark_list)} bookmarks for {book_id}")
             
-            # Get reviews
-            summary_reviews, regular_reviews = [], []
-            print(f"[DEBUG] Fetching reviews for book {book_id}...")
-            summary_reviews, regular_reviews = self.get_review_list(book_id)
-            if summary_reviews or regular_reviews:
-                print(f"[DEBUG] ✅ Found {len(summary_reviews)} summary reviews and {len(regular_reviews)} regular reviews for {book_id}")
+            # Get all types of notes and reviews
+            summary_reviews, regular_reviews, page_notes, chapter_notes = [], [], [], []
+            print(f"[DEBUG] Fetching all notes and reviews for book {book_id}...")
+            summary_reviews, regular_reviews, page_notes, chapter_notes = self.get_review_list(book_id)
+            if summary_reviews or regular_reviews or page_notes or chapter_notes:
+                print(f"[DEBUG] ✅ Found notes for {book_id}:")
+                print(f"[DEBUG]   - 划线笔记 (underline/highlight notes): {len(regular_reviews)}")
+                print(f"[DEBUG]   - 页面笔记 (page notes): {len(page_notes)}")
+                print(f"[DEBUG]   - 章节笔记 (chapter notes): {len(chapter_notes)}")
+                print(f"[DEBUG]   - 书籍书评 (book reviews): {len(summary_reviews)}")
             
             # Get chapter info
             chapter_info = None
@@ -970,8 +1104,10 @@ class WeReadAPI:
                 "year_started": year_started,
                 "rating": float(rating) if rating else None,
                 # New fields for bookmarks, reviews, quotes, and callouts
-                "bookmarks": all_bookmarks,  # Combined bookmarks and regular reviews
-                "summary_reviews": summary_reviews,  # Summary/commentary reviews
+                "bookmarks": all_bookmarks,  # Combined bookmarks and regular reviews (划线笔记)
+                "summary_reviews": summary_reviews,  # Summary/commentary reviews (书籍书评)
+                "page_notes": page_notes,  # Page notes (页面笔记)
+                "chapter_notes": chapter_notes,  # Chapter notes (章节笔记)
                 "chapter_info": chapter_info,  # Chapter structure
                 "read_info": read_info,  # Full reading info including readingTime
                 "reading_time": reading_time_formatted,  # Formatted reading time
@@ -982,6 +1118,37 @@ class WeReadAPI:
             traceback.print_exc()
             return None
     
+    def _check_auth_error(self, response, api_name: str) -> bool:
+        """Check if response indicates authentication error (expired cookies)"""
+        try:
+            status_code = getattr(response, 'status_code', None)
+            if status_code == 401:
+                error_text = getattr(response, 'text', '').lower()
+                if "login" in error_text or status_code == 401:
+                    print(f"\n{'='*80}")
+                    print(f"❌ COOKIE EXPIRATION DETECTED - {api_name}")
+                    print(f"{'='*80}")
+                    print(f"Status Code: {status_code}")
+                    error_msg = getattr(response, 'text', 'No error message')[:200]
+                    print(f"Error: {error_msg}")
+                    print(f"\n🔧 SOLUTION:")
+                    print(f"   1. Open https://weread.qq.com in your browser")
+                    print(f"   2. Make sure you're logged in")
+                    print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                    print(f"   4. Update WEREAD_COOKIES in your .env file")
+                    print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
+                    print(f"   6. Optional but recommended: wr_localvid, wr_gid")
+                    print(f"\n💡 DEBUGGING:")
+                    print(f"   - Check if cookies in .env are complete (not truncated)")
+                    print(f"   - Make sure there are no extra quotes or spaces")
+                    print(f"   - Format: wr_skey=xxx; wr_vid=xxx; wr_rt=xxx")
+                    print(f"{'='*80}\n")
+                    return True
+        except Exception as e:
+            # If we can't check the response, log it but don't fail
+            print(f"[DEBUG] Error checking auth status: {e}")
+        return False
+    
     def get_bookmark_list(self, book_id: str) -> Optional[List[Dict[str, Any]]]:
         """Get bookmarks/highlights for a book"""
         try:
@@ -989,6 +1156,11 @@ class WeReadAPI:
                 WEREAD_BOOKMARKLIST_API,
                 params={"bookId": book_id}
             )
+            
+            # Check for auth errors first
+            if self._check_auth_error(response, "Bookmark List API"):
+                return None
+            
             response.raise_for_status()
             data = response.json()
             
@@ -1001,39 +1173,95 @@ class WeReadAPI:
                 )
                 return updated
             return None
+        except requests.exceptions.HTTPError as e:
+            if hasattr(e, 'response') and e.response.status_code == 401:
+                # Already handled by _check_auth_error
+                return None
+            print(f"[API ERROR] Failed to fetch bookmarks for book {book_id}: {e}")
+            return None
         except Exception as e:
             print(f"[API ERROR] Failed to fetch bookmarks for book {book_id}: {e}")
             return None
     
-    def get_review_list(self, book_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """Get reviews for a book. Returns (summary_reviews, regular_reviews)"""
+    def get_review_list(self, book_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """
+        Get all types of notes and reviews for a book.
+        Returns (summary_reviews, regular_reviews, page_notes, chapter_notes)
+        
+        Note types in WeRead API:
+        - Type 1: 划线笔记 (underline/highlight notes) - regular reviews
+        - Type 2: 页面笔记 (page notes) - notes on specific pages
+        - Type 3: 章节笔记 (chapter notes) - notes on chapters
+        - Type 4: 书籍书评 (book reviews) - summary/commentary reviews
+        """
         try:
+            # Obsidian plugin uses: /web/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0
+            # Note: synckey (lowercase 'k') not syncKey
             response = self.session.get(
                 WEREAD_REVIEW_LIST_API,
-                params={"bookId": book_id, "listType": 11, "mine": 1, "syncKey": 0}
+                params={"bookId": book_id, "listType": 11, "mine": 1, "synckey": 0}
             )
+            
+            # Check for auth errors first
+            if self._check_auth_error(response, "Review List API"):
+                return [], [], [], []
+            
             response.raise_for_status()
             data = response.json()
             
             reviews = data.get("reviews", [])
-            # Filter summary reviews (type 4)
-            summary = list(filter(lambda x: x.get("review", {}).get("type") == 4, reviews))
-            # Filter regular reviews (type 1)
-            regular_reviews = list(filter(lambda x: x.get("review", {}).get("type") == 1, reviews))
-            # Transform regular reviews to match bookmark format
-            regular_reviews = list(map(lambda x: x.get("review"), regular_reviews))
-            regular_reviews = list(map(lambda x: {**x, "markText": x.pop("content", "")}, regular_reviews))
             
-            return summary, regular_reviews
+            # Categorize by type
+            summary_reviews = []  # Type 4: 书籍书评 (book reviews)
+            regular_reviews = []  # Type 1: 划线笔记 (underline/highlight notes)
+            page_notes = []       # Type 2: 页面笔记 (page notes)
+            chapter_notes = []    # Type 3: 章节笔记 (chapter notes)
+            
+            for review_item in reviews:
+                review = review_item.get("review", {})
+                review_type = review.get("type")
+                
+                if review_type == 4:
+                    # 书籍书评 (book reviews)
+                    summary_reviews.append(review_item)
+                elif review_type == 1:
+                    # 划线笔记 (underline/highlight notes)
+                    # Transform to match bookmark format
+                    transformed = {**review, "markText": review.pop("content", "")}
+                    regular_reviews.append(transformed)
+                elif review_type == 2:
+                    # 页面笔记 (page notes)
+                    page_notes.append(review)
+                elif review_type == 3:
+                    # 章节笔记 (chapter notes)
+                    chapter_notes.append(review)
+                else:
+                    # Unknown type - log it
+                    print(f"[DEBUG] Unknown review type {review_type} for book {book_id}")
+            
+            return summary_reviews, regular_reviews, page_notes, chapter_notes
+        except requests.exceptions.HTTPError as e:
+            if hasattr(e, 'response') and e.response.status_code == 401:
+                # Already handled by _check_auth_error
+                return [], [], [], []
+            print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
+            return [], [], [], []
         except Exception as e:
             print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
-            return [], []
+            return [], [], [], []
     
     def get_chapter_info(self, book_id: str) -> Optional[Dict[int, Dict[str, Any]]]:
         """Get chapter information for a book"""
         try:
-            body = {"bookIds": [book_id], "synckeys": [0], "teenmode": 0}
+            # Obsidian plugin uses: POST /web/book/chapterInfos with body {bookIds: [bookId]}
+            # We'll try the simpler version first, then fallback to extended version if needed
+            body = {"bookIds": [book_id]}
             response = self.session.post(WEREAD_CHAPTER_INFO_API, json=body)
+            
+            # Check for auth errors first
+            if self._check_auth_error(response, "Chapter Info API"):
+                return None
+            
             response.raise_for_status()
             data = response.json()
             
@@ -1045,6 +1273,12 @@ class WeReadAPI:
             ):
                 update = data["data"][0]["updated"]
                 return {item["chapterUid"]: item for item in update}
+            return None
+        except requests.exceptions.HTTPError as e:
+            if hasattr(e, 'response') and e.response.status_code == 401:
+                # Already handled by _check_auth_error
+                return None
+            print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
             return None
         except Exception as e:
             print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")

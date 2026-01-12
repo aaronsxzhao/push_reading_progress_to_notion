@@ -203,7 +203,7 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
     Create Notion blocks for book content (bookmarks, reviews, quotes, callouts)
     
     Args:
-        book_data: Book data dictionary with bookmarks, reviews, chapter_info
+        book_data: Book data dictionary with bookmarks, reviews, chapter_info, page_notes, chapter_notes
         styles: Optional list of allowed highlight styles (filter)
         colors: Optional list of allowed highlight colors (filter)
     """
@@ -211,8 +211,10 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
     chapter_info = book_data.get("chapter_info")
     bookmarks = book_data.get("bookmarks", [])
     summary_reviews = book_data.get("summary_reviews", [])
+    page_notes = book_data.get("page_notes", [])
+    chapter_notes = book_data.get("chapter_notes", [])
     
-    if not bookmarks and not summary_reviews:
+    if not bookmarks and not summary_reviews and not page_notes and not chapter_notes:
         return blocks
     
     # Group bookmarks by chapter
@@ -287,9 +289,46 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
                     bookmark.get("reviewId")
                 ))
     
-    # Add summary reviews
+    # Add page notes (页面笔记)
+    if page_notes:
+        blocks.append(get_heading(1, "页面笔记"))
+        for note in page_notes:
+            content = note.get("content", "").strip()
+            page = note.get("page", note.get("pageNum", "?"))
+            if not content:
+                continue
+            
+            # Create callout with page info
+            page_info = f"第 {page} 页: {content}"
+            for j in range(0, len(page_info), 2000):
+                chunk = page_info[j:j + 2000]
+                blocks.append(get_callout(chunk, None, None, None))
+    
+    # Add chapter notes (章节笔记)
+    if chapter_notes:
+        blocks.append(get_heading(1, "章节笔记"))
+        for note in chapter_notes:
+            content = note.get("content", "").strip()
+            chapter_uid = note.get("chapterUid", "?")
+            if not content:
+                continue
+            
+            # Get chapter title if available
+            chapter_title = ""
+            if chapter_info and chapter_uid in chapter_info:
+                chapter_title = chapter_info[chapter_uid].get("title", f"章节 {chapter_uid}")
+            else:
+                chapter_title = f"章节 {chapter_uid}"
+            
+            # Create callout with chapter info
+            chapter_info_text = f"{chapter_title}: {content}"
+            for j in range(0, len(chapter_info_text), 2000):
+                chunk = chapter_info_text[j:j + 2000]
+                blocks.append(get_callout(chunk, None, None, None))
+    
+    # Add summary reviews (书籍书评)
     if summary_reviews:
-        blocks.append(get_heading(1, "点评"))
+        blocks.append(get_heading(1, "书籍书评"))
         for review_item in summary_reviews:
             review = review_item.get("review", {})
             content = review.get("content", "")
@@ -309,6 +348,115 @@ def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list]
     return blocks
 
 
+def print_all_notes(book_data: Dict[str, Any], book_title: str):
+    """
+    Print all types of notes from WeRead:
+    - 划线笔记 (underline/highlight notes)
+    - 页面笔记 (page notes)
+    - 章节笔记 (chapter notes)
+    - 书籍书评 (book reviews)
+    """
+    print(f"\n{'='*80}")
+    print(f"📚 微信读书笔记详情 - {book_title}")
+    print(f"{'='*80}\n")
+    
+    # 1. 划线笔记 (underline/highlight notes) - from bookmarks
+    bookmarks = book_data.get("bookmarks", [])
+    if bookmarks:
+        print(f"📝 划线笔记 (Underline/Highlight Notes): {len(bookmarks)} 条")
+        print("-" * 80)
+        for idx, bookmark in enumerate(bookmarks, 1):
+            mark_text = bookmark.get("markText", "").strip()
+            chapter_uid = bookmark.get("chapterUid", "?")
+            range_info = bookmark.get("range", "")
+            style = bookmark.get("style", 0)
+            color_style = bookmark.get("colorStyle", 0)
+            review_id = bookmark.get("reviewId")
+            
+            style_names = {0: "下划线", 1: "背景高亮", 2: "波浪线"}
+            color_names = {1: "红色", 2: "紫色", 3: "蓝色", 4: "绿色", 5: "黄色"}
+            
+            note_type = "笔记" if review_id else "划线"
+            style_name = style_names.get(style, f"样式{style}")
+            color_name = color_names.get(color_style, "默认")
+            
+            print(f"  {idx}. [{note_type}] 章节{chapter_uid} | {style_name} | {color_name}")
+            if range_info:
+                print(f"     位置: {range_info}")
+            if mark_text:
+                # Truncate long text
+                display_text = mark_text[:200] + "..." if len(mark_text) > 200 else mark_text
+                print(f"     内容: {display_text}")
+            print()
+    else:
+        print("📝 划线笔记: 无\n")
+    
+    # 2. 页面笔记 (page notes)
+    page_notes = book_data.get("page_notes", [])
+    if page_notes:
+        print(f"📄 页面笔记 (Page Notes): {len(page_notes)} 条")
+        print("-" * 80)
+        for idx, note in enumerate(page_notes, 1):
+            content = note.get("content", "").strip()
+            page = note.get("page", note.get("pageNum", "?"))
+            create_time = note.get("createTime", note.get("createTime", ""))
+            
+            print(f"  {idx}. 第 {page} 页")
+            if create_time:
+                print(f"     时间: {create_time}")
+            if content:
+                display_text = content[:200] + "..." if len(content) > 200 else content
+                print(f"     内容: {display_text}")
+            print()
+    else:
+        print("📄 页面笔记: 无\n")
+    
+    # 3. 章节笔记 (chapter notes)
+    chapter_notes = book_data.get("chapter_notes", [])
+    if chapter_notes:
+        print(f"📑 章节笔记 (Chapter Notes): {len(chapter_notes)} 条")
+        print("-" * 80)
+        for idx, note in enumerate(chapter_notes, 1):
+            content = note.get("content", "").strip()
+            chapter_uid = note.get("chapterUid", "?")
+            create_time = note.get("createTime", note.get("createTime", ""))
+            
+            print(f"  {idx}. 章节 {chapter_uid}")
+            if create_time:
+                print(f"     时间: {create_time}")
+            if content:
+                display_text = content[:200] + "..." if len(content) > 200 else content
+                print(f"     内容: {display_text}")
+            print()
+    else:
+        print("📑 章节笔记: 无\n")
+    
+    # 4. 书籍书评 (book reviews)
+    summary_reviews = book_data.get("summary_reviews", [])
+    if summary_reviews:
+        print(f"⭐ 书籍书评 (Book Reviews): {len(summary_reviews)} 条")
+        print("-" * 80)
+        for idx, review_item in enumerate(summary_reviews, 1):
+            review = review_item.get("review", {})
+            content = review.get("content", "").strip()
+            create_time = review.get("createTime", review.get("createTime", ""))
+            rating = review.get("rating", "")
+            
+            print(f"  {idx}. 书评")
+            if rating:
+                print(f"     评分: {rating} 星")
+            if create_time:
+                print(f"     时间: {create_time}")
+            if content:
+                display_text = content[:300] + "..." if len(content) > 300 else content
+                print(f"     内容: {display_text}")
+            print()
+    else:
+        print("⭐ 书籍书评: 无\n")
+    
+    print(f"{'='*80}\n")
+
+
 def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None):
     """Fetch books from WeRead API and sync to Notion - processes one at a time with progress monitoring"""
     import time
@@ -317,6 +465,13 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     print("[API] Initializing WeRead API client...")
     
     client = WeReadAPI(weread_cookies)
+    
+    # Validate cookies before proceeding
+    print("[API] Validating cookies...")
+    if not client.validate_cookies():
+        print("\n❌ Cookie validation failed. Please update your cookies in .env file.")
+        print("   The sync will continue but may fail with authentication errors.\n")
+        # Continue anyway - let individual API calls handle errors
     
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
@@ -434,6 +589,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     
     synced_count = 0
     error_count = 0
+    cookie_error_count = 0  # Track cookie-related errors
     
     # Process books one at a time with immediate output
     for i, book_item in enumerate(all_book_items, 1):
@@ -450,6 +606,10 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             book_data = client.get_single_book_data(book_id, book_item)
             
             if book_data:
+                # Print all notes in a formatted way
+                book_title = book_data.get("title", f"Book {book_id}")
+                print_all_notes(book_data, book_title)
+                
                 # Print full data for first book or if limit is 1
                 if i == 1 or limit == 1:
                     print("\n" + "=" * 60)
@@ -472,8 +632,9 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 page_id = upsert_page(notion, database_id, db_props, book_data)
                 
                 # Add bookmarks, reviews, quotes, and callouts as blocks
-                if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews")):
-                    print(f"[{i}/{total_to_process}] Adding bookmarks and reviews to page...")
+                if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews") or 
+                               book_data.get("page_notes") or book_data.get("chapter_notes")):
+                    print(f"[{i}/{total_to_process}] Adding bookmarks, notes, and reviews to page...")
                     try:
                         # Get optional style/color filters from env vars
                         styles = None
@@ -519,6 +680,10 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         except Exception as e:
             error_count += 1
             book_time = time.time() - book_start_time
+            error_msg = str(e)
+            # Check if it's a cookie/auth error
+            if "401" in error_msg or "LOGIN" in error_msg.upper() or "expired" in error_msg.lower():
+                cookie_error_count += 1
             print(f"❌ [{i}/{total_to_process}] Book {book_id}: {e} | ⏱️  {book_time:.1f}s")
             if limit == 1:  # Show full traceback for first book only
                 import traceback
@@ -536,8 +701,29 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     total_time = time.time() - start_time
     print(f"\n{'='*60}")
     print(f"[COMPLETE] Processed {total_to_process} books | Synced: {synced_count} | Errors: {error_count}")
-    print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
+    if cookie_error_count > 0:
+        print(f"          ⚠️  Cookie/Auth Errors: {cookie_error_count}")
+    if total_to_process > 0:
+        print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
+    else:
+        print(f"          Total time: {total_time:.1f}s")
     print(f"{'='*60}")
+    
+    # Show cookie error summary if any occurred
+    if cookie_error_count > 0:
+        print(f"\n{'='*80}")
+        print(f"⚠️  COOKIE EXPIRATION DETECTED")
+        print(f"{'='*80}")
+        print(f"   {cookie_error_count} API call(s) failed due to authentication errors (401/LOGIN ERR)")
+        print(f"\n   🔧 ACTION REQUIRED:")
+        print(f"      1. Open https://weread.qq.com in your browser")
+        print(f"      2. Make sure you're logged in")
+        print(f"      3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+        print(f"      4. Update WEREAD_COOKIES in your .env file")
+        print(f"      5. Required cookies: wr_skey, wr_vid, wr_rt")
+        print(f"      6. Optional but recommended: wr_localvid, wr_gid")
+        print(f"\n   💡 TIP: Check your .env file - make sure cookies are complete and not truncated")
+        print(f"{'='*80}\n")
 
 
 def main():
