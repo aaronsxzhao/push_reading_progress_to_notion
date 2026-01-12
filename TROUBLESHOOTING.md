@@ -71,3 +71,4 @@ WEREAD_ROOT=/path/to/your/Obsidian/WeRead
 - Check that cookies include `wr_skey` (most important)
 
 
+

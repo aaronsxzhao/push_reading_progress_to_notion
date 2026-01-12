@@ -98,3 +98,4 @@ echo ""
 echo "To change interval, set SYNC_INTERVAL in .env (in seconds, default 3600 = 1 hour)"
 
 
+

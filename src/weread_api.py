@@ -1058,4 +1058,3 @@ def fetch_from_api(cookies: str) -> List[Dict[str, Any]]:
     """Convenience function to fetch all books from WeRead API"""
     client = WeReadAPI(cookies)
     return client.get_all_books_with_progress()
-
