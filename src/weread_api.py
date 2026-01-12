@@ -288,16 +288,6 @@ class WeReadAPI:
             import traceback
             traceback.print_exc()
             return {}, [], []
-        except requests.exceptions.HTTPError as e:
-            print(f"[API ERROR] Shelf HTTP error: {e}")
-            if hasattr(e.response, 'text'):
-                print(f"[DEBUG] Response text: {e.response.text[:500]}")
-            return []
-        except Exception as e:
-            print(f"[API ERROR] Failed to fetch shelf: {e}")
-            import traceback
-            traceback.print_exc()
-            return []
     
     def get_notebooks(self) -> List[Dict[str, Any]]:
         """
@@ -328,11 +318,6 @@ class WeReadAPI:
             
             response.raise_for_status()
             data = response.json()
-            
-            # Print full response for inspection
-            print(f"\n[DEBUG] getNotebooks full response:")
-            print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
-            print()
             
             # Check for errcode == -2012 even if status is not 401 (matching obsidian plugin)
             if data.get("errcode") == -2012 or data.get("errCode") == -2012:
@@ -417,12 +402,7 @@ class WeReadAPI:
                     response.raise_for_status()
                     data = response.json()
                     
-                    # Print full response for inspection
-                    print(f"\n[DEBUG] get_single_notebook_data response from {endpoint}:")
-                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str)[:2000])  # Limit output
-                    print()
-                    
-                    # Return the data structure for inspection
+                    # Return the data structure
                     return data
                 except requests.exceptions.HTTPError as e:
                     if e.response.status_code == 404:
@@ -826,27 +806,21 @@ class WeReadAPI:
                 book_info = {"bookId": book_id}
             
             # Get reading data - try multiple endpoints
-            reading_data = None
             reading_data = self.get_reading_data(book_id)
             
             # Get detailed read info (includes pages, reading time, etc.)
-            read_info = None
             read_info = self.get_read_info(book_id)
             
             # Get bookmarks/highlights
-            bookmark_list = None
             bookmark_list = self.get_bookmark_list(book_id)
             
             # Try to get notes (highlights without thoughts) separately
-            note_list = None
             note_list = self.get_note_list(book_id)
             
             # Get all types of notes and reviews
-            summary_reviews, regular_reviews, page_notes, chapter_notes = [], [], [], []
             summary_reviews, regular_reviews, page_notes, chapter_notes = self.get_review_list(book_id)
             
             # Get chapter info
-            chapter_info = None
             chapter_info = self.get_chapter_info(book_id)
             
             # Extract progress from book_item (which contains bookProgress data)
@@ -874,50 +848,11 @@ class WeReadAPI:
             
             # Try to get page data from read_info API (more reliable for pages)
             if read_info:
-                # Extract current page from read_info
-                if not current_page:
-                    current_page = (read_info.get("currentPage") or 
-                                  read_info.get("readPage") or 
-                                  read_info.get("readPageNum") or
-                                  read_info.get("page"))
-                
-                # Extract total page from read_info
-                if not total_page:
-                    total_page = (read_info.get("totalPage") or 
-                                read_info.get("pageCount") or
-                                read_info.get("totalPages") or
-                                read_info.get("maxPage") or
-                                read_info.get("pageNum"))
-                
-                # Update percent from read_info if available
-                if not percent or percent == 0:
-                    percent = (read_info.get("readPercentage") or 
-                             read_info.get("progress") or
-                             read_info.get("readPercent") or
-                             read_info.get("readingProgress"))
-                
+                current_page, total_page, percent = self._extract_page_info(read_info, current_page, total_page, percent)
+            
             # Try to get page data from reading_data API (fallback)
             if reading_data and (not current_page or not total_page):
-                # Extract current page from reading_data
-                if not current_page:
-                    current_page = (reading_data.get("currentPage") or 
-                                  reading_data.get("readPage") or 
-                                  reading_data.get("readPageNum") or
-                                  reading_data.get("page"))
-                
-                # Extract total page from reading_data
-                if not total_page:
-                    total_page = (reading_data.get("totalPage") or 
-                                reading_data.get("pageCount") or
-                                reading_data.get("totalPages") or
-                                reading_data.get("maxPage") or
-                                reading_data.get("pageNum"))
-                
-                # Update percent from reading_data if available
-                if not percent or percent == 0:
-                    percent = (reading_data.get("readPercentage") or 
-                             reading_data.get("progress") or
-                             reading_data.get("readPercent"))
+                current_page, total_page, percent = self._extract_page_info(reading_data, current_page, total_page, percent)
             
             # Calculate current page from percent if we have total but not current
             if percent is not None and total_page and not current_page:
@@ -958,76 +893,38 @@ class WeReadAPI:
             last_read_at = None
             date_finished = None
             
-            # Helper function to parse date from various formats
-            def parse_date_field(date_value, field_name):
-                """Parse date field from API response - handles timestamps and strings"""
-                if date_value is None:
-                    return None
-                try:
-                    local_tz = dateutil.tz.tzlocal()
-                    if isinstance(date_value, (int, float)):
-                        # Handle Unix timestamp (seconds or milliseconds)
-                        if date_value > 1e10:  # Milliseconds timestamp
-                            return datetime.fromtimestamp(date_value / 1000, tz=local_tz)
-                        else:  # Seconds timestamp
-                            return datetime.fromtimestamp(date_value, tz=local_tz)
-                    else:
-                        # Try parsing as string
-                        parsed = dtparser.parse(str(date_value))
-                        # Ensure local timezone if naive
-                        if parsed.tzinfo is None:
-                            parsed = parsed.replace(tzinfo=local_tz)
-                        return parsed
-                except Exception as e:
-                    return None
-            
             # Priority 1: Extract dates from read_info.readDetail and read_info.finishedDate
             if read_info:
-                # Get readDetail (nested object)
                 read_detail = read_info.get("readDetail")
                 if read_detail:
-                    # Date Started: read_info.readDetail.beginReadingDate
                     if read_detail.get("beginReadingDate"):
-                        started_at = parse_date_field(read_detail.get("beginReadingDate"), "readDetail.beginReadingDate")
-                    
-                    # Last Read At: read_info.readDetail.lastReadingDate
+                        started_at = self._parse_date_field(read_detail.get("beginReadingDate"))
                     if read_detail.get("lastReadingDate"):
-                        last_read_at = parse_date_field(read_detail.get("lastReadingDate"), "readDetail.lastReadingDate")
-                
-                # Date Finished: read_info.finishedDate
+                        last_read_at = self._parse_date_field(read_detail.get("lastReadingDate"))
                 if read_info.get("finishedDate"):
-                    date_finished = parse_date_field(read_info.get("finishedDate"), "finishedDate")
+                    date_finished = self._parse_date_field(read_info.get("finishedDate"))
             
             # Fallback: Use old logic if dates not found in read_info
             if not started_at or not last_read_at:
-                # Collect all possible start times to find the earliest (first read)
                 start_times = []
-                
                 if reading_data:
                     if not started_at and reading_data.get("startTime"):
-                        parsed_start = parse_date_field(reading_data.get("startTime"), "startTime")
+                        parsed_start = self._parse_date_field(reading_data.get("startTime"))
                         if parsed_start:
                             start_times.append(parsed_start)
-                            if not started_at:
-                                started_at = parsed_start
-                    
+                            started_at = parsed_start
                     if not last_read_at and (reading_data.get("lastReadTime") or reading_data.get("updateTime")):
                         last_read_raw = reading_data.get("lastReadTime") or reading_data.get("updateTime")
-                        parsed_last = parse_date_field(last_read_raw, "lastReadTime/updateTime")
+                        parsed_last = self._parse_date_field(last_read_raw)
                         if parsed_last:
                             last_read_at = parsed_last
-                
-                # Also check book_item for updateTime (from bookProgress) - this is Unix timestamp
                 if book_item and book_item.get("updateTime"):
-                    parsed_update = parse_date_field(book_item.get("updateTime"), "updateTime")
+                    parsed_update = self._parse_date_field(book_item.get("updateTime"))
                     if parsed_update:
                         if not last_read_at:
                             last_read_at = parsed_update
-                        # Use updateTime as potential first read if we don't have startTime
                         if not started_at:
                             start_times.append(parsed_update)
-                
-                # Use earliest start time as started_at if we still don't have it
                 if not started_at and start_times:
                     started_at = min(start_times)
             
@@ -1052,13 +949,8 @@ class WeReadAPI:
                      book_info.get("star") or book_info.get("bookRating") or
                      book_info.get("myRating"))
             
-            # Get year started reading (extract year from started_at date)
-            year_started = None
-            if started_at:
-                try:
-                    year_started = started_at.year
-                except:
-                    pass
+            # Get year started reading
+            year_started = started_at.year if started_at else None
             
             
             # Format reading time from read_info
@@ -1122,6 +1014,44 @@ class WeReadAPI:
             import traceback
             traceback.print_exc()
             return None
+    
+    @staticmethod
+    def _parse_date_field(date_value: Any) -> Optional[datetime]:
+        """Parse date field from API response - handles timestamps and strings"""
+        if date_value is None:
+            return None
+        try:
+            local_tz = dateutil.tz.tzlocal()
+            if isinstance(date_value, (int, float)):
+                # Handle Unix timestamp (seconds or milliseconds)
+                if date_value > 1e10:  # Milliseconds timestamp
+                    return datetime.fromtimestamp(date_value / 1000, tz=local_tz)
+                else:  # Seconds timestamp
+                    return datetime.fromtimestamp(date_value, tz=local_tz)
+            else:
+                # Try parsing as string
+                parsed = dtparser.parse(str(date_value))
+                # Ensure local timezone if naive
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=local_tz)
+                return parsed
+        except Exception:
+            return None
+    
+    @staticmethod
+    def _extract_page_info(data: Dict[str, Any], current_page: Optional[int] = None, 
+                           total_page: Optional[int] = None, percent: Optional[float] = None) -> Tuple[Optional[int], Optional[int], Optional[float]]:
+        """Extract page information from API response data"""
+        if not current_page:
+            current_page = (data.get("currentPage") or data.get("readPage") or 
+                          data.get("readPageNum") or data.get("page"))
+        if not total_page:
+            total_page = (data.get("totalPage") or data.get("pageCount") or
+                         data.get("totalPages") or data.get("maxPage") or data.get("pageNum"))
+        if not percent or percent == 0:
+            percent = (data.get("readPercentage") or data.get("progress") or
+                      data.get("readPercent") or data.get("readingProgress"))
+        return current_page, total_page, percent
     
     def _check_auth_error(self, response, api_name: str) -> bool:
         """Check if response indicates authentication error (expired cookies)"""
@@ -1214,11 +1144,6 @@ class WeReadAPI:
                     response.raise_for_status()
                     data = response.json()
                     
-                    # Print full response for inspection
-                    print(f"\n[DEBUG] get_note_list response from {endpoint}:")
-                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str)[:1000])  # Limit output
-                    print()
-                    
                     # Try different response formats
                     if isinstance(data, list):
                         return data
@@ -1229,8 +1154,7 @@ class WeReadAPI:
                     if "bookmarks" in data:
                         return data.get("bookmarks", [])
                     
-                    # If we got here, return the data structure as-is for inspection
-                    print(f"[DEBUG] Note API returned unexpected structure. Keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                    # If we got here, return the data structure as-is
                     return data if isinstance(data, list) else []
                 except requests.exceptions.HTTPError as e:
                     if e.response.status_code == 404:
@@ -1300,9 +1224,7 @@ class WeReadAPI:
                 elif review_type == 3:
                     # 章节笔记 (chapter notes)
                     chapter_notes.append(review)
-                else:
-                    # Unknown type - log it
-                    print(f"[DEBUG] Unknown review type {review_type} for book {book_id}")
+                # Unknown type - skip it
             
             return summary_reviews, regular_reviews, page_notes, chapter_notes
         except requests.exceptions.HTTPError as e:

@@ -20,7 +20,6 @@ Optional env vars: same as weread_notion_sync.py
 
 import os
 import time
-import json
 from typing import Dict, Any, Optional
 
 from notion_client import Client
@@ -28,7 +27,6 @@ from weread_api import WeReadAPI, env
 
 # Import Notion helpers from the main sync script
 import sys
-import os
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -378,59 +376,6 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     if not client.validate_cookies():
         print("\n❌ Cookie validation failed. Please update your cookies in .env file.")
         print("   The sync will continue but may fail with authentication errors.\n")
-        # Continue anyway - let individual API calls handle errors
-    
-    # Test getNotebooks API (matching obsidian plugin) and print response
-    print("\n" + "=" * 80)
-    print("[TEST] Calling getNotebooks API (matching obsidian plugin)")
-    print("=" * 80)
-    try:
-        notebooks = client.get_notebooks()
-        print(f"\n[RESPONSE] getNotebooks returned {len(notebooks) if notebooks else 0} notebooks")
-        if notebooks and len(notebooks) > 0:
-            print(f"\n[RESPONSE] First notebook structure:")
-            print(json.dumps(notebooks[0], indent=2, ensure_ascii=False, default=str))
-            if len(notebooks) > 1:
-                print(f"\n[RESPONSE] ... and {len(notebooks) - 1} more notebooks")
-        else:
-            print("[RESPONSE] No notebooks returned (empty list or None)")
-    except Exception as e:
-        print(f"[ERROR] Failed to call getNotebooks: {e}")
-        import traceback
-        traceback.print_exc()
-    print("=" * 80 + "\n")
-    
-    # Test get_single_notebook_data API (matching syncNotebook approach) if we have a test book
-    if test_book_title:
-        print("\n" + "=" * 80)
-        print("[TEST] Testing get_single_notebook_data (syncNotebook approach)")
-        print("=" * 80)
-        # First find the book ID from shelf
-        shelf_data, all_books_list, book_progress_list = client.get_shelf()
-        test_book_id = None
-        for book_item in all_books_list:
-            book_info = book_item.get("book", {})
-            title = book_info.get("title") or book_info.get("name") or ""
-            if test_book_title.lower() in title.lower():
-                test_book_id = book_item.get("bookId")
-                print(f"[TEST] Found test book: '{title}' (bookId: {test_book_id})")
-                break
-        
-        if test_book_id:
-            try:
-                notebook_data = client.get_single_notebook_data(test_book_id)
-                if notebook_data:
-                    print(f"\n[RESPONSE] get_single_notebook_data returned data for book {test_book_id}")
-                    print(json.dumps(notebook_data, indent=2, ensure_ascii=False, default=str)[:2000])
-                else:
-                    print(f"[RESPONSE] get_single_notebook_data returned None for book {test_book_id}")
-            except Exception as e:
-                print(f"[ERROR] Failed to call get_single_notebook_data: {e}")
-                import traceback
-                traceback.print_exc()
-        else:
-            print(f"[TEST] Could not find book with title containing '{test_book_title}'")
-        print("=" * 80 + "\n")
     
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
@@ -580,13 +525,17 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 book_data["status"] = status_map.get(book_data.get("status"), STATUS_TBR)
                 book_data["source"] = SOURCE_WEREAD
                 
-                # Sync to Notion - get page ID
-                page_id = upsert_page(notion, database_id, db_props, book_data)
+                # Sync to Notion - get page ID and whether it's new
+                page_id, is_new = upsert_page(notion, database_id, db_props, book_data)
                 
                 # Add bookmarks, reviews, quotes, and callouts as blocks
                 if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews") or 
                                book_data.get("page_notes") or book_data.get("chapter_notes")):
-                    print(f"[{i}/{total_to_process}] Adding bookmarks, notes, and reviews to page...")
+                    if is_new:
+                        print(f"[{i}/{total_to_process}] Adding bookmarks, notes, and reviews to new page...")
+                    else:
+                        print(f"[{i}/{total_to_process}] Appending new bookmarks, notes, and reviews to existing page...")
+                    
                     try:
                         # Get optional style/color filters from env vars
                         styles = None
@@ -604,13 +553,19 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                             except:
                                 pass
                         
-                        # Check if we should clear existing blocks (default: True to avoid duplicates)
-                        clear_existing = env("WEREAD_CLEAR_BLOCKS", "true").lower() == "true"
+                        # For existing pages, always append (don't clear). For new pages, respect WEREAD_CLEAR_BLOCKS setting
+                        if is_new:
+                            clear_existing = env("WEREAD_CLEAR_BLOCKS", "true").lower() == "true"
+                        else:
+                            clear_existing = False  # Always append for existing pages
                         
                         blocks = create_book_content_blocks(book_data, styles=styles, colors=colors)
                         if blocks:
                             add_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
-                            print(f"[{i}/{total_to_process}] ✅ Added {len(blocks)} blocks (bookmarks/reviews)")
+                            if is_new:
+                                print(f"[{i}/{total_to_process}] ✅ Added {len(blocks)} blocks (bookmarks/reviews)")
+                            else:
+                                print(f"[{i}/{total_to_process}] ✅ Appended {len(blocks)} new blocks (bookmarks/reviews)")
                     except Exception as e:
                         print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
                         import traceback
@@ -644,8 +599,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         # Progress update every 10 books or at the end
         if (i % 10 == 0 and limit != 1) or i == total_to_process:
             elapsed = time.time() - start_time
-            avg_time = elapsed / i
-            remaining = (total_to_process - i) * avg_time if limit is None else 0
+            avg_time = elapsed / i if i > 0 else 0
+            remaining = (total_to_process - i) * avg_time if limit is None and i > 0 else 0
             print(f"\n[PROGRESS] {i}/{total_to_process} | ✅ {synced_count} synced | ❌ {error_count} errors | ⏱️  {elapsed:.1f}s elapsed")
             if remaining > 0:
                 print(f"          Estimated time remaining: {remaining/60:.1f} minutes\n")

@@ -496,7 +496,13 @@ def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Di
         # Fallback to title-only search
         return find_page_by_title(notion, database_id, title)
 
-def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> str:
+def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Tuple[str, bool]:
+    """
+    Upsert a page in Notion database.
+    
+    Returns:
+        Tuple of (page_id, is_new) where is_new is True if page was created, False if it already existed
+    """
     title = fields.get("title", "")
     author = fields.get("author", "")
     
@@ -518,13 +524,13 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
         if fields.get("review"):
             append_review(notion, existing["id"], db_props, fields["review"])
         
-        return existing["id"]
+        return existing["id"], False  # Return page_id and False (not new)
     
     # No duplicate - create new page with all fields
     print(f"[INFO] Creating new page (title: '{title}', author: '{author}')")
     props = build_props(db_props, fields)
     created = notion.pages.create(parent={"database_id": database_id}, properties=props)
-    return created["id"]
+    return created["id"], True  # Return page_id and True (is new)
 
 
 # -------------------------
@@ -636,7 +642,7 @@ def sync_folder(notion: Client, database_id: str, db_props: Dict[str, Any], book
     fields = parse_book_folder(book_dir)
     if not fields:
         return
-    upsert_page(notion, database_id, db_props, fields)
+    page_id, is_new = upsert_page(notion, database_id, db_props, fields)
     print(f"[SYNC] {fields['title']} | {fields['status']} | p={fields.get('current_page')}/{fields.get('total_page')}")
 
 def main():
