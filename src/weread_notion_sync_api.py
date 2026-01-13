@@ -164,37 +164,169 @@ def clear_page_blocks(notion: Client, page_id: str):
         print(f"[WARNING] Failed to clear blocks: {e}")
 
 
-def add_blocks_to_page(notion: Client, page_id: str, blocks: list, clear_existing: bool = False):
+def get_block_signature(block: Dict[str, Any]) -> str:
     """
-    Add blocks to a Notion page (handles 100 block limit per request)
+    Create a signature (hash) for a block based on its content.
+    Returns a unique identifier for the block's content.
+    """
+    import hashlib
+    block_type = block.get("type")
+    content = ""
+    
+    if block_type == "callout":
+        rich_text = block.get("callout", {}).get("rich_text", [])
+        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
+    elif block_type == "quote":
+        rich_text = block.get("quote", {}).get("rich_text", [])
+        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
+    elif block_type in ["heading_1", "heading_2", "heading_3"]:
+        heading_key = block_type
+        rich_text = block.get(heading_key, {}).get("rich_text", [])
+        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
+    elif block_type == "table_of_contents":
+        # Table of contents is always the same, use type as signature
+        return f"table_of_contents_{block_type}"
+    
+    # Create signature from full content (normalized)
+    if content:
+        content_normalized = content.strip()
+        signature = hashlib.md5(content_normalized.encode('utf-8')).hexdigest()
+        return f"{block_type}_{signature}"
+    
+    # For blocks without content, use type and structure
+    return f"{block_type}_empty"
+
+
+def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
+    """
+    Get all existing blocks from a page with their signatures and IDs.
+    Returns a dict mapping signature -> block_id for deletion purposes.
+    """
+    existing_blocks = {}  # signature -> block_id
+    
+    try:
+        has_more = True
+        while has_more:
+            response = notion.blocks.children.list(block_id=page_id)
+            blocks = response.get("results", [])
+            
+            for block in blocks:
+                block_id = block.get("id")
+                # Extract content from existing block
+                block_type = block.get("type")
+                content = ""
+                
+                if block_type == "callout":
+                    rich_text = block.get("callout", {}).get("rich_text", [])
+                    content = "".join([rt.get("plain_text", "") for rt in rich_text])
+                elif block_type == "quote":
+                    rich_text = block.get("quote", {}).get("rich_text", [])
+                    content = "".join([rt.get("plain_text", "") for rt in rich_text])
+                elif block_type in ["heading_1", "heading_2", "heading_3"]:
+                    heading_key = block_type
+                    rich_text = block.get(heading_key, {}).get("rich_text", [])
+                    content = "".join([rt.get("plain_text", "") for rt in rich_text])
+                elif block_type == "table_of_contents":
+                    signature = f"table_of_contents_{block_type}"
+                    existing_blocks[signature] = block_id
+                    continue
+                
+                # Create signature
+                if content:
+                    import hashlib
+                    content_normalized = content.strip()
+                    signature = hashlib.md5(content_normalized.encode('utf-8')).hexdigest()
+                    signature = f"{block_type}_{signature}"
+                    existing_blocks[signature] = block_id
+            
+            has_more = response.get("has_more", False)
+    except Exception as e:
+        print(f"[WARNING] Failed to get existing blocks: {e}")
+    
+    return existing_blocks
+
+
+def sync_blocks_to_page(notion: Client, page_id: str, new_blocks: list, clear_existing: bool = False):
+    """
+    Fully sync blocks to a Notion page - adds new blocks, deletes removed blocks, keeps existing ones.
+    This ensures the Notion page exactly matches the WeRead data.
     
     Args:
         notion: Notion client
-        page_id: Page ID to add blocks to
-        blocks: List of block objects to add
-        clear_existing: If True, clear existing blocks before adding new ones
+        page_id: Page ID to sync blocks to
+        new_blocks: List of block objects that should exist (from WeRead)
+        clear_existing: If True, clear all existing blocks first (for new pages)
+    
+    Returns:
+        Tuple of (added_count, deleted_count, kept_count)
     """
-    if not blocks:
-        return
-    
-    # Clear existing blocks if requested
     if clear_existing:
+        # For new pages, just clear and add all blocks
         clear_page_blocks(notion, page_id)
+        existing_blocks = {}
+    else:
+        # For existing pages, get current blocks for comparison
+        existing_blocks = get_existing_blocks(notion, page_id)
     
-    results = []
-    # Notion API limits to 100 blocks per request
-    for i in range(0, len(blocks), 100):
-        time.sleep(0.3)  # Rate limiting
-        chunk = blocks[i:i + 100]
+    if not new_blocks:
+        # If no new blocks, delete all existing ones
+        deleted_count = len(existing_blocks)
+        for block_id in existing_blocks.values():
+            try:
+                time.sleep(0.1)  # Rate limiting
+                notion.blocks.delete(block_id=block_id)
+            except Exception as e:
+                print(f"[WARNING] Failed to delete block {block_id}: {e}")
+        return 0, deleted_count, 0
+    
+    # Create signatures for new blocks
+    new_signatures = {}  # signature -> block
+    for block in new_blocks:
+        signature = get_block_signature(block)
+        if signature not in new_signatures:
+            new_signatures[signature] = block
+    
+    # Find blocks to delete (exist in Notion but not in new data)
+    blocks_to_delete = []
+    for signature, block_id in existing_blocks.items():
+        if signature not in new_signatures:
+            blocks_to_delete.append(block_id)
+    
+    # Find blocks to add (exist in new data but not in Notion)
+    blocks_to_add = []
+    for signature, block in new_signatures.items():
+        if signature not in existing_blocks:
+            blocks_to_add.append(block)
+    
+    # Count blocks that will be kept
+    kept_count = len(existing_blocks) - len(blocks_to_delete)
+    
+    # Delete blocks that no longer exist
+    deleted_count = 0
+    for block_id in blocks_to_delete:
         try:
-            response = notion.blocks.children.append(block_id=page_id, children=chunk)
-            results.extend(response.get("results", []))
+            time.sleep(0.1)  # Rate limiting
+            notion.blocks.delete(block_id=block_id)
+            deleted_count += 1
         except Exception as e:
-            print(f"[ERROR] Failed to add blocks chunk {i//100 + 1}: {e}")
-            # Continue with next chunk even if one fails
-            continue
+            print(f"[WARNING] Failed to delete block {block_id}: {e}")
     
-    return results
+    # Add new blocks
+    added_count = 0
+    if blocks_to_add:
+        # Notion API limits to 100 blocks per request
+        for i in range(0, len(blocks_to_add), 100):
+            time.sleep(0.3)  # Rate limiting
+            chunk = blocks_to_add[i:i + 100]
+            try:
+                response = notion.blocks.children.append(block_id=page_id, children=chunk)
+                added_count += len(response.get("results", []))
+            except Exception as e:
+                print(f"[ERROR] Failed to add blocks chunk {i//100 + 1}: {e}")
+                # Continue with next chunk even if one fails
+                continue
+    
+    return added_count, deleted_count, kept_count
 
 
 def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list] = None, colors: Optional[list] = None) -> list:
@@ -553,19 +685,23 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                             except:
                                 pass
                         
-                        # For existing pages, always append (don't clear). For new pages, respect WEREAD_CLEAR_BLOCKS setting
+                        # For new pages, respect WEREAD_CLEAR_BLOCKS setting
+                        # For existing pages, fully sync (add new, delete removed, keep existing)
                         if is_new:
                             clear_existing = env("WEREAD_CLEAR_BLOCKS", "true").lower() == "true"
                         else:
-                            clear_existing = False  # Always append for existing pages
+                            clear_existing = False  # For existing pages, use full sync (not clear)
                         
                         blocks = create_book_content_blocks(book_data, styles=styles, colors=colors)
-                        if blocks:
-                            add_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
+                        if blocks or not is_new:  # Sync even if no blocks (to delete removed notes)
+                            added_count, deleted_count, kept_count = sync_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
                             if is_new:
-                                print(f"[{i}/{total_to_process}] ✅ Added {len(blocks)} blocks (bookmarks/reviews)")
+                                print(f"[{i}/{total_to_process}] ✅ Added {added_count} blocks (bookmarks/reviews)")
                             else:
-                                print(f"[{i}/{total_to_process}] ✅ Appended {len(blocks)} new blocks (bookmarks/reviews)")
+                                if added_count > 0 or deleted_count > 0:
+                                    print(f"[{i}/{total_to_process}] ✅ Synced blocks: +{added_count} added, -{deleted_count} deleted, {kept_count} kept")
+                                else:
+                                    print(f"[{i}/{total_to_process}] ℹ️  All {kept_count} blocks up to date, no changes needed")
                     except Exception as e:
                         print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
                         import traceback

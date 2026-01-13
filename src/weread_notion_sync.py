@@ -351,8 +351,8 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     return props
 
-def build_update_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
-    """Build properties for update only: status, last_read_at, date_finished, current_page"""
+def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    """Build properties for update only: status, last_read_at, date_finished, current_page, started_at (if earlier), total_page"""
     props: Dict[str, Any] = {}
 
     if fields.get("status") and prop_exists(db_props, PROP_STATUS):
@@ -420,6 +420,63 @@ def build_update_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict
         else:
             date_str = str(date_finished)
         props[PROP_DATE_FINISHED] = {"date": {"start": date_str}}
+
+    # Update started_at only if new value is earlier than existing one
+    if fields.get("started_at") and prop_exists(db_props, PROP_STARTED_AT):
+        try:
+            # Get existing page to check current started_at
+            existing_page = notion.pages.retrieve(page_id=page_id)
+            existing_props = existing_page.get("properties", {})
+            
+            existing_started_at = None
+            if PROP_STARTED_AT in existing_props:
+                date_prop = existing_props[PROP_STARTED_AT].get("date")
+                if date_prop and date_prop.get("start"):
+                    try:
+                        from dateutil import parser as dtparser
+                        existing_started_at = dtparser.parse(date_prop["start"])
+                    except:
+                        pass
+            
+            # Only update if new value is earlier (or if no existing value)
+            new_started_at = fields["started_at"]
+            should_update = True
+            if existing_started_at and new_started_at:
+                if hasattr(new_started_at, 'date'):
+                    new_date = new_started_at.date()
+                else:
+                    new_date = new_started_at
+                if hasattr(existing_started_at, 'date'):
+                    existing_date = existing_started_at.date()
+                else:
+                    existing_date = existing_started_at
+                
+                if new_date >= existing_date:
+                    should_update = False
+            
+            if should_update:
+                # Format new started_at
+                if hasattr(new_started_at, 'date'):
+                    date_str = new_started_at.date().isoformat()
+                elif hasattr(new_started_at, 'isoformat'):
+                    date_str = new_started_at.isoformat()
+                else:
+                    date_str = str(new_started_at)
+                props[PROP_STARTED_AT] = {"date": {"start": date_str}}
+        except Exception as e:
+            # If we can't check existing value, update anyway
+            started_at = fields["started_at"]
+            if hasattr(started_at, 'date'):
+                date_str = started_at.date().isoformat()
+            elif hasattr(started_at, 'isoformat'):
+                date_str = started_at.isoformat()
+            else:
+                date_str = str(started_at)
+            props[PROP_STARTED_AT] = {"date": {"start": date_str}}
+
+    # Update total_page if available
+    if fields.get("total_page") is not None and prop_exists(db_props, PROP_TOTAL_PAGE):
+        props[PROP_TOTAL_PAGE] = {"number": int(fields["total_page"])}
 
     return props
 
@@ -514,7 +571,7 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
         print(f"[INFO] Duplicate found (title: '{title}', author: '{author}') - updating only: status, last_read_at, date_finished, current_page")
         
         # Build update props (only the fields we want to update)
-        update_props = build_update_props(db_props, fields)
+        update_props = build_update_props(notion, existing["id"], db_props, fields)
         
         if update_props:
             notion.pages.update(page_id=existing["id"], properties=update_props)

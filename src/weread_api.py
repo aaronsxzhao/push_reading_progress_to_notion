@@ -10,6 +10,7 @@ Authentication: Uses cookie-based auth (get cookies from browser after logging i
 
 import os
 import json
+import math
 import time
 import urllib.parse
 from datetime import datetime, timezone
@@ -838,30 +839,40 @@ class WeReadAPI:
             if book_info:
                 last_chapter_idx = book_info.get("lastChapterIdx")  # Total chapters
             
-            # Try to get total pages from book_info (most reliable)
-            if book_info:
+            # Calculate total pages from chapter_info wordCount (sum all wordCount, divide by 550 words per page)
+            if chapter_info:
+                total_word_count = 0
+                for chapter_uid, chapter_data in chapter_info.items():
+                    word_count = chapter_data.get("wordCount", 0)
+                    if isinstance(word_count, (int, float)) and word_count > 0:
+                        total_word_count += word_count
+                
+                if total_word_count > 0:
+                    # Calculate total pages: total_word_count / 550 words per page
+                    total_page = int(round(total_word_count / 550.0))
+            
+            # If chapter_info didn't provide total_page, try other sources
+            if not total_page and book_info:
                 # Try all possible field names for total pages
                 total_page = (book_info.get("pageCount") or book_info.get("totalPage") or 
                              book_info.get("totalPages") or book_info.get("page") or
                              book_info.get("pages") or book_info.get("pageNum") or
                              book_info.get("totalPageCount") or book_info.get("maxPage"))
             
-            # Try to get page data from read_info API (more reliable for pages)
+            # Get readingProgress from read_info
+            reading_progress = None
             if read_info:
-                current_page, total_page, percent = self._extract_page_info(read_info, current_page, total_page, percent)
+                reading_progress = (read_info.get("readingProgress") or 
+                                   read_info.get("readPercentage") or 
+                                   read_info.get("progress") or
+                                   read_info.get("readPercent"))
+                # Also update percent if not set
+                if not percent:
+                    percent = reading_progress
             
-            # Try to get page data from reading_data API (fallback)
-            if reading_data and (not current_page or not total_page):
-                current_page, total_page, percent = self._extract_page_info(reading_data, current_page, total_page, percent)
-            
-            # Calculate current page from percent if we have total but not current
-            if percent is not None and total_page and not current_page:
-                current_page = int(round((percent / 100.0) * total_page))
-            
-            # If we have current_page but not total_page, try to estimate from percent
-            if current_page and percent is not None and percent > 0 and not total_page:
-                total_page = int(round((current_page / (percent / 100.0))))
-            
+            # Try to get page data from reading_data API (fallback for percent)
+            if reading_data and not percent:
+                _, _, percent = self._extract_page_info(reading_data, None, None, None)
             
             # Check for finishReading flag - ONLY this flag determines if book is read
             is_finished = False
@@ -884,6 +895,18 @@ class WeReadAPI:
                 status = "Currently Reading"
             else:
                 status = "To Be Read"
+            
+            # Calculate current_page based on status and readingProgress
+            if total_page:
+                if status == "Read":
+                    # If book is read, current_page = total_page
+                    current_page = total_page
+                elif reading_progress is not None and reading_progress > 0:
+                    # For "in reading/to be read": current_page = round up(readingProgress * total_page / 100)
+                    current_page = math.ceil((reading_progress / 100.0) * total_page)
+                elif percent is not None and percent > 0:
+                    # Fallback: use percent if readingProgress not available
+                    current_page = math.ceil((percent / 100.0) * total_page)
             
             # Extract dates from read_info API response
             # Date Started: read_info.readDetail.beginReadingDate
