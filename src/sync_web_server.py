@@ -30,7 +30,7 @@ except ImportError:
 from notion_client import Client
 from weread_api import WeReadAPI, env
 from weread_notion_sync import get_db_properties
-from weread_notion_sync_api import sync_books_from_api, sync_kindle_books_from_api
+from weread_notion_sync_api import sync_books_from_api
 
 app = Flask(__name__)
 CORS(app)  # Allow cross-origin requests (for Notion embeds)
@@ -55,18 +55,13 @@ sync_lock = threading.Lock()
 
 def get_env_config():
     """Load configuration from environment"""
-    sync_source = env("SYNC_SOURCE", "weread").lower()
     return {
         "notion_token": env("NOTION_TOKEN"),
         "notion_database_id": env("NOTION_DATABASE_ID"),
-        "sync_source": sync_source,
         "weread_cookies": env("WEREAD_COOKIES"),
-        "kindle_cookies": env("KINDLE_COOKIES"),
-        "kindle_clippings": env("KINDLE_CLIPPINGS"),
-        "kindle_device_token": env("KINDLE_DEVICE_TOKEN"),
         "api_key": env("SYNC_API_KEY", ""),  # Optional API key for security
         "sync_limit": env("SYNC_LIMIT"),
-        "test_book_title": env("WEREAD_TEST_BOOK_TITLE") or env("KINDLE_TEST_BOOK_TITLE"),
+        "test_book_title": env("WEREAD_TEST_BOOK_TITLE"),
     }
 
 
@@ -89,6 +84,8 @@ def run_sync_in_thread():
         
         if not config["notion_token"] or not config["notion_database_id"]:
             raise ValueError("Missing NOTION_TOKEN or NOTION_DATABASE_ID")
+        if not config["weread_cookies"]:
+            raise ValueError("Missing WEREAD_COOKIES")
         
         notion = Client(auth=config["notion_token"])
         db_props = get_db_properties(notion, config["notion_database_id"])
@@ -106,44 +103,18 @@ def run_sync_in_thread():
         if test_book_title and test_book_title.lower() in ("none", "null", "false", "off", "disable", "0"):
             test_book_title = None
         
-        # Determine which source to sync
-        sync_source = config.get("sync_source", "weread").lower()
+        with sync_lock:
+            sync_status["message"] = "Fetching books from WeRead..."
         
-        if sync_source == "kindle":
-            if not config["kindle_cookies"] and not config["kindle_clippings"]:
-                raise ValueError("Missing KINDLE_COOKIES or KINDLE_CLIPPINGS")
-            
-            with sync_lock:
-                sync_status["message"] = "Fetching books from Kindle..."
-            
-            # Run Kindle sync
-            sync_kindle_books_from_api(
-                notion,
-                config["notion_database_id"],
-                db_props,
-                kindle_cookies=config["kindle_cookies"],
-                kindle_clippings=config["kindle_clippings"],
-                kindle_device_token=config["kindle_device_token"],
-                limit=limit,
-                test_book_title=test_book_title
-            )
-        else:
-            # Default to WeRead
-            if not config["weread_cookies"]:
-                raise ValueError("Missing WEREAD_COOKIES")
-            
-            with sync_lock:
-                sync_status["message"] = "Fetching books from WeRead..."
-            
-            # Run WeRead sync
-            sync_books_from_api(
-                notion, 
-                config["notion_database_id"], 
-                db_props, 
-                config["weread_cookies"],
-                limit=limit,
-                test_book_title=test_book_title
-            )
+        # Run the sync
+        sync_books_from_api(
+            notion, 
+            config["notion_database_id"], 
+            db_props, 
+            config["weread_cookies"],
+            limit=limit,
+            test_book_title=test_book_title
+        )
         
         with sync_lock:
             sync_status["running"] = False

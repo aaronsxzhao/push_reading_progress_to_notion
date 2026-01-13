@@ -75,7 +75,6 @@ STATUS_READING = env("STATUS_READING", "Currently Reading")
 STATUS_READ = env("STATUS_READ", "Read")
 
 SOURCE_WEREAD = env("SOURCE_WEREAD", "WeRead")
-SOURCE_KINDLE = env("SOURCE_KINDLE", "Kindle")
 
 DEBOUNCE_SECONDS = 1.0
 
