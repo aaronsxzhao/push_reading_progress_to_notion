@@ -125,9 +125,7 @@ Logs:
    ```bash
    git diff --cached  # if staging
    git diff          # if not staging
-   ```
-
-### What's safe to commit:
+   ```### What's safe to commit:
 - ✅ `.env.example` (template with placeholder values)
 - ✅ All code files
 - ✅ `requirements.txt`, `README.md`, etc.
