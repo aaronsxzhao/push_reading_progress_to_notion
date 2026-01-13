@@ -110,9 +110,7 @@ Logs:
 
 **Your `.env` file is automatically ignored by git** and will never be committed. Here's how to verify:
 
-### Before pushing to GitHub:
-
-1. **Run the security check:**
+### Before pushing to GitHub:1. **Run the security check:**
    ```bash
    bash scripts/check_secrets.sh
    ```2. **Verify `.env` is not tracked:**

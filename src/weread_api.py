@@ -803,9 +803,20 @@ class WeReadAPI:
             book_info = None
             progress = 0
             
-            if book_item and "book" in book_item:
-                book_info = book_item["book"]
-                progress = book_item.get("progress", 0)
+            if book_item:
+                # Try different possible structures for book_item
+                if "book" in book_item:
+                    book_info = book_item["book"]
+                    progress = book_item.get("progress", 0)
+                elif "bookInfo" in book_item:
+                    book_info = book_item["bookInfo"]
+                    progress = book_item.get("progress", 0)
+                elif "title" in book_item or "name" in book_item:
+                    # book_item IS the book info (structure from shelf API)
+                    book_info = book_item
+                    progress = book_item.get("progress", 0)
+                else:
+                    progress = book_item.get("progress", 0)
                 # bookList API already provides title, author, pageCount, etc.
             
             # Priority 2: If book_info doesn't have title, try fetching detail
@@ -925,23 +936,62 @@ class WeReadAPI:
                     current_page = math.ceil((percent / 100.0) * total_page)
             
             # Extract dates from read_info API response
-            # Date Started: read_info.readDetail.beginReadingDate
+            # Date Started: read_info.readDetail.beginReadingDate (if exists) or read_info.readingBookDate (first read)
             # Date Finished: read_info.finishedDate
-            # Last Read At: read_info.readDetail.lastReadingDate
+            # Last Read At: book_item.readUpdateTime or book_progress.updateTime (latest read) > read_info.readDetail.lastReadingDate > read_info.deepestNightReadTime
             started_at = None
             last_read_at = None
             date_finished = None
             
-            # Priority 1: Extract dates from read_info.readDetail and read_info.finishedDate
+            # Priority 1: Extract started_at from read_info (first read date)
             if read_info:
                 read_detail = read_info.get("readDetail")
-                if read_detail:
-                    if read_detail.get("beginReadingDate"):
-                        started_at = self._parse_date_field(read_detail.get("beginReadingDate"))
-                    if read_detail.get("lastReadingDate"):
-                        last_read_at = self._parse_date_field(read_detail.get("lastReadingDate"))
+                if read_detail and read_detail.get("beginReadingDate"):
+                    # Some books have detailed read info with beginReadingDate
+                    started_at = self._parse_date_field(read_detail.get("beginReadingDate"))
+                
+                # Use readingBookDate as the first read date (when book was first started)
+                if not started_at and read_info.get("readingBookDate"):
+                    started_at = self._parse_date_field(read_info.get("readingBookDate"))
+                
                 if read_info.get("finishedDate"):
                     date_finished = self._parse_date_field(read_info.get("finishedDate"))
+            
+            # Priority 2: Extract last_read_at from book_item.readUpdateTime (latest read)
+            # This is the most recent reading activity timestamp from book_progress.updateTime
+            # We pass it as readUpdateTime in the book_item structure
+            if book_item:
+                # First try readUpdateTime (which we set from book_progress.updateTime)
+                if book_item.get("readUpdateTime"):
+                    read_update = self._parse_date_field(book_item.get("readUpdateTime"))
+                    if read_update:
+                        last_read_at = read_update
+                
+                # Fallback to updateTime if readUpdateTime not available
+                if not last_read_at and book_item.get("updateTime"):
+                    read_update = self._parse_date_field(book_item.get("updateTime"))
+                    if read_update:
+                        last_read_at = read_update
+            
+            # Priority 3: Fallback to read_info dates if book_item dates not available
+            if read_info:
+                read_detail = read_info.get("readDetail")
+                if read_detail and read_detail.get("lastReadingDate"):
+                    last_read_date = self._parse_date_field(read_detail.get("lastReadingDate"))
+                    if last_read_date and (not last_read_at or last_read_date > last_read_at):
+                        last_read_at = last_read_date
+                
+                # Also check deepestNightReadTime as a potential last read time
+                if read_info.get("deepestNightReadTime"):
+                    deepest_read = self._parse_date_field(read_info.get("deepestNightReadTime"))
+                    if deepest_read and (not last_read_at or deepest_read > last_read_at):
+                        last_read_at = deepest_read
+                
+                # Last resort: use readingBookDate if no other last_read_at found
+                if not last_read_at and read_info.get("readingBookDate"):
+                    reading_date = self._parse_date_field(read_info.get("readingBookDate"))
+                    if reading_date:
+                        last_read_at = reading_date
             
             # Fallback: Use old logic if dates not found in read_info
             if not started_at or not last_read_at:
@@ -970,6 +1020,11 @@ class WeReadAPI:
             # If date_finished not found but book is finished, use last_read_at as fallback
             if not date_finished and status == "Read" and last_read_at:
                 date_finished = last_read_at
+            
+            # For "To Be Read" books: if no started_at but we have last_read_at, use last_read_at as started_at
+            # This handles cases where a book was opened/read slightly but progress is < 5%
+            if status == "To Be Read" and not started_at and last_read_at:
+                started_at = last_read_at
             
             # Get title and author
             title = book_info.get("title") or book_info.get("name") or f"Book {book_id}"
@@ -1029,6 +1084,7 @@ class WeReadAPI:
                 "author": author,
                 "current_page": int(current_page) if current_page else None,
                 "total_page": int(total_page) if total_page else None,
+                "percent": float(percent) if percent is not None else None,  # Reading progress percentage
                 "status": status,
                 "started_at": started_at,  # First read at (earliest start time)
                 "last_read_at": last_read_at,

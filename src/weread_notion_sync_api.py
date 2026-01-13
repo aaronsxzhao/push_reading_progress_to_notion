@@ -22,6 +22,8 @@ import os
 import time
 from typing import Dict, Any, Optional
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 from notion_client import Client
 from weread_api import WeReadAPI, env
@@ -563,11 +565,20 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     for book_id, book_data in books_map.items():
         progress_data = progress_map.get(book_id, {})
         # Include ALL progress data (chapterIdx, chapterUid, etc.) not just progress percentage
+        # Also include readUpdateTime from the book item if available, or use updateTime from progress
+        book_item_data = book_data["book"]
+        read_update_time = None
+        if isinstance(book_item_data, dict):
+            read_update_time = book_item_data.get("readUpdateTime")
+        if not read_update_time:
+            read_update_time = progress_data.get("updateTime")
+        
         all_book_items.append({
             "bookId": book_id,
-            "book": book_data["book"],
+            "book": book_item_data,
             "progress": progress_data.get("progress", 0),
             "updateTime": progress_data.get("updateTime"),
+            "readUpdateTime": read_update_time,  # Latest read time from book_item or progress
             "chapterIdx": progress_data.get("chapterIdx"),  # Current chapter index
             "chapterUid": progress_data.get("chapterUid"),
             "chapterOffset": progress_data.get("chapterOffset"),
@@ -582,6 +593,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 "bookId": book_id,
                 "progress": progress_data.get("progress", 0),
                 "updateTime": progress_data.get("updateTime"),
+                "readUpdateTime": progress_data.get("updateTime"),  # Use updateTime as readUpdateTime
                 "chapterIdx": progress_data.get("chapterIdx"),
                 "chapterUid": progress_data.get("chapterUid"),
                 "chapterOffset": progress_data.get("chapterOffset"),
@@ -625,27 +637,53 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         print(f"[API] Limiting to first {limit} book(s) for testing")
     
     total_to_process = len(all_book_items)
+    
+    # Get max workers from env or use default (5 parallel workers)
+    max_workers = int(env("WEREAD_MAX_WORKERS", "5"))
+    if max_workers < 1:
+        max_workers = 1
+    if max_workers > 20:
+        max_workers = 20  # Cap at 20 to avoid overwhelming the API
+    
     print(f"\n{'='*60}")
-    print(f"[PROGRESS] Processing {total_to_process} book(s) one at a time...")
+    print(f"[PROGRESS] Processing {total_to_process} book(s) with {max_workers} parallel workers...")
     print(f"{'='*60}\n")
     
     synced_count = 0
     error_count = 0
     cookie_error_count = 0  # Track cookie-related errors
+    processed_count = 0
     
-    # Process books one at a time with immediate output
-    for i, book_item in enumerate(all_book_items, 1):
+    # Thread-safe printing lock
+    print_lock = Lock()
+    
+    def process_single_book(book_item_with_index):
+        """Process a single book - designed for parallel execution"""
+        i, book_item = book_item_with_index
         book_id = book_item.get("bookId")
         if not book_id:
-            continue
+            return None
         
         book_start_time = time.time()
+        result = {
+            "index": i,
+            "book_id": book_id,
+            "success": False,
+            "error": None,
+            "book_data": None,
+            "time": 0
+        }
         
         try:
-            print(f"[{i}/{total_to_process}] 📖 Processing book {book_id}...")
+            with print_lock:
+                print(f"[{i}/{total_to_process}] 📖 Processing book {book_id}...")
             
-            # Get book data one at a time (this is where the work happens)
-            book_data = client.get_single_book_data(book_id, book_item)
+            # Create a new client instance for this thread (thread-safe)
+            # Each thread gets its own session to avoid conflicts
+            thread_client = WeReadAPI(weread_cookies)
+            
+            # Get book data (this is where the work happens)
+            book_data = thread_client.get_single_book_data(book_id, book_item)
             
             if book_data:
                 # Print notes summary (simplified)
@@ -657,7 +695,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 total_notes = len(bookmarks) + len(notes) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
                 
                 if total_notes > 0:
-                    print(f"   📝 Notes: {len(notes)} 纯划线, {len(bookmarks)} 划线(含想法), {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
+                    with print_lock:
+                        print(f"   [{i}/{total_to_process}] 📝 Notes: {len(notes)} 纯划线, {len(bookmarks)} 划线(含想法), {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
                 
                 # Map status values
                 status_map = {
@@ -674,10 +713,11 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 # Add bookmarks, reviews, quotes, and callouts as blocks
                 if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews") or 
                                book_data.get("page_notes") or book_data.get("chapter_notes")):
-                    if is_new:
-                        print(f"[{i}/{total_to_process}] Adding bookmarks, notes, and reviews to new page...")
-                    else:
-                        print(f"[{i}/{total_to_process}] Appending new bookmarks, notes, and reviews to existing page...")
+                    with print_lock:
+                        if is_new:
+                            print(f"[{i}/{total_to_process}] Adding bookmarks, notes, and reviews to new page...")
+                        else:
+                            print(f"[{i}/{total_to_process}] Syncing blocks to existing page...")
                     
                     try:
                         # Get optional style/color filters from env vars
@@ -706,51 +746,91 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                         blocks = create_book_content_blocks(book_data, styles=styles, colors=colors)
                         if blocks or not is_new:  # Sync even if no blocks (to delete removed notes)
                             added_count, deleted_count, kept_count = sync_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
-                            if is_new:
-                                print(f"[{i}/{total_to_process}] ✅ Added {added_count} blocks (bookmarks/reviews)")
-                            else:
-                                if added_count > 0 or deleted_count > 0:
-                                    print(f"[{i}/{total_to_process}] ✅ Synced blocks: +{added_count} added, -{deleted_count} deleted, {kept_count} kept")
+                            with print_lock:
+                                if is_new:
+                                    print(f"[{i}/{total_to_process}] ✅ Added {added_count} blocks (bookmarks/reviews)")
                                 else:
-                                    print(f"[{i}/{total_to_process}] ℹ️  All {kept_count} blocks up to date, no changes needed")
+                                    if added_count > 0 or deleted_count > 0:
+                                        print(f"[{i}/{total_to_process}] ✅ Synced blocks: +{added_count} added, -{deleted_count} deleted, {kept_count} kept")
+                                    else:
+                                        print(f"[{i}/{total_to_process}] ℹ️  All {kept_count} blocks up to date, no changes needed")
                     except Exception as e:
-                        print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
-                        import traceback
-                        traceback.print_exc()
+                        with print_lock:
+                            print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
+                        if limit == 1:  # Show full traceback for first book only
+                            import traceback
+                            traceback.print_exc()
                 
-                synced_count += 1
-                
-                book_time = time.time() - book_start_time
-                print(f"✅ [{i}/{total_to_process}] {book_data['title']} | {book_data['status']} | p={book_data.get('current_page')}/{book_data.get('total_page')} | ⏱️  {book_time:.1f}s")
+                result["success"] = True
+                result["book_data"] = book_data
+                result["page_id"] = page_id
             else:
-                print(f"⚠️  [{i}/{total_to_process}] Book {book_id}: No data retrieved")
-                error_count += 1
+                with print_lock:
+                    print(f"⚠️  [{i}/{total_to_process}] Book {book_id}: No data retrieved")
+                result["error"] = "No data retrieved"
             
-            # Stop after first book if limit is 1
-            if limit == 1:
-                print(f"\n[STOPPED] Processed 1 book as requested (limit=1)")
-                break
-                
         except Exception as e:
-            error_count += 1
-            book_time = time.time() - book_start_time
             error_msg = str(e)
+            result["error"] = error_msg
             # Check if it's a cookie/auth error
             if "401" in error_msg or "LOGIN" in error_msg.upper() or "expired" in error_msg.lower():
-                cookie_error_count += 1
-            print(f"❌ [{i}/{total_to_process}] Book {book_id}: {e} | ⏱️  {book_time:.1f}s")
+                result["cookie_error"] = True
             if limit == 1:  # Show full traceback for first book only
                 import traceback
                 traceback.print_exc()
         
-        # Progress update every 10 books or at the end
-        if (i % 10 == 0 and limit != 1) or i == total_to_process:
-            elapsed = time.time() - start_time
-            avg_time = elapsed / i if i > 0 else 0
-            remaining = (total_to_process - i) * avg_time if limit is None and i > 0 else 0
-            print(f"\n[PROGRESS] {i}/{total_to_process} | ✅ {synced_count} synced | ❌ {error_count} errors | ⏱️  {elapsed:.1f}s elapsed")
-            if remaining > 0:
-                print(f"          Estimated time remaining: {remaining/60:.1f} minutes\n")
+        result["time"] = time.time() - book_start_time
+        return result
+    
+    # Process books in parallel
+    book_items_with_index = [(i+1, item) for i, item in enumerate(all_book_items)]
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        future_to_book = {executor.submit(process_single_book, item): item for item in book_items_with_index}
+        
+        # Process results as they complete
+        for future in as_completed(future_to_book):
+            result = future.result()
+            if result is None:
+                continue
+            
+            processed_count += 1
+            i = result["index"]
+            book_id = result["book_id"]
+            
+            if result["success"]:
+                synced_count += 1
+                book_data = result["book_data"]
+                book_time = result["time"]
+                with print_lock:
+                    print(f"✅ [{i}/{total_to_process}] {book_data['title']} | {book_data['status']} | p={book_data.get('current_page')}/{book_data.get('total_page')} | ⏱️  {book_time:.1f}s")
+            else:
+                error_count += 1
+                if result.get("cookie_error"):
+                    cookie_error_count += 1
+                book_time = result["time"]
+                with print_lock:
+                    print(f"❌ [{i}/{total_to_process}] Book {book_id}: {result['error']} | ⏱️  {book_time:.1f}s")
+            
+            # Progress update every 10 books or at the end
+            if (processed_count % 10 == 0 and limit != 1) or processed_count == total_to_process:
+                elapsed = time.time() - start_time
+                rate = processed_count / elapsed if elapsed > 0 else 0
+                remaining = total_to_process - processed_count
+                eta = remaining / rate if rate > 0 else 0
+                with print_lock:
+                    print(f"\n[PROGRESS] {processed_count}/{total_to_process} books processed | "
+                          f"✅ {synced_count} synced | ❌ {error_count} errors | "
+                          f"⏱️  {elapsed:.1f}s elapsed | 📊 {rate:.1f} books/s | "
+                          f"⏳ ~{eta:.0f}s remaining\n")
+            
+            # Stop after first book if limit is 1
+            if limit == 1 and processed_count >= 1:
+                # Cancel remaining tasks
+                for future in future_to_book:
+                    future.cancel()
+                break
     
     total_time = time.time() - start_time
     print(f"\n{'='*60}")
