@@ -238,76 +238,102 @@ class WeReadAPI:
         Get all books from shelf (all books in account).
         Returns tuple of (full_response_data, all_books_list, book_progress_list)
         """
-        try:
-            response = self.session.get(
-                WEREAD_SHELF_API,
-                params={"synckey": 0, "lectureSynckey": 0}
-            )
-            
-            # Check for HTTP 401 first
-            if response.status_code == 401:
-                self._check_auth_error(response, "Shelf API")
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                response = self.session.get(
+                    WEREAD_SHELF_API,
+                    params={"synckey": 0, "lectureSynckey": 0}
+                )
+                
+                # Check for HTTP 401 first
+                if response.status_code == 401:
+                    should_retry = self._check_auth_error(response, "Shelf API")
+                    if should_retry and attempt < max_retries - 1:
+                        print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                        time.sleep(2)  # Brief delay before retry
+                        continue
+                    # If refresh failed or not attempted, return empty
+                    return {}, [], []
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                # Check for error response FIRST
+                if "errCode" in data:
+                    err_code = data.get("errCode")
+                    err_msg = data.get("errMsg", "Unknown error")
+                    print(f"[API ERROR] Shelf API returned error: errCode={err_code}, errMsg={err_msg}")
+                    
+                    # Only show full debug in verbose mode or for auth errors
+                    if os.environ.get("WEREAD_DEBUG") == "1" or err_code in [-2010, -2012, -1, 401, 403]:
+                        print(f"[DEBUG] Full error response:")
+                        print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+                    
+                    # If it's an auth error, try refresh and retry
+                    if err_code in [-2010, -2012, -1, 401, 403]:
+                        should_retry = self._check_auth_error(response, "Shelf API")
+                        if should_retry and attempt < max_retries - 1:
+                            print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                            time.sleep(2)  # Brief delay before retry
+                            continue
+                        
+                        # If refresh failed or not attempted, show error and return
+                        if not should_retry:  # Only show if refresh wasn't attempted or failed
+                            print(f"\n{'='*80}")
+                            print(f"❌ AUTHENTICATION ERROR - Shelf API")
+                            print(f"{'='*80}")
+                            print(f"Error Code: {err_code}")
+                            print(f"Error Message: {err_msg}")
+                            print(f"\n🔧 SOLUTION:")
+                            print(f"   1. Open https://weread.qq.com in your browser")
+                            print(f"   2. Make sure you're logged in")
+                            print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                            print(f"   4. Update WEREAD_COOKIES in your .env file")
+                            print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
+                            print(f"   6. Optional but recommended: wr_localvid, wr_gid")
+                            print(f"\n💡 TIP: Check your .env file - make sure all cookies are present and not truncated")
+                            print(f"{'='*80}\n")
+                    
+                    return {}, [], []
+                
+                # Shelf API returns data directly, not wrapped in errcode/errmsg
+                # The 'books' field contains ALL books with full info (title, author, etc.)
+                all_books = []
+                if "books" in data:
+                    all_books = data.get("books", [])
+                    print(f"[API] Found {len(all_books)} books in 'books' field")
+                
+                # bookProgress contains reading progress for books that have been read
+                book_progress = []
+                if "bookProgress" in data:
+                    book_progress = data.get("bookProgress", [])
+                    print(f"[API] Found {len(book_progress)} books with progress data")
+                
+                # Return the full data, all_books list, and progress list
+                return data, all_books, book_progress
+                
+            except requests.exceptions.HTTPError as e:
+                print(f"[API ERROR] Shelf HTTP error: {e}")
+                if os.environ.get("WEREAD_DEBUG") == "1" and hasattr(e.response, 'text'):
+                    print(f"[DEBUG] Response text: {e.response.text[:500]}")
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
                 return {}, [], []
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            # Check for error response FIRST
-            if "errCode" in data:
-                err_code = data.get("errCode")
-                err_msg = data.get("errMsg", "Unknown error")
-                print(f"[API ERROR] Shelf API returned error: errCode={err_code}, errMsg={err_msg}")
-                
-                # Only show full debug in verbose mode or for auth errors
-                if os.environ.get("WEREAD_DEBUG") == "1" or err_code in [-2010, -2012, -1, 401, 403]:
-                    print(f"[DEBUG] Full error response:")
-                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
-                
-                # If it's an auth error, show detailed help
-                if err_code in [-2010, -2012, -1, 401, 403]:
-                    print(f"\n{'='*80}")
-                    print(f"❌ AUTHENTICATION ERROR - Shelf API")
-                    print(f"{'='*80}")
-                    print(f"Error Code: {err_code}")
-                    print(f"Error Message: {err_msg}")
-                    print(f"\n🔧 SOLUTION:")
-                    print(f"   1. Open https://weread.qq.com in your browser")
-                    print(f"   2. Make sure you're logged in")
-                    print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
-                    print(f"   4. Update WEREAD_COOKIES in your .env file")
-                    print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
-                    print(f"   6. Optional but recommended: wr_localvid, wr_gid")
-                    print(f"\n💡 TIP: Check your .env file - make sure all cookies are present and not truncated")
-                    print(f"{'='*80}\n")
-                
+            except Exception as e:
+                print(f"[API ERROR] Failed to fetch shelf: {e}")
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                import traceback
+                traceback.print_exc()
                 return {}, [], []
-            
-            # Shelf API returns data directly, not wrapped in errcode/errmsg
-            # The 'books' field contains ALL books with full info (title, author, etc.)
-            all_books = []
-            if "books" in data:
-                all_books = data.get("books", [])
-                print(f"[API] Found {len(all_books)} books in 'books' field")
-            
-            # bookProgress contains reading progress for books that have been read
-            book_progress = []
-            if "bookProgress" in data:
-                book_progress = data.get("bookProgress", [])
-                print(f"[API] Found {len(book_progress)} books with progress data")
-            
-            # Return the full data, all_books list, and progress list
-            return data, all_books, book_progress
-            
-        except requests.exceptions.HTTPError as e:
-            print(f"[API ERROR] Shelf HTTP error: {e}")
-            if os.environ.get("WEREAD_DEBUG") == "1" and hasattr(e.response, 'text'):
-                print(f"[DEBUG] Response text: {e.response.text[:500]}")
-            return {}, [], []
-        except Exception as e:
-            print(f"[API ERROR] Failed to fetch shelf: {e}")
-            import traceback
-            traceback.print_exc()
-            return {}, [], []
+        
+        # If we exhausted all retries
+        return {}, [], []
     
     def get_notebooks(self) -> List[Dict[str, Any]]:
         """
@@ -1147,36 +1173,164 @@ class WeReadAPI:
                       data.get("readPercent") or data.get("readingProgress"))
         return current_page, total_page, percent
     
+    def _refresh_cookies_from_browser(self) -> bool:
+        """
+        Automatically fetch fresh cookies from browser using the cookie fetching script.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            import subprocess
+            import sys
+            
+            script_path = Path(__file__).parent.parent / "scripts" / "fetch_cookies_auto.py"
+            if not script_path.exists():
+                print(f"❌ Cookie fetching script not found at {script_path}")
+                return False
+            
+            print(f"\n{'='*80}")
+            print(f"🔄 AUTOMATIC COOKIE REFRESH")
+            print(f"{'='*80}")
+            print(f"Opening browser to fetch fresh cookies...")
+            print(f"This will open a browser window - please log in when prompted.")
+            print(f"{'='*80}\n")
+            
+            # Run the cookie fetching script
+            result = subprocess.run(
+                [sys.executable, str(script_path)],
+                capture_output=True,
+                text=True,
+                timeout=120  # 2 minute timeout
+            )
+            
+            if result.returncode == 0:
+                # Reload cookies from .env file
+                env_path = Path(__file__).parent.parent / ".env"
+                if env_path.exists():
+                    # Reload .env
+                    try:
+                        from dotenv import load_dotenv
+                        load_dotenv(env_path, override=True)
+                    except ImportError:
+                        pass
+                    
+                    # Get new cookies from environment
+                    new_cookies = env("WEREAD_COOKIES", "")
+                    if new_cookies:
+                        # Update session cookies
+                        cookie_dict = {}
+                        cookies = new_cookies.strip()
+                        if cookies.startswith('"') and cookies.endswith('"'):
+                            cookies = cookies[1:-1]
+                        if cookies.startswith("'") and cookies.endswith("'"):
+                            cookies = cookies[1:-1]
+                        
+                        for item in cookies.split(";"):
+                            item = item.strip()
+                            if "=" in item:
+                                key, value = item.split("=", 1)
+                                key = key.strip()
+                                value = value.strip()
+                                if '%' in value:
+                                    try:
+                                        value = urllib.parse.unquote(value)
+                                    except:
+                                        pass
+                                cookie_dict[key] = value
+                        
+                        self.session.cookies.update(cookie_dict)
+                        self.cookie_dict = cookie_dict
+                        
+                        print(f"\n✅ Cookies refreshed successfully!")
+                        print(f"   Found {len(cookie_dict)} cookies: {', '.join(cookie_dict.keys())}")
+                        return True
+                    else:
+                        print(f"\n⚠️  Cookie fetching completed but no cookies found in .env")
+                        return False
+                else:
+                    print(f"\n⚠️  .env file not found at {env_path}")
+                    return False
+            else:
+                print(f"\n❌ Cookie fetching failed:")
+                if result.stdout:
+                    print(result.stdout)
+                if result.stderr:
+                    print(result.stderr)
+                return False
+                
+        except subprocess.TimeoutExpired:
+            print(f"\n❌ Cookie fetching timed out (took longer than 2 minutes)")
+            return False
+        except Exception as e:
+            print(f"\n❌ Error during automatic cookie refresh: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
     def _check_auth_error(self, response, api_name: str) -> bool:
         """Check if response indicates authentication error (expired cookies)"""
         try:
             status_code = getattr(response, 'status_code', None)
-            if status_code == 401:
-                error_text = getattr(response, 'text', '').lower()
-                if "login" in error_text or status_code == 401:
-                    print(f"\n{'='*80}")
-                    print(f"❌ COOKIE EXPIRATION DETECTED - {api_name}")
-                    print(f"{'='*80}")
+            err_code = None
+            err_msg = None
+            
+            # Check for error code in JSON response
+            try:
+                data = response.json()
+                err_code = data.get("errCode")
+                err_msg = data.get("errMsg", "")
+            except:
+                pass
+            
+            # Check for 401 or error code -2012 (登录超时)
+            is_auth_error = (
+                status_code == 401 or 
+                err_code == -2012 or 
+                err_code == -2010 or
+                (err_msg and "登录" in err_msg)
+            )
+            
+            if is_auth_error:
+                print(f"\n{'='*80}")
+                print(f"❌ COOKIE EXPIRATION DETECTED - {api_name}")
+                print(f"{'='*80}")
+                if status_code:
                     print(f"Status Code: {status_code}")
-                    error_msg = getattr(response, 'text', 'No error message')[:200]
-                    print(f"Error: {error_msg}")
-                    print(f"\n🔧 SOLUTION:")
+                if err_code:
+                    print(f"Error Code: {err_code}")
+                if err_msg:
+                    print(f"Error Message: {err_msg}")
+                
+                # Try automatic refresh if enabled
+                if self.auto_refresh:
+                    print(f"\n🔄 Attempting automatic cookie refresh...")
+                    if self._refresh_cookies_from_browser():
+                        print(f"✅ Cookie refresh successful! Retrying API call...")
+                        return True  # Return True to indicate we should retry
+                    else:
+                        print(f"❌ Automatic cookie refresh failed. Please try manual method below.")
+                
+                # Show manual instructions
+                print(f"\n🔧 SOLUTION:")
+                if not self.auto_refresh:
                     print(f"   🚀 AUTOMATIC (Recommended):")
+                    print(f"      Set WEREAD_AUTO_REFRESH_COOKIES=1 in .env, or")
                     print(f"      python3 scripts/fetch_cookies_auto.py")
                     print(f"      This will open a browser, wait for you to log in, and save cookies automatically.")
                     print(f"\n   📋 MANUAL:")
-                    print(f"      1. Open https://weread.qq.com in your browser")
-                    print(f"      2. Make sure you're logged in")
-                    print(f"      3. Get fresh cookies (see scripts/get_weread_cookies.md)")
-                    print(f"      4. Update WEREAD_COOKIES in your .env file")
-                    print(f"      5. Required cookies: wr_skey, wr_vid, wr_rt")
-                    print(f"      6. Optional but recommended: wr_localvid, wr_gid")
-                    print(f"\n💡 DEBUGGING:")
-                    print(f"   - Check if cookies in .env are complete (not truncated)")
-                    print(f"   - Make sure there are no extra quotes or spaces")
-                    print(f"   - Format: wr_skey=xxx; wr_vid=xxx; wr_rt=xxx")
-                    print(f"{'='*80}\n")
-                    return True
+                else:
+                    print(f"   📋 MANUAL:")
+                print(f"      1. Open https://weread.qq.com in your browser")
+                print(f"      2. Make sure you're logged in")
+                print(f"      3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                print(f"      4. Update WEREAD_COOKIES in your .env file")
+                print(f"      5. Required cookies: wr_skey, wr_vid, wr_rt")
+                print(f"      6. Optional but recommended: wr_localvid, wr_gid")
+                print(f"\n💡 DEBUGGING:")
+                print(f"   - Check if cookies in .env are complete (not truncated)")
+                print(f"   - Make sure there are no extra quotes or spaces")
+                print(f"   - Format: wr_skey=xxx; wr_vid=xxx; wr_rt=xxx")
+                print(f"{'='*80}\n")
+                return True
         except Exception as e:
             pass
         return False
@@ -1283,93 +1437,139 @@ class WeReadAPI:
         - Type 3: 章节笔记 (chapter notes) - notes on chapters
         - Type 4: 书籍书评 (book reviews) - summary/commentary reviews
         """
-        try:
-            # Obsidian plugin uses: /web/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0
-            # Note: synckey (lowercase 'k') not syncKey
-            response = self.session.get(
-                WEREAD_REVIEW_LIST_API,
-                params={"bookId": book_id, "listType": 11, "mine": 1, "synckey": 0}
-            )
-            
-            # Check for auth errors first
-            if self._check_auth_error(response, "Review List API"):
-                return [], [], [], []
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            reviews = data.get("reviews", [])
-            
-            # Categorize by type
-            summary_reviews = []  # Type 4: 书籍书评 (book reviews)
-            regular_reviews = []  # Type 1: 划线笔记 (underline/highlight notes)
-            page_notes = []       # Type 2: 页面笔记 (page notes)
-            chapter_notes = []    # Type 3: 章节笔记 (chapter notes)
-            
-            for review_item in reviews:
-                review = review_item.get("review", {})
-                review_type = review.get("type")
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # Obsidian plugin uses: /web/review/list?bookId=${bookId}&listType=11&mine=1&synckey=0
+                # Note: synckey (lowercase 'k') not syncKey
+                response = self.session.get(
+                    WEREAD_REVIEW_LIST_API,
+                    params={"bookId": book_id, "listType": 11, "mine": 1, "synckey": 0}
+                )
                 
-                if review_type == 4:
-                    # 书籍书评 (book reviews)
-                    summary_reviews.append(review_item)
-                elif review_type == 1:
-                    # 划线笔记 (underline/highlight notes)
-                    # Transform to match bookmark format
-                    transformed = {**review, "markText": review.pop("content", "")}
-                    regular_reviews.append(transformed)
-                elif review_type == 2:
-                    # 页面笔记 (page notes)
-                    page_notes.append(review)
-                elif review_type == 3:
-                    # 章节笔记 (chapter notes)
-                    chapter_notes.append(review)
-                # Unknown type - skip it
-            
-            return summary_reviews, regular_reviews, page_notes, chapter_notes
-        except requests.exceptions.HTTPError as e:
-            if hasattr(e, 'response') and e.response.status_code == 401:
-                # Already handled by _check_auth_error
+                # Check for auth errors first
+                should_retry = self._check_auth_error(response, "Review List API")
+                if should_retry and attempt < max_retries - 1:
+                    print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                elif should_retry:
+                    return [], [], [], []
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                reviews = data.get("reviews", [])
+                
+                # Categorize by type
+                summary_reviews = []  # Type 4: 书籍书评 (book reviews)
+                regular_reviews = []  # Type 1: 划线笔记 (underline/highlight notes)
+                page_notes = []       # Type 2: 页面笔记 (page notes)
+                chapter_notes = []    # Type 3: 章节笔记 (chapter notes)
+                
+                for review_item in reviews:
+                    review = review_item.get("review", {})
+                    review_type = review.get("type")
+                    
+                    if review_type == 4:
+                        # 书籍书评 (book reviews)
+                        summary_reviews.append(review_item)
+                    elif review_type == 1:
+                        # 划线笔记 (underline/highlight notes)
+                        # Transform to match bookmark format
+                        transformed = {**review, "markText": review.pop("content", "")}
+                        regular_reviews.append(transformed)
+                    elif review_type == 2:
+                        # 页面笔记 (page notes)
+                        page_notes.append(review)
+                    elif review_type == 3:
+                        # 章节笔记 (chapter notes)
+                        chapter_notes.append(review)
+                    # Unknown type - skip it
+                
+                return summary_reviews, regular_reviews, page_notes, chapter_notes
+                
+            except requests.exceptions.HTTPError as e:
+                if hasattr(e, 'response') and e.response.status_code == 401:
+                    should_retry = self._check_auth_error(e.response, "Review List API")
+                    if should_retry and attempt < max_retries - 1:
+                        print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                        time.sleep(2)
+                        continue
+                    return [], [], [], []
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
                 return [], [], [], []
-            print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
-            return [], [], [], []
-        except Exception as e:
-            print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
-            return [], [], [], []
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                print(f"[API ERROR] Failed to fetch reviews for book {book_id}: {e}")
+                return [], [], [], []
+        
+        # If we exhausted all retries
+        return [], [], [], []
     
     def get_chapter_info(self, book_id: str) -> Optional[Dict[int, Dict[str, Any]]]:
         """Get chapter information for a book"""
-        try:
-            # Obsidian plugin uses: POST /web/book/chapterInfos with body {bookIds: [bookId]}
-            # We'll try the simpler version first, then fallback to extended version if needed
-            body = {"bookIds": [book_id]}
-            response = self.session.post(WEREAD_CHAPTER_INFO_API, json=body)
-            
-            # Check for auth errors first
-            if self._check_auth_error(response, "Chapter Info API"):
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # Obsidian plugin uses: POST /web/book/chapterInfos with body {bookIds: [bookId]}
+                # We'll try the simpler version first, then fallback to extended version if needed
+                body = {"bookIds": [book_id]}
+                response = self.session.post(WEREAD_CHAPTER_INFO_API, json=body)
+                
+                # Check for auth errors first
+                should_retry = self._check_auth_error(response, "Chapter Info API")
+                if should_retry and attempt < max_retries - 1:
+                    print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                elif should_retry:
+                    return None
+                
+                response.raise_for_status()
+                data = response.json()
+                
+                if (
+                    data
+                    and "data" in data
+                    and len(data["data"]) == 1
+                    and "updated" in data["data"][0]
+                ):
+                    update = data["data"][0]["updated"]
+                    return {item["chapterUid"]: item for item in update}
                 return None
-            
-            response.raise_for_status()
-            data = response.json()
-            
-            if (
-                data
-                and "data" in data
-                and len(data["data"]) == 1
-                and "updated" in data["data"][0]
-            ):
-                update = data["data"][0]["updated"]
-                return {item["chapterUid"]: item for item in update}
-            return None
-        except requests.exceptions.HTTPError as e:
-            if hasattr(e, 'response') and e.response.status_code == 401:
-                # Already handled by _check_auth_error
+                
+            except requests.exceptions.HTTPError as e:
+                if hasattr(e, 'response') and e.response.status_code == 401:
+                    should_retry = self._check_auth_error(e.response, "Chapter Info API")
+                    if should_retry and attempt < max_retries - 1:
+                        print(f"[API] Retrying after cookie refresh (attempt {attempt + 2}/{max_retries})...")
+                        time.sleep(2)
+                        continue
+                    return None
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
                 return None
-            print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
-            return None
-        except Exception as e:
-            print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
-            return None
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[API] Retrying (attempt {attempt + 2}/{max_retries})...")
+                    time.sleep(2)
+                    continue
+                print(f"[API ERROR] Failed to fetch chapter info for book {book_id}: {e}")
+                return None
+        
+        # If we exhausted all retries
+        return None
     
     def get_read_info(self, book_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed reading information including progress, pages, and reading time"""

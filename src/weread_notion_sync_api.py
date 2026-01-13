@@ -538,13 +538,22 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     
     print("[API] Initializing WeRead API client...")
     
-    client = WeReadAPI(weread_cookies)
+    # Enable automatic cookie refresh if configured
+    auto_refresh = env("WEREAD_AUTO_REFRESH_COOKIES", "1").lower() in ("1", "true", "yes")
+    client = WeReadAPI(weread_cookies, auto_refresh=auto_refresh)
+    
+    if auto_refresh:
+        print("[API] ✅ Automatic cookie refresh enabled")
+        print("[API]    If cookies expire, browser will open automatically for login")
     
     # Validate cookies before proceeding
     print("[API] Validating cookies...")
     if not client.validate_cookies():
         print("\n❌ Cookie validation failed. Please update your cookies in .env file.")
-        print("   The sync will continue but may fail with authentication errors.\n")
+        if auto_refresh:
+            print("   Automatic refresh will be attempted when API calls fail.\n")
+        else:
+            print("   The sync will continue but may fail with authentication errors.\n")
     
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
@@ -704,7 +713,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             
             # Create a new client instance for this thread (thread-safe)
             # Each thread gets its own session to avoid conflicts
-            thread_client = WeReadAPI(weread_cookies)
+            # Pass auto_refresh so each thread can refresh cookies if needed
+            thread_client = WeReadAPI(weread_cookies, auto_refresh=auto_refresh)
             
             # Get book data (this is where the work happens)
             book_data = thread_client.get_single_book_data(book_id, book_item)
