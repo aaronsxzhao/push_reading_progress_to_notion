@@ -164,17 +164,33 @@ Deploy your sync to the cloud so you can trigger it from any device via URL, wit
 
 ## Quick Start: GitHub Actions (Recommended)
 
-This is the **easiest and free** option:
+This is the **easiest and free** option - **NO HTML FILES NEEDED!**
 
-1. **Push to GitHub** (already done if you have a repo)
+### Super Simple Method (Just Use GitHub Website):
+
+1. **Push to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Add sync workflow"
+   git push
+   ```
 
 2. **Add Secrets:**
-   - Repo → Settings → Secrets → Actions
+   - Go to: `https://github.com/yourusername/your-repo/settings/secrets/actions`
+   - Click "New repository secret"
    - Add: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `WEREAD_COOKIES`
 
-3. **Create a simple trigger page:**
-   
-   Save this as `trigger.html` in your repo:
+3. **Trigger Sync:**
+   - Go to: `https://github.com/yourusername/your-repo/actions`
+   - Click "Sync WeRead to Notion" workflow
+   - Click "Run workflow" → "Run workflow"
+   - ✅ Done! Sync runs in the cloud!
+
+**Bookmark the Actions page** - you can trigger sync from any device!
+
+### Alternative: Use trigger.html (Optional)
+
+If you want a custom button interface, you can use the `trigger.html` file:
    ```html
    <!DOCTYPE html>
    <html>
