@@ -21,6 +21,16 @@ import requests
 from dateutil import parser as dtparser
 import dateutil.tz
 
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+except ImportError:
+    # python-dotenv not installed, skip loading .env
+    pass
+
 
 def env(name: str, default: Optional[str] = None) -> str:
     v = os.environ.get(name)
@@ -54,16 +64,22 @@ WEREAD_GET_PROGRESS_API = f"{WEREAD_API_BASE}/web/book/getProgress"  # Obsidian 
 class WeReadAPI:
     """Direct API client for WeRead"""
     
-    def __init__(self, cookies: str):
+    def __init__(self, cookies: str, auto_refresh: bool = False):
         """
         Initialize with WeRead cookies.
+        
+        Args:
+            cookies: Cookie string from browser or .env file
+            auto_refresh: If True, automatically fetch new cookies when expired (requires browser automation)
         
         To get cookies:
         1. Open weread.qq.com in browser
         2. Log in
         3. Open DevTools (F12) -> Application/Storage -> Cookies
         4. Copy all cookies as a string, or use browser extension to export
+        5. OR use scripts/fetch_cookies_auto.py for automatic fetching
         """
+        self.auto_refresh = auto_refresh
         self.session = requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -1090,12 +1106,16 @@ class WeReadAPI:
                     error_msg = getattr(response, 'text', 'No error message')[:200]
                     print(f"Error: {error_msg}")
                     print(f"\n🔧 SOLUTION:")
-                    print(f"   1. Open https://weread.qq.com in your browser")
-                    print(f"   2. Make sure you're logged in")
-                    print(f"   3. Get fresh cookies (see scripts/get_weread_cookies.md)")
-                    print(f"   4. Update WEREAD_COOKIES in your .env file")
-                    print(f"   5. Required cookies: wr_skey, wr_vid, wr_rt")
-                    print(f"   6. Optional but recommended: wr_localvid, wr_gid")
+                    print(f"   🚀 AUTOMATIC (Recommended):")
+                    print(f"      python3 scripts/fetch_cookies_auto.py")
+                    print(f"      This will open a browser, wait for you to log in, and save cookies automatically.")
+                    print(f"\n   📋 MANUAL:")
+                    print(f"      1. Open https://weread.qq.com in your browser")
+                    print(f"      2. Make sure you're logged in")
+                    print(f"      3. Get fresh cookies (see scripts/get_weread_cookies.md)")
+                    print(f"      4. Update WEREAD_COOKIES in your .env file")
+                    print(f"      5. Required cookies: wr_skey, wr_vid, wr_rt")
+                    print(f"      6. Optional but recommended: wr_localvid, wr_gid")
                     print(f"\n💡 DEBUGGING:")
                     print(f"   - Check if cookies in .env are complete (not truncated)")
                     print(f"   - Make sure there are no extra quotes or spaces")

@@ -21,9 +21,20 @@ Optional env vars: same as weread_notion_sync.py
 import os
 import time
 from typing import Dict, Any, Optional
+from pathlib import Path
 
 from notion_client import Client
 from weread_api import WeReadAPI, env
+
+# Load .env file if it exists
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+except ImportError:
+    # python-dotenv not installed, skip loading .env
+    pass
 
 # Import Notion helpers from the main sync script
 import sys
