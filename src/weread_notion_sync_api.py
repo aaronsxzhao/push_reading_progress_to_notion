@@ -861,6 +861,18 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
 
 
 def main():
+    import sys
+    
+    # Check if user wants to start web server
+    if len(sys.argv) > 1 and sys.argv[1] in ("--server", "-s", "server"):
+        print("Starting web server...")
+        from sync_web_server import app, get_env_config
+        port = int(env("SYNC_SERVER_PORT", "8765"))
+        host = env("SYNC_SERVER_HOST", "0.0.0.0")
+        print(f"Server starting on http://{host}:{port}")
+        app.run(host=host, port=port, debug=False)
+        return
+    
     NOTION_TOKEN = env("NOTION_TOKEN")
     NOTION_DATABASE_ID = env("NOTION_DATABASE_ID")
     WEREAD_COOKIES = env("WEREAD_COOKIES")

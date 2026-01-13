@@ -1,0 +1,37 @@
+name: Sync WeRead to Notion
+
+on:
+  workflow_dispatch:  # Can be triggered manually or via API
+  repository_dispatch:  # Can be triggered via webhook
+  schedule:
+    # Optional: Run daily at 2 AM UTC (adjust as needed)
+    - cron: '0 2 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run sync
+      env:
+        NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        WEREAD_COOKIES: ${{ secrets.WEREAD_COOKIES }}
+        SYNC_LIMIT: ${{ secrets.SYNC_LIMIT }}
+        WEREAD_TEST_BOOK_TITLE: ${{ secrets.WEREAD_TEST_BOOK_TITLE }}
+        WEREAD_MAX_WORKERS: ${{ secrets.WEREAD_MAX_WORKERS }}
+      run: |
+        python3 src/weread_notion_sync_api.py
