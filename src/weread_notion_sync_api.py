@@ -51,12 +51,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from notion_client import Client
 from weread_api import WeReadAPI, env
+from kindle_api import KindleAPI
 
 # Reuse config and Notion helpers
 from weread_notion_sync import (
     PROP_TITLE, PROP_AUTHOR, PROP_STATUS, PROP_CURRENT_PAGE, PROP_TOTAL_PAGE,
     PROP_DATE_FINISHED, PROP_SOURCE, PROP_STARTED_AT, PROP_LAST_READ_AT,
-    STATUS_TBR, STATUS_READING, STATUS_READ, SOURCE_WEREAD,
+    STATUS_TBR, STATUS_READING, STATUS_READ, SOURCE_WEREAD, SOURCE_KINDLE,
     get_db_properties, prop_exists, build_props, find_page_by_title, upsert_page
 )
 
@@ -531,7 +532,292 @@ def print_all_notes(book_data: Dict[str, Any], book_title: str):
         print(f"   📝 Notes: {len(bookmarks)} 划线, {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
 
 
-def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None):
+def sync_kindle_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], kindle_cookies: str = None, kindle_clippings: str = None, kindle_device_token: str = None, limit: Optional[int] = None, test_book_title: Optional[str] = None, progress_callback: Optional[callable] = None):
+    """Fetch books from Kindle API and sync to Notion - same flow as WeRead"""
+    import time
+    start_time = time.time()
+    
+    print("[KINDLE API] Initializing Kindle API client...")
+    
+    client = KindleAPI(cookies=kindle_cookies, clippings_file=kindle_clippings, device_token=kindle_device_token)
+    
+    # Validate cookies/clippings before proceeding
+    print("[KINDLE API] Validating...")
+    if not client.validate_cookies():
+        print("\n❌ Cookie/clippings validation failed. Please check your Kindle cookies or clippings file.")
+        print("   The sync will continue but may fail with authentication errors.\n")
+    
+    # Get shelf data first to know total count
+    print("[KINDLE API] Fetching shelf data...")
+    shelf_data, all_books_list, book_progress_list = client.get_shelf()
+    
+    total_books = shelf_data.get("bookCount", 0) or shelf_data.get("pureBookCount", 0) or len(all_books_list)
+    print(f"[KINDLE API] Total books in library: {total_books}")
+    
+    # Build a map of book_id -> book info
+    books_map = {}
+    for book_item in all_books_list:
+        book_info = None
+        book_id = None
+        
+        if "bookInfo" in book_item:
+            book_info = book_item["bookInfo"]
+            book_id = book_info.get("bookId")
+        elif "book" in book_item:
+            book_info = book_item["book"]
+            book_id = book_info.get("bookId")
+        elif "bookId" in book_item:
+            book_id = book_item["bookId"]
+            book_info = book_item
+        
+        if book_id and book_info:
+            books_map[book_id] = {
+                "book": book_info,
+                "has_full_info": True
+            }
+    
+    # Build a map of book_id -> progress
+    progress_map = {}
+    for progress_item in book_progress_list:
+        book_id = progress_item.get("bookId")
+        if book_id:
+            progress_map[book_id] = progress_item
+    
+    # Combine: use books_map as base, add progress data
+    all_book_items = []
+    for book_id, book_data in books_map.items():
+        progress_data = progress_map.get(book_id, {})
+        book_item_data = book_data["book"]
+        
+        all_book_items.append({
+            "bookId": book_id,
+            "book": book_item_data,
+            "progress": progress_data.get("progress", 0),
+            "updateTime": progress_data.get("updateTime"),
+            "readUpdateTime": progress_data.get("lastReadDate") or progress_data.get("updateTime"),
+            "has_full_info": True
+        })
+    
+    # Add any books from progress_map that aren't in books_map
+    for book_id, progress_data in progress_map.items():
+        if book_id not in books_map:
+            all_book_items.append({
+                "bookId": book_id,
+                "progress": progress_data.get("progress", 0),
+                "updateTime": progress_data.get("updateTime"),
+                "readUpdateTime": progress_data.get("lastReadDate") or progress_data.get("updateTime"),
+                "has_full_info": False
+            })
+    
+    print(f"[KINDLE API] Combined {len(all_book_items)} books with full info and progress data")
+    
+    if not all_book_items:
+        print("[ERROR] No books found!")
+        return
+    
+    # Filter by test book title if specified
+    if test_book_title:
+        original_count = len(all_book_items)
+        filtered_items = []
+        for book_item in all_book_items:
+            book_info = book_item.get("book", {})
+            title = book_info.get("title") or book_info.get("name") or ""
+            if test_book_title.lower() in title.lower():
+                filtered_items.append(book_item)
+                print(f"[TEST] Found matching book: '{title}' (bookId: {book_item.get('bookId')})")
+        
+        if filtered_items:
+            all_book_items = filtered_items
+            print(f"[TEST] Filtered to {len(all_book_items)} book(s) matching title '{test_book_title}' (from {original_count} total)")
+        else:
+            print(f"[TEST] ⚠️  No books found matching title '{test_book_title}'")
+            return
+    
+    # Apply limit - CRITICAL: must happen before creating book_items_with_index
+    if limit is not None and limit > 0:
+        original_count = len(all_book_items)
+        all_book_items = all_book_items[:limit]
+        print(f"[KINDLE API] ✅ Limiting to first {limit} book(s) for testing (from {original_count} total)")
+    
+    total_to_process = len(all_book_items)
+    
+    # Get max workers from env or use default
+    # If limit is 1, use 1 worker to avoid parallel processing
+    if limit == 1:
+        max_workers = 1
+    else:
+        max_workers = int(env("KINDLE_MAX_WORKERS", "5"))
+        max_workers = max(1, min(max_workers, 20))
+    
+    print(f"\n{'='*60}")
+    print(f"[PROGRESS] Processing {total_to_process} Kindle book(s) with {max_workers} parallel workers...")
+    print(f"{'='*60}\n")
+    
+    synced_count = 0
+    error_count = 0
+    processed_count = 0
+    print_lock = Lock()
+    
+    def process_single_book(book_item_with_index):
+        """Process a single book - designed for parallel execution"""
+        i, book_item = book_item_with_index
+        book_id = book_item.get("bookId")
+        if not book_id:
+            return None
+        
+        book_start_time = time.time()
+        result = {
+            "index": i,
+            "book_id": book_id,
+            "success": False,
+            "error": None,
+            "book_data": None,
+            "time": 0
+        }
+        
+        try:
+            with print_lock:
+                print(f"[{i}/{total_to_process}] 📖 Processing Kindle book {book_id}...")
+            
+            # Create a new client instance for this thread
+            thread_client = KindleAPI(cookies=kindle_cookies, clippings_file=kindle_clippings, device_token=kindle_device_token)
+            
+            # Get book data
+            book_data = thread_client.get_single_book_data(book_id, book_item)
+            
+            if book_data:
+                bookmarks = book_data.get("bookmarks", [])
+                total_notes = len(bookmarks)
+                
+                if total_notes > 0:
+                    with print_lock:
+                        print(f"   [{i}/{total_to_process}] 📝 Highlights: {len(bookmarks)}")
+                
+                # Map status values
+                status_map = {
+                    "Read": STATUS_READ,
+                    "Currently Reading": STATUS_READING,
+                    "To Be Read": STATUS_TBR,
+                }
+                book_data["status"] = status_map.get(book_data.get("status"), STATUS_TBR)
+                book_data["source"] = SOURCE_KINDLE
+                
+                # Sync to Notion
+                page_id, is_new = upsert_page(notion, database_id, db_props, book_data)
+                
+                # Add bookmarks as blocks
+                if page_id and book_data.get("bookmarks"):
+                    with print_lock:
+                        if is_new:
+                            print(f"[{i}/{total_to_process}] Adding highlights to new page...")
+                        else:
+                            print(f"[{i}/{total_to_process}] Syncing blocks to existing page...")
+                    
+                    try:
+                        blocks = create_book_content_blocks(book_data)
+                        if blocks or not is_new:
+                            clear_existing = False if not is_new else (env("KINDLE_CLEAR_BLOCKS", "true").lower() == "true")
+                            added_count, deleted_count, kept_count = sync_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
+                            with print_lock:
+                                if is_new:
+                                    print(f"[{i}/{total_to_process}] ✅ Added {added_count} blocks (highlights)")
+                                else:
+                                    if added_count > 0 or deleted_count > 0:
+                                        print(f"[{i}/{total_to_process}] ✅ Synced blocks: +{added_count} added, -{deleted_count} deleted, {kept_count} kept")
+                                    else:
+                                        print(f"[{i}/{total_to_process}] ℹ️  All {kept_count} blocks up to date")
+                    except Exception as e:
+                        with print_lock:
+                            print(f"[{i}/{total_to_process}] ⚠️  Failed to add blocks: {e}")
+                
+                result["success"] = True
+                result["book_data"] = book_data
+                result["page_id"] = page_id
+            else:
+                with print_lock:
+                    print(f"⚠️  [{i}/{total_to_process}] Book {book_id}: No data retrieved")
+                result["error"] = "No data retrieved"
+        
+        except Exception as e:
+            error_msg = str(e)
+            result["error"] = error_msg
+            if limit == 1:
+                import traceback
+                traceback.print_exc()
+        
+        result["time"] = time.time() - book_start_time
+        return result
+    
+    # Process books in parallel
+    # CRITICAL: all_book_items is already limited above, so this will only create tasks for limited books
+    book_items_with_index = [(i+1, item) for i, item in enumerate(all_book_items)]
+    
+    # Safety check: Ensure we never process more than the limit (defensive programming)
+    if limit is not None and limit > 0 and len(book_items_with_index) > limit:
+        print(f"[KINDLE API] ⚠️  WARNING: Found {len(book_items_with_index)} items but limit is {limit}. Forcing limit.")
+        book_items_with_index = book_items_with_index[:limit]
+        total_to_process = limit
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_book = {executor.submit(process_single_book, item): item for item in book_items_with_index}
+        
+        for future in as_completed(future_to_book):
+            result = future.result()
+            if result is None:
+                continue
+            
+            processed_count += 1
+            i = result["index"]
+            book_id = result["book_id"]
+            
+            if result["success"]:
+                synced_count += 1
+                book_data = result["book_data"]
+                book_time = result["time"]
+                with print_lock:
+                    print(f"✅ [{i}/{total_to_process}] {book_data['title']} | {book_data['status']} | p={book_data.get('current_page')}/{book_data.get('total_page')} | ⏱️  {book_time:.1f}s")
+            else:
+                error_count += 1
+                with print_lock:
+                    print(f"❌ [{i}/{total_to_process}] Book {book_id}: {result['error']}")
+            
+            # Progress callback
+            if progress_callback:
+                try:
+                    progress_callback(processed_count, total_to_process, synced_count, error_count, False)
+                except:
+                    pass
+            
+            # Stop after first book if limit is 1
+            if limit == 1 and processed_count >= 1:
+                # Cancel remaining tasks
+                for future in future_to_book:
+                    future.cancel()
+                break
+            
+            # Progress update every 5 books or at the end
+            if processed_count % 5 == 0 or processed_count == total_to_process:
+                elapsed = time.time() - start_time
+                rate = processed_count / elapsed if elapsed > 0 else 0
+                remaining = total_to_process - processed_count
+                eta = remaining / rate if rate > 0 else 0
+                with print_lock:
+                    print(f"\n[PROGRESS] {processed_count}/{total_to_process} processed | "
+                          f"✅ {synced_count} synced | ❌ {error_count} errors | "
+                          f"⏱️  {elapsed:.1f}s elapsed | 📊 {rate:.1f} books/s | "
+                          f"⏳ ~{eta:.0f}s remaining\n")
+    
+    total_time = time.time() - start_time
+    print(f"\n{'='*60}")
+    print(f"[COMPLETE] Processed {total_to_process} Kindle books | Synced: {synced_count} | Errors: {error_count}")
+    if total_to_process > 0:
+        print(f"          Total time: {total_time:.1f}s | Avg: {total_time/total_to_process:.1f}s per book")
+    else:
+        print(f"          Total time: {total_time:.1f}s")
+    print(f"{'='*60}")
+
+
+def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None, progress_callback: Optional[callable] = None):
     """Fetch books from WeRead API and sync to Notion - processes one at a time with progress monitoring"""
     import time
     start_time = time.time()
@@ -663,11 +949,15 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     total_to_process = len(all_book_items)
     
     # Get max workers from env or use default (5 parallel workers)
-    max_workers = int(env("WEREAD_MAX_WORKERS", "5"))
-    if max_workers < 1:
+    # If limit is 1, use 1 worker to avoid parallel processing
+    if limit == 1:
         max_workers = 1
-    if max_workers > 20:
-        max_workers = 20  # Cap at 20 to avoid overwhelming the API
+    else:
+        max_workers = int(env("WEREAD_MAX_WORKERS", "5"))
+        if max_workers < 1:
+            max_workers = 1
+        if max_workers > 20:
+            max_workers = 20  # Cap at 20 to avoid overwhelming the API
     
     print(f"\n{'='*60}")
     print(f"[PROGRESS] Processing {total_to_process} book(s) with {max_workers} parallel workers...")
@@ -837,6 +1127,13 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 with print_lock:
                     print(f"❌ [{i}/{total_to_process}] Book {book_id}: {result['error']} | ⏱️  {book_time:.1f}s")
             
+            # Progress callback
+            if progress_callback:
+                try:
+                    progress_callback(processed_count, total_to_process, synced_count, error_count, cookie_error_count > 0)
+                except:
+                    pass
+            
             # Progress update every 10 books or at the end
             if (processed_count % 10 == 0 and limit != 1) or processed_count == total_to_process:
                 elapsed = time.time() - start_time
@@ -902,7 +1199,9 @@ def main():
     
     NOTION_TOKEN = env("NOTION_TOKEN")
     NOTION_DATABASE_ID = env("NOTION_DATABASE_ID")
-    WEREAD_COOKIES = env("WEREAD_COOKIES")
+    
+    # Determine which source to sync (WeRead or Kindle)
+    sync_source = env("SYNC_SOURCE", "weread").lower()
     
     # Optional limit for testing (set SYNC_LIMIT in .env, default: None = all books)
     sync_limit = env("SYNC_LIMIT")
@@ -915,47 +1214,48 @@ def main():
         except ValueError:
             limit = None
     
-    # Optional test book title for troubleshooting (set WEREAD_TEST_BOOK_TITLE in .env)
-    # Example: WEREAD_TEST_BOOK_TITLE=被讨厌的勇气
-    # To disable: comment out the line in .env, unset the variable, or set it to empty
-    test_book_title_raw = os.environ.get("WEREAD_TEST_BOOK_TITLE")
+    # Optional test book title for troubleshooting
+    test_book_title_raw = os.environ.get("WEREAD_TEST_BOOK_TITLE") or os.environ.get("KINDLE_TEST_BOOK_TITLE")
     test_book_title = None
     
-    # Check if it's set and not empty
     if test_book_title_raw:
         test_book_title = str(test_book_title_raw).strip()
-        # Treat empty string, "none", "null", "false" as disabled
         if not test_book_title or test_book_title.lower() in ("none", "null", "false", "off", "disable", "0"):
             test_book_title = None
-        else:
-            # If it's set, check if it's commented in .env file
-            env_file = Path(__file__).parent.parent / ".env"
-            if env_file.exists():
-                with open(env_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        stripped = line.strip()
-                        # Check if line is commented out
-                        if stripped.startswith('#') and 'WEREAD_TEST_BOOK_TITLE' in stripped:
-                            print(f"\n[WARNING] WEREAD_TEST_BOOK_TITLE is set in environment but commented in .env")
-                            print(f"[WARNING] Unsetting it to disable the filter...")
-                            os.environ.pop("WEREAD_TEST_BOOK_TITLE", None)
-                            test_book_title = None
-                            break
-    
-    # Show test book title status only if set (to avoid clutter)
-    if test_book_title:
-        print(f"\n[INFO] ⚠️  Test book title filter ACTIVE: '{test_book_title}'")
-        print(f"[INFO] To disable: unset WEREAD_TEST_BOOK_TITLE or comment it out in .env\n")
     
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
-    if not WEREAD_COOKIES:
-        raise SystemExit("Missing WEREAD_COOKIES env var. See README for how to get cookies.")
     
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)
     
-    sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit, test_book_title=test_book_title)
+    # Sync based on source
+    if sync_source == "kindle":
+        KINDLE_COOKIES = env("KINDLE_COOKIES")
+        KINDLE_CLIPPINGS = env("KINDLE_CLIPPINGS")
+        KINDLE_DEVICE_TOKEN = env("KINDLE_DEVICE_TOKEN")
+        
+        if not KINDLE_COOKIES and not KINDLE_CLIPPINGS:
+            raise SystemExit("Missing KINDLE_COOKIES or KINDLE_CLIPPINGS env var. See README for how to get Kindle data.")
+        
+        print(f"\n[INFO] Syncing from Kindle source...")
+        sync_kindle_books_from_api(notion, NOTION_DATABASE_ID, db_props, 
+                                   kindle_cookies=KINDLE_COOKIES, 
+                                   kindle_clippings=KINDLE_CLIPPINGS,
+                                   kindle_device_token=KINDLE_DEVICE_TOKEN,
+                                   limit=limit, 
+                                   test_book_title=test_book_title)
+    else:
+        # Default to WeRead
+        WEREAD_COOKIES = env("WEREAD_COOKIES")
+        
+        if not WEREAD_COOKIES:
+            raise SystemExit("Missing WEREAD_COOKIES env var. See README for how to get cookies.")
+        
+        print(f"\n[INFO] Syncing from WeRead source...")
+        sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, 
+                           limit=limit, 
+                           test_book_title=test_book_title)
 
 
 if __name__ == "__main__":
