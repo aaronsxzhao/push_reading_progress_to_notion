@@ -33,5 +33,21 @@ jobs:
         SYNC_LIMIT: ${{ secrets.SYNC_LIMIT }}
         WEREAD_TEST_BOOK_TITLE: ${{ secrets.WEREAD_TEST_BOOK_TITLE }}
         WEREAD_MAX_WORKERS: ${{ secrets.WEREAD_MAX_WORKERS }}
+        PYTHONUNBUFFERED: 1  # Force unbuffered output for real-time logs
       run: |
-        python3 src/weread_notion_sync_api.py
+        echo "🚀 Starting WeRead → Notion sync..."
+        echo "=========================================="
+        echo "📋 Environment check:"
+        echo "  - NOTION_TOKEN: ${{ secrets.NOTION_TOKEN != '' && '✅ Set' || '❌ Missing' }}"
+        echo "  - NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID != '' && '✅ Set' || '❌ Missing' }}"
+        echo "  - WEREAD_COOKIES: ${{ secrets.WEREAD_COOKIES != '' && '✅ Set' || '❌ Missing' }}"
+        echo "=========================================="
+        python3 -u src/weread_notion_sync_api.py 2>&1
+        SYNC_EXIT_CODE=$?
+        echo "=========================================="
+        if [ $SYNC_EXIT_CODE -eq 0 ]; then
+          echo "✅ Sync completed successfully!"
+        else
+          echo "❌ Sync failed with exit code $SYNC_EXIT_CODE"
+          exit $SYNC_EXIT_CODE
+        fi

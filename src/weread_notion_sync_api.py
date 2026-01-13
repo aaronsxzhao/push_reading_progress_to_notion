@@ -19,11 +19,17 @@ Optional env vars: same as weread_notion_sync.py
 """
 
 import os
+import sys
 import time
 from typing import Dict, Any, Optional
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+
+# Force unbuffered output for real-time logs (important for GitHub Actions)
+if os.environ.get("PYTHONUNBUFFERED") != "1":
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
 
 from notion_client import Client
 from weread_api import WeReadAPI, env
