@@ -257,8 +257,11 @@ class WeReadAPI:
                 err_code = data.get("errCode")
                 err_msg = data.get("errMsg", "Unknown error")
                 print(f"[API ERROR] Shelf API returned error: errCode={err_code}, errMsg={err_msg}")
-                print(f"[DEBUG] Full error response:")
-                print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
+                
+                # Only show full debug in verbose mode or for auth errors
+                if os.environ.get("WEREAD_DEBUG") == "1" or err_code in [-2010, -2012, -1, 401, 403]:
+                    print(f"[DEBUG] Full error response:")
+                    print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
                 
                 # If it's an auth error, show detailed help
                 if err_code in [-2010, -2012, -1, 401, 403]:
@@ -297,7 +300,7 @@ class WeReadAPI:
             
         except requests.exceptions.HTTPError as e:
             print(f"[API ERROR] Shelf HTTP error: {e}")
-            if hasattr(e.response, 'text'):
+            if os.environ.get("WEREAD_DEBUG") == "1" and hasattr(e.response, 'text'):
                 print(f"[DEBUG] Response text: {e.response.text[:500]}")
             return {}, [], []
         except Exception as e:
@@ -382,7 +385,8 @@ class WeReadAPI:
                     print("[API ERROR] Notebooks 401 - unable to parse error response")
                 return []
             if e.response.status_code == 404:
-                print(f"[API WARNING] Notebooks endpoint not found (404). Trying shelf endpoint...")
+                if os.environ.get("WEREAD_DEBUG") == "1":
+                    print(f"[API WARNING] Notebooks endpoint not found (404). Trying shelf endpoint...")
                 return []
             print(f"[API ERROR] Failed to fetch notebooks: {e}")
             return []
@@ -430,8 +434,9 @@ class WeReadAPI:
                     # Try next endpoint
                     continue
             
-            # If all endpoints failed, return None
-            print(f"[API WARNING] Could not find single notebook endpoint for book {book_id}")
+            # If all endpoints failed, return None (silently - this is expected for some books)
+            if os.environ.get("WEREAD_DEBUG") == "1":
+                print(f"[API WARNING] Could not find single notebook endpoint for book {book_id}")
             return None
         except Exception as e:
             print(f"[API ERROR] Failed to fetch single notebook for book {book_id}: {e}")
@@ -645,15 +650,9 @@ class WeReadAPI:
                 print(f"[API] Note: Books without progress will be synced with minimal data")
         
         if not all_book_progress:
-            print("[API WARNING] No books found. Check your cookies - they may be expired or invalid.")
-            print("[API TIP] Make sure you're logged into weread.qq.com and copy fresh cookies.")
-            return []
-        
-        print(f"[API] Processing {len(all_book_progress)} books...")
-        
-        if not all_book_progress:
-            print("[API WARNING] No books found. Check your cookies - they may be expired or invalid.")
-            print("[API TIP] Make sure you're logged into weread.qq.com and copy fresh cookies.")
+            # Only warn if we actually expected books (not just empty shelf)
+            if os.environ.get("WEREAD_DEBUG") == "1":
+                print("[API WARNING] No books found. Check your cookies - they may be expired or invalid.")
             return []
         
         print(f"[API] Processing {len(all_book_progress)} books...")
@@ -1265,7 +1264,9 @@ class WeReadAPI:
                     continue
             
             # If all endpoints failed, return None
-            print(f"[API WARNING] Could not find note endpoint for book {book_id}")
+            # Silently return None - not all books have notes endpoint (expected behavior)
+            if os.environ.get("WEREAD_DEBUG") == "1":
+                print(f"[API WARNING] Could not find note endpoint for book {book_id}")
             return None
         except Exception as e:
             print(f"[API ERROR] Failed to fetch notes for book {book_id}: {e}")

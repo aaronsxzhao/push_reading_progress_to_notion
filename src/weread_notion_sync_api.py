@@ -21,18 +21,20 @@ Optional env vars: same as weread_notion_sync.py
 import os
 import sys
 import time
-from typing import Dict, Any, Optional
+import hashlib
+from typing import Dict, Any, Optional, Tuple
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
 # Force unbuffered output for real-time logs (important for GitHub Actions)
 if os.environ.get("PYTHONUNBUFFERED") != "1":
-    sys.stdout.reconfigure(line_buffering=True)
-    sys.stderr.reconfigure(line_buffering=True)
-
-from notion_client import Client
-from weread_api import WeReadAPI, env
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    except AttributeError:
+        # Python < 3.7 doesn't have reconfigure
+        pass
 
 # Load .env file if it exists
 try:
@@ -44,10 +46,11 @@ except ImportError:
     # python-dotenv not installed, skip loading .env
     pass
 
-# Import Notion helpers from the main sync script
-import sys
-from pathlib import Path
+# Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
+
+from notion_client import Client
+from weread_api import WeReadAPI, env
 
 # Reuse config and Notion helpers
 from weread_notion_sync import (
@@ -188,32 +191,47 @@ def get_block_signature(block: Dict[str, Any]) -> str:
     Create a signature (hash) for a block based on its content.
     Returns a unique identifier for the block's content.
     """
-    import hashlib
-    block_type = block.get("type")
-    content = ""
+    block_type = block.get("type", "unknown")
     
-    if block_type == "callout":
-        rich_text = block.get("callout", {}).get("rich_text", [])
-        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
-    elif block_type == "quote":
-        rich_text = block.get("quote", {}).get("rich_text", [])
-        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
-    elif block_type in ["heading_1", "heading_2", "heading_3"]:
-        heading_key = block_type
-        rich_text = block.get(heading_key, {}).get("rich_text", [])
-        content = "".join([rt.get("text", {}).get("content", "") if isinstance(rt.get("text"), dict) else rt.get("plain_text", "") for rt in rich_text])
-    elif block_type == "table_of_contents":
-        # Table of contents is always the same, use type as signature
+    # Handle special block types
+    if block_type == "table_of_contents":
         return f"table_of_contents_{block_type}"
     
-    # Create signature from full content (normalized)
+    # Extract content from different block types
+    content = ""
+    if block_type == "callout":
+        rich_text = block.get("callout", {}).get("rich_text", [])
+        content = _extract_text_from_rich_text(rich_text)
+    elif block_type == "quote":
+        rich_text = block.get("quote", {}).get("rich_text", [])
+        content = _extract_text_from_rich_text(rich_text)
+    elif block_type in ["heading_1", "heading_2", "heading_3"]:
+        rich_text = block.get(block_type, {}).get("rich_text", [])
+        content = _extract_text_from_rich_text(rich_text)
+    
+    # Create signature from content
     if content:
         content_normalized = content.strip()
         signature = hashlib.md5(content_normalized.encode('utf-8')).hexdigest()
         return f"{block_type}_{signature}"
     
-    # For blocks without content, use type and structure
     return f"{block_type}_empty"
+
+
+def _extract_text_from_rich_text(rich_text: list) -> str:
+    """Helper to extract text content from rich_text array"""
+    if not rich_text:
+        return ""
+    
+    texts = []
+    for rt in rich_text:
+        if isinstance(rt, dict):
+            text_obj = rt.get("text", {})
+            if isinstance(text_obj, dict):
+                texts.append(text_obj.get("content", ""))
+            else:
+                texts.append(rt.get("plain_text", ""))
+    return "".join(texts)
 
 
 def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
@@ -232,9 +250,15 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
             for block in blocks:
                 block_id = block.get("id")
                 # Extract content from existing block
-                block_type = block.get("type")
-                content = ""
+                block_type = block.get("type", "unknown")
                 
+                if block_type == "table_of_contents":
+                    signature = f"table_of_contents_{block_type}"
+                    existing_blocks[signature] = block_id
+                    continue
+                
+                # Extract text content
+                content = ""
                 if block_type == "callout":
                     rich_text = block.get("callout", {}).get("rich_text", [])
                     content = "".join([rt.get("plain_text", "") for rt in rich_text])
@@ -242,17 +266,11 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
                     rich_text = block.get("quote", {}).get("rich_text", [])
                     content = "".join([rt.get("plain_text", "") for rt in rich_text])
                 elif block_type in ["heading_1", "heading_2", "heading_3"]:
-                    heading_key = block_type
-                    rich_text = block.get(heading_key, {}).get("rich_text", [])
+                    rich_text = block.get(block_type, {}).get("rich_text", [])
                     content = "".join([rt.get("plain_text", "") for rt in rich_text])
-                elif block_type == "table_of_contents":
-                    signature = f"table_of_contents_{block_type}"
-                    existing_blocks[signature] = block_id
-                    continue
                 
                 # Create signature
                 if content:
-                    import hashlib
                     content_normalized = content.strip()
                     signature = hashlib.md5(content_normalized.encode('utf-8')).hexdigest()
                     signature = f"{block_type}_{signature}"
@@ -265,7 +283,7 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
     return existing_blocks
 
 
-def sync_blocks_to_page(notion: Client, page_id: str, new_blocks: list, clear_existing: bool = False):
+def sync_blocks_to_page(notion: Client, page_id: str, new_blocks: list, clear_existing: bool = False) -> Tuple[int, int, int]:
     """
     Fully sync blocks to a Notion page - adds new blocks, deletes removed blocks, keeps existing ones.
     This ensures the Notion page exactly matches the WeRead data.
@@ -867,16 +885,19 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
 
 
 def main():
-    import sys
-    
     # Check if user wants to start web server
     if len(sys.argv) > 1 and sys.argv[1] in ("--server", "-s", "server"):
         print("Starting web server...")
-        from sync_web_server import app, get_env_config
-        port = int(env("SYNC_SERVER_PORT", "8765"))
-        host = env("SYNC_SERVER_HOST", "0.0.0.0")
-        print(f"Server starting on http://{host}:{port}")
-        app.run(host=host, port=port, debug=False)
+        try:
+            from sync_web_server import app
+            port = int(env("SYNC_SERVER_PORT", "8765"))
+            host = env("SYNC_SERVER_HOST", "0.0.0.0")
+            print(f"Server starting on http://{host}:{port}")
+            app.run(host=host, port=port, debug=False)
+        except ImportError as e:
+            print(f"❌ Failed to import web server: {e}")
+            print("   Make sure Flask is installed: pip install flask flask-cors")
+            sys.exit(1)
         return
     
     NOTION_TOKEN = env("NOTION_TOKEN")
@@ -921,13 +942,10 @@ def main():
                             test_book_title = None
                             break
     
-    # Debug: show if test_book_title is being used
+    # Show test book title status only if set (to avoid clutter)
     if test_book_title:
-        print(f"\n[DEBUG] ⚠️  Test book title filter is ACTIVE: '{test_book_title}'")
-        print(f"[DEBUG] To disable: unset WEREAD_TEST_BOOK_TITLE or comment it out in .env")
-        print(f"[DEBUG] Current env value: {repr(test_book_title_raw)}\n")
-    else:
-        print(f"[DEBUG] Test book title filter is DISABLED (processing all books)")
+        print(f"\n[INFO] ⚠️  Test book title filter ACTIVE: '{test_book_title}'")
+        print(f"[INFO] To disable: unset WEREAD_TEST_BOOK_TITLE or comment it out in .env\n")
     
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
