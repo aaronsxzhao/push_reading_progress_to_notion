@@ -28,7 +28,8 @@ except ImportError:
     from flask_cors import CORS
 
 from notion_client import Client
-from weread_api import WeReadAPI, env
+from config import env
+from weread_api import WeReadAPI
 from weread_notion_sync import get_db_properties
 from weread_notion_sync_api import sync_books_from_api
 
@@ -294,6 +295,171 @@ def sync():
         }), 202
 
 
+@app.route("/trigger", methods=["GET"])
+def trigger():
+    """Mobile-friendly trigger page - can be saved to iPhone home screen"""
+    global sync_status
+    
+    # Optional API key check
+    config = get_env_config()
+    if config["api_key"]:
+        provided_key = request.args.get("key")
+        if provided_key != config["api_key"]:
+            return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+                <title>Access Denied</title>
+                <style>
+                    body { font-family: -apple-system, system-ui, sans-serif; display: flex; justify-content: center; 
+                           align-items: center; min-height: 100vh; margin: 0; background: #1a1a1a; color: #fff; }
+                    .msg { text-align: center; padding: 20px; }
+                </style>
+            </head>
+            <body><div class="msg"><h1>🔒</h1><p>Invalid API Key</p></div></body>
+            </html>
+            """, 401
+    
+    with sync_lock:
+        is_running = sync_status["running"]
+        current_status = sync_status.copy()
+    
+    # Build status display
+    if is_running:
+        status_class = "running"
+        status_icon = "🔄"
+        status_text = current_status.get("message", "Syncing...")
+        button_disabled = "disabled"
+        button_text = "Syncing..."
+    elif current_status.get("error"):
+        status_class = "error"
+        status_icon = "❌"
+        status_text = current_status.get("error", "Error")[:50]
+        button_disabled = ""
+        button_text = "Retry Sync"
+    elif current_status.get("completed_at"):
+        status_class = "success"
+        status_icon = "✅"
+        status_text = "Sync completed"
+        button_disabled = ""
+        button_text = "Sync Again"
+    else:
+        status_class = "ready"
+        status_icon = "📚"
+        status_text = "Ready to sync"
+        button_disabled = ""
+        button_text = "Sync Now"
+    
+    # API key param for redirects
+    key_param = f"?key={config['api_key']}" if config["api_key"] else ""
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="WeRead Sync">
+        <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+        <title>WeRead Sync</title>
+        <style>
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body {{ 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                color: #fff;
+            }}
+            .container {{ text-align: center; width: 100%; max-width: 400px; }}
+            .icon {{ font-size: 80px; margin-bottom: 20px; }}
+            h1 {{ font-size: 24px; margin-bottom: 10px; font-weight: 600; }}
+            .status {{
+                padding: 15px 25px;
+                border-radius: 12px;
+                margin: 20px 0;
+                font-size: 16px;
+            }}
+            .status.ready {{ background: rgba(255,255,255,0.1); }}
+            .status.running {{ background: rgba(59,130,246,0.3); animation: pulse 1.5s infinite; }}
+            .status.success {{ background: rgba(34,197,94,0.3); }}
+            .status.error {{ background: rgba(239,68,68,0.3); }}
+            @keyframes pulse {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.7; }} }}
+            .btn {{
+                display: block;
+                width: 100%;
+                padding: 20px 40px;
+                font-size: 20px;
+                font-weight: 600;
+                border: none;
+                border-radius: 16px;
+                cursor: pointer;
+                transition: all 0.2s;
+                text-decoration: none;
+                margin-top: 20px;
+            }}
+            .btn-primary {{
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                color: white;
+                box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            }}
+            .btn-primary:hover {{ transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }}
+            .btn-primary:active {{ transform: translateY(0); }}
+            .btn:disabled {{ opacity: 0.6; cursor: not-allowed; transform: none !important; }}
+            .spinner {{
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 3px solid rgba(255,255,255,0.3);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: spin 1s linear infinite;
+                margin-right: 10px;
+                vertical-align: middle;
+            }}
+            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+            .footer {{ margin-top: 40px; font-size: 12px; opacity: 0.5; }}
+            .footer a {{ color: inherit; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">📚</div>
+            <h1>WeRead → Notion</h1>
+            
+            <div class="status {status_class}">
+                <span>{status_icon}</span> {status_text}
+            </div>
+            
+            <form action="/sync{key_param}" method="GET">
+                <button type="submit" class="btn btn-primary" {button_disabled}>
+                    {"<span class='spinner'></span>" if is_running else ""}{button_text}
+                </button>
+            </form>
+            
+            <p class="footer">
+                <a href="/status{key_param}">View Details</a>
+            </p>
+        </div>
+        
+        <script>
+            // Auto-refresh when sync is running
+            {"setInterval(() => location.reload(), 3000);" if is_running else ""}
+        </script>
+    </body>
+    </html>
+    """
+    return html
+
+
 @app.route("/health", methods=["GET"])
 def health():
     """Health check endpoint"""
@@ -325,16 +491,21 @@ if __name__ == "__main__":
     
     Endpoints:
       - GET  /          : Home page with instructions
+      - GET  /trigger   : Mobile-friendly sync button (for iPhone)
       - GET  /status    : Get sync status (JSON)
       - GET  /sync      : Trigger sync (HTML page)
       - POST /sync      : Trigger sync (JSON response)
       - GET  /health    : Health check
     
-    For Notion:
-      - Embed URL: http://localhost:{port}/sync
-      - Or use: http://localhost:{port}/status (for status updates)
+    For iPhone:
+      1. Open http://localhost:{port}/trigger in Safari
+      2. Tap Share > Add to Home Screen
+      3. One-tap sync from your home screen!
     
-    To change port, set SYNC_SERVER_PORT in .env file
+    For Notion:
+      - Add bookmark: http://localhost:{port}/sync
+    
+    To change port, set SYNC_SERVER_PORT in .env
     
     Press Ctrl+C to stop
     {'='*60}

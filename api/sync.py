@@ -11,8 +11,10 @@ import sys
 import json
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add src to path for imports
+src_path = str(Path(__file__).parent.parent / "src")
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
 from notion_client import Client
 from weread_api import WeReadAPI

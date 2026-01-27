@@ -40,41 +40,34 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # -------------------------
-# Config helpers
+# Config - imported from shared module
 # -------------------------
 
-def env(name: str, default: Optional[str] = None) -> str:
-    v = os.environ.get(name)
-    if v is None or str(v).strip() == "":
-        if default is None:
-            return ""
-        return default
-    return str(v).strip()
+from config import (
+    env,
+    PROP_TITLE,
+    PROP_AUTHOR,
+    PROP_STATUS,
+    PROP_CURRENT_PAGE,
+    PROP_TOTAL_PAGE,
+    PROP_DATE_FINISHED,
+    PROP_SOURCE,
+    PROP_STARTED_AT,
+    PROP_LAST_READ_AT,
+    PROP_COVER_IMAGE,
+    PROP_GENRE,
+    PROP_YEAR_STARTED,
+    PROP_RATING,
+    PROP_REVIEW,
+    STATUS_TBR,
+    STATUS_READING,
+    STATUS_READ,
+    SOURCE_WEREAD,
+)
 
 NOTION_TOKEN = env("NOTION_TOKEN")
 NOTION_DATABASE_ID = env("NOTION_DATABASE_ID")
 WEREAD_ROOT = Path(env("WEREAD_ROOT", os.path.expanduser("~/Obsidian/WeRead"))).expanduser()
-
-PROP_TITLE = env("NOTION_TITLE_PROP", "Name")
-PROP_AUTHOR = env("PROP_AUTHOR", "Author")
-PROP_STATUS = env("PROP_STATUS", "Status")
-PROP_CURRENT_PAGE = env("PROP_CURRENT_PAGE", "Current Page")
-PROP_TOTAL_PAGE = env("PROP_TOTAL_PAGE", "Total Page")
-PROP_DATE_FINISHED = env("PROP_DATE_FINISHED", "Date Finished")
-PROP_SOURCE = env("PROP_SOURCE", "Source")
-PROP_STARTED_AT = env("PROP_STARTED_AT", "Date Started")
-PROP_LAST_READ_AT = env("PROP_LAST_READ_AT", "Last Read At")
-PROP_COVER_IMAGE = env("PROP_COVER_IMAGE", "Cover")
-PROP_GENRE = env("PROP_GENRE", "Genre")
-PROP_YEAR_STARTED = env("PROP_YEAR_STARTED", "Year Started")
-PROP_RATING = env("PROP_RATING", "Rating")
-PROP_REVIEW = env("PROP_REVIEW", "Review")
-
-STATUS_TBR = env("STATUS_TBR", "To Be Read")
-STATUS_READING = env("STATUS_READING", "Currently Reading")
-STATUS_READ = env("STATUS_READ", "Read")
-
-SOURCE_WEREAD = env("SOURCE_WEREAD", "WeRead")
 
 DEBOUNCE_SECONDS = 1.0
 

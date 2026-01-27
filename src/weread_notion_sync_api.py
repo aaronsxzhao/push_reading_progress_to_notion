@@ -50,13 +50,16 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent))
 
 from notion_client import Client
-from weread_api import WeReadAPI, env
-
-# Reuse config and Notion helpers
-from weread_notion_sync import (
+from weread_api import WeReadAPI
+from config import (
+    env,
     PROP_TITLE, PROP_AUTHOR, PROP_STATUS, PROP_CURRENT_PAGE, PROP_TOTAL_PAGE,
     PROP_DATE_FINISHED, PROP_SOURCE, PROP_STARTED_AT, PROP_LAST_READ_AT,
     STATUS_TBR, STATUS_READING, STATUS_READ, SOURCE_WEREAD,
+)
+
+# Reuse Notion helpers
+from weread_notion_sync import (
     get_db_properties, prop_exists, build_props, find_page_by_title, upsert_page
 )
 

@@ -21,44 +21,25 @@ import requests
 from dateutil import parser as dtparser
 import dateutil.tz
 
-# Load .env file if it exists
-try:
-    from dotenv import load_dotenv
-    env_path = Path(__file__).parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
-except ImportError:
-    # python-dotenv not installed, skip loading .env
-    pass
-
-
-def env(name: str, default: Optional[str] = None) -> str:
-    v = os.environ.get(name)
-    if v is None or str(v).strip() == "":
-        if default is None:
-            return ""
-        return default
-    return str(v).strip()
-
-
-# WeRead API endpoints - matching obsidian-weread-plugin (https://github.com/zhaohongxuan/obsidian-weread-plugin)
-WEREAD_API_BASE = "https://weread.qq.com"
-WEREAD_NOTEBOOKS_API = f"{WEREAD_API_BASE}/api/user/notebook"  # Obsidian plugin uses this
-WEREAD_SHELF_API = f"{WEREAD_API_BASE}/web/shelf/sync"
-WEREAD_BOOK_INFO_API = f"{WEREAD_API_BASE}/web/book/bookDetail"
-WEREAD_BOOK_INFO_API_V2 = f"{WEREAD_API_BASE}/web/book/info"  # Obsidian plugin: /web/book/info
-WEREAD_READING_DATA_API = f"{WEREAD_API_BASE}/web/readingData"
-WEREAD_BOOK_LIST_API = f"{WEREAD_API_BASE}/web/shelf/bookList"
-# Alternative endpoints to try for reading data
-WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readinfo"  # Obsidian plugin: readinfo (lowercase)
-WEREAD_BOOK_READING_API = f"{WEREAD_API_BASE}/web/book/reading"
-WEREAD_USER_READING_API = f"{WEREAD_API_BASE}/web/user/reading"
-# Additional endpoints for bookmarks, reviews, and chapters - matching obsidian plugin
-WEREAD_BOOKMARKLIST_API = f"{WEREAD_API_BASE}/web/book/bookmarklist"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
-WEREAD_REVIEW_LIST_API = f"{WEREAD_API_BASE}/web/review/list"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
-WEREAD_NOTE_LIST_API = f"{WEREAD_API_BASE}/web/book/note"  # Try note endpoint for highlights without thoughts
-WEREAD_CHAPTER_INFO_API = f"{WEREAD_API_BASE}/web/book/chapterInfos"  # Obsidian plugin uses weread.qq.com, not i.weread.qq.com
-WEREAD_GET_PROGRESS_API = f"{WEREAD_API_BASE}/web/book/getProgress"  # Obsidian plugin: /web/book/getProgress
+# Import shared configuration
+from config import (
+    env,
+    WEREAD_API_BASE,
+    WEREAD_NOTEBOOKS_API,
+    WEREAD_SHELF_API,
+    WEREAD_BOOK_INFO_API,
+    WEREAD_BOOK_INFO_API_V2,
+    WEREAD_READING_DATA_API,
+    WEREAD_BOOK_LIST_API,
+    WEREAD_READ_INFO_API,
+    WEREAD_BOOK_READING_API,
+    WEREAD_USER_READING_API,
+    WEREAD_BOOKMARKLIST_API,
+    WEREAD_REVIEW_LIST_API,
+    WEREAD_NOTE_LIST_API,
+    WEREAD_CHAPTER_INFO_API,
+    WEREAD_GET_PROGRESS_API,
+)
 
 
 class WeReadAPI:
@@ -214,10 +195,10 @@ class WeReadAPI:
             except:
                 pass
             
-            # Check for set-cookie header (obsidian plugin uses this to refresh cookies)
-            set_cookie = response.headers.get('set-cookie') or response.headers.get('Set-Cookie')
-            if set_cookie and not has_wr_name:
-                print("[API] ⚠️  Received set-cookie header - cookies may need refresh")
+            # Check for set-cookie header and update cookies if present
+            if self._update_cookies_from_response(response):
+                print("[API] 🔄 Updated cookies from response headers")
+                self._persist_cookies_to_env()
             
             if response.status_code == 200:
                 print("[API] ✅ Cookie validation successful")
@@ -1242,6 +1223,9 @@ class WeReadAPI:
                         
                         print(f"\n✅ Cookies refreshed successfully!")
                         print(f"   Found {len(cookie_dict)} cookies: {', '.join(cookie_dict.keys())}")
+                        
+                        # Persist to .env so next run uses fresh cookies
+                        self._persist_cookies_to_env()
                         return True
                     else:
                         print(f"\n⚠️  Cookie fetching completed but no cookies found in .env")
@@ -1264,6 +1248,101 @@ class WeReadAPI:
             print(f"\n❌ Error during automatic cookie refresh: {e}")
             import traceback
             traceback.print_exc()
+            return False
+    
+    def _persist_cookies_to_env(self) -> bool:
+        """
+        Save current session cookies back to .env file.
+        This ensures refreshed cookies are persisted for future runs.
+        Returns True if successful, False otherwise.
+        """
+        try:
+            # Get all wr_* cookies from session
+            cookie_dict = {}
+            for name, value in self.session.cookies.items():
+                if name.startswith('wr_'):
+                    cookie_dict[name] = value
+            
+            # Also include cookies from self.cookie_dict that might not be in session
+            if hasattr(self, 'cookie_dict'):
+                for name, value in self.cookie_dict.items():
+                    if name.startswith('wr_') and name not in cookie_dict:
+                        cookie_dict[name] = value
+            
+            if not cookie_dict:
+                return False
+            
+            # Format as cookie string
+            cookie_str = "; ".join(f"{k}={v}" for k, v in sorted(cookie_dict.items()))
+            
+            # Update .env file
+            env_path = Path(__file__).parent.parent / ".env"
+            if not env_path.exists():
+                return False
+            
+            content = env_path.read_text(encoding='utf-8')
+            lines = content.split('\n')
+            
+            updated = False
+            new_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith('WEREAD_COOKIES=') or stripped.startswith('#WEREAD_COOKIES='):
+                    new_lines.append(f'WEREAD_COOKIES="{cookie_str}"')
+                    updated = True
+                else:
+                    new_lines.append(line)
+            
+            if not updated:
+                if content and not content.endswith('\n'):
+                    new_lines.append('')
+                new_lines.append(f'WEREAD_COOKIES="{cookie_str}"')
+            
+            env_path.write_text('\n'.join(new_lines), encoding='utf-8')
+            print(f"[API] ✅ Cookies persisted to .env ({len(cookie_dict)} cookies)")
+            return True
+            
+        except Exception as e:
+            print(f"[API] ⚠️  Failed to persist cookies: {e}")
+            return False
+    
+    def _update_cookies_from_response(self, response) -> bool:
+        """
+        Extract and update cookies from Set-Cookie headers in response.
+        Returns True if cookies were updated, False otherwise.
+        """
+        try:
+            # Check for Set-Cookie headers
+            set_cookie = response.headers.get('set-cookie') or response.headers.get('Set-Cookie')
+            if not set_cookie:
+                return False
+            
+            # Parse Set-Cookie header(s)
+            cookies_updated = False
+            
+            # Handle multiple Set-Cookie headers (may be comma-separated or multiple headers)
+            cookie_headers = set_cookie.split(',') if ',' in set_cookie else [set_cookie]
+            
+            for cookie_header in cookie_headers:
+                # Extract cookie name and value (before first semicolon)
+                parts = cookie_header.strip().split(';')
+                if parts:
+                    cookie_part = parts[0].strip()
+                    if '=' in cookie_part:
+                        name, value = cookie_part.split('=', 1)
+                        name = name.strip()
+                        value = value.strip()
+                        
+                        # Only update wr_* cookies
+                        if name.startswith('wr_') and value:
+                            self.session.cookies.set(name, value)
+                            if hasattr(self, 'cookie_dict'):
+                                self.cookie_dict[name] = value
+                            cookies_updated = True
+            
+            return cookies_updated
+            
+        except Exception as e:
             return False
     
     def _check_auth_error(self, response, api_name: str) -> bool:
