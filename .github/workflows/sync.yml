@@ -25,11 +25,15 @@ jobs:
       run: pip install -r requirements.txt
     
     - name: Fetch cookies from Gist (if configured)
-      if: ${{ secrets.COOKIE_GIST_ID != '' }}
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         COOKIE_GIST_ID: ${{ secrets.COOKIE_GIST_ID }}
       run: |
+        # Skip if gist not configured
+        if [ -z "$COOKIE_GIST_ID" ] || [ -z "$GH_TOKEN" ]; then
+          echo "Gist not configured, using WEREAD_COOKIES secret"
+          exit 0
+        fi
         # Fetch latest cookies from private gist
         COOKIES=$(curl -s -H "Authorization: token $GH_TOKEN" \
           "https://api.github.com/gists/$COOKIE_GIST_ID" | \

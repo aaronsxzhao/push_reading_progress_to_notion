@@ -562,6 +562,9 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     print("[API] Fetching shelf data...")
     shelf_data, all_books_list, book_progress_list = client.get_shelf()
     
+    # Get the current (possibly refreshed) cookies for thread clients
+    current_cookies = "; ".join(f"{k}={v}" for k, v in client.cookie_dict.items()) if hasattr(client, 'cookie_dict') else weread_cookies
+    
     total_books = shelf_data.get("bookCount", 0) or shelf_data.get("pureBookCount", 0) or len(all_books_list)
     print(f"[API] Total books in shelf: {total_books}")
     
@@ -715,9 +718,9 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 print(f"[{i}/{total_to_process}] 📖 Processing book {book_id}...")
             
             # Create a new client instance for this thread (thread-safe)
-            # Each thread gets its own session to avoid conflicts
-            # Pass auto_refresh so each thread can refresh cookies if needed
-            thread_client = WeReadAPI(weread_cookies, auto_refresh=auto_refresh)
+            # Use current_cookies which may have been refreshed by main client
+            # Disable auto_refresh in threads - main client handles refresh
+            thread_client = WeReadAPI(current_cookies, auto_refresh=False)
             
             # Get book data (this is where the work happens)
             book_data = thread_client.get_single_book_data(book_id, book_item)

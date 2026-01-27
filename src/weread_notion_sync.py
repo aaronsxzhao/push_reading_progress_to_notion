@@ -192,18 +192,13 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
     props: Dict[str, Any] = {}
 
     if fields.get("title"):
-        if prop_exists(db_props, PROP_TITLE):
-            # Check if it's a title property
-            prop_type = db_props[PROP_TITLE].get("type")
-            if prop_type == "title":
-                props[PROP_TITLE] = {"title": [{"text": {"content": fields["title"]}}]}
-            else:
-                # Try as rich_text if title type doesn't work
-                props[PROP_TITLE] = {"rich_text": [{"text": {"content": fields["title"]}}]}
+        # Find the title property (there's exactly one in every Notion database)
+        title_prop_name = get_title_property_name(db_props)
+        if title_prop_name in db_props:
+            props[title_prop_name] = {"title": [{"text": {"content": fields["title"]}}]}
         else:
-            # Property doesn't exist - print helpful error
             available_props = ", ".join(list(db_props.keys())[:10])
-            raise ValueError(f"Property '{PROP_TITLE}' not found in database. Available properties: {available_props}... (set NOTION_TITLE_PROP in .env)")
+            raise ValueError(f"No title property found. Available: {available_props}...")
 
     if fields.get("author") is not None and fields.get("author") != "" and prop_exists(db_props, PROP_AUTHOR):
         props[PROP_AUTHOR] = {"rich_text": [{"text": {"content": fields["author"]}}]}
@@ -507,10 +502,29 @@ def append_review(notion: Client, page_id: str, db_props: Dict[str, Any], review
     except Exception as e:
         print(f"[WARNING] Failed to append review: {e}")
 
-def find_page_by_title(notion: Client, database_id: str, title: str) -> Optional[Dict[str, Any]]:
+def get_title_property_name(db_props: Dict[str, Any]) -> str:
+    """Find the title property name in the database (the one with type 'title')"""
+    # First try the configured PROP_TITLE
+    if PROP_TITLE in db_props and db_props[PROP_TITLE].get("type") == "title":
+        return PROP_TITLE
+    
+    # Search for the title property (there's always exactly one with type 'title')
+    for prop_name, prop_config in db_props.items():
+        if prop_config.get("type") == "title":
+            if prop_name != PROP_TITLE:
+                print(f"[INFO] Found title property: '{prop_name}' (configured: '{PROP_TITLE}')")
+            return prop_name
+    
+    # Fallback to configured value
+    return PROP_TITLE
+
+def find_page_by_title(notion: Client, database_id: str, title: str, db_props: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+    # Get the correct title property name
+    title_prop = get_title_property_name(db_props) if db_props else PROP_TITLE
+    
     res = notion.databases.query(
         database_id=database_id,
-        filter={"property": PROP_TITLE, "title": {"equals": title}},
+        filter={"property": title_prop, "title": {"equals": title}},
         page_size=10
     )
     results = res.get("results", [])
@@ -521,10 +535,13 @@ def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Di
     if not title:
         return None
     
+    # Get the correct title property name
+    title_prop = get_title_property_name(db_props)
+    
     # Build filter: title matches AND author matches
     filters = {
         "and": [
-            {"property": PROP_TITLE, "title": {"equals": title}}
+            {"property": title_prop, "title": {"equals": title}}
         ]
     }
     
@@ -544,7 +561,7 @@ def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Di
     except Exception as e:
         print(f"[WARNING] Error finding page by title and author: {e}")
         # Fallback to title-only search
-        return find_page_by_title(notion, database_id, title)
+        return find_page_by_title(notion, database_id, title, db_props)
 
 def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Tuple[str, bool]:
     """
