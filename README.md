@@ -1,141 +1,313 @@
-# WeRead → Notion Auto Sync
+# WeRead → Notion Sync
 
-Syncs your WeRead (微信读书) reading progress directly to Notion, updating your Books & Media database automatically.
-
-## Two Modes Available
-
-### 🚀 **Direct API Mode** (Recommended - No Obsidian needed!)
-Fetches data directly from WeRead's API using your browser cookies. No plugins or extra apps required.
-
-### 📁 **File Watch Mode** (Alternative)
-Watches an Obsidian folder for markdown files exported by the WeRead Obsidian plugin.
+Sync your WeRead (微信读书) reading progress to Notion automatically.
 
 ## Features
-- ✅ Direct API access to WeRead (no Obsidian needed)
-- ✅ Real-time file watching (if using Obsidian mode)
-- ✅ Upserts books into Notion database
-- ✅ Updates:
-  - Author
-  - Current Page / Total Page
-  - Status (To Be Read / Currently Reading / Read)
-  - Started At / Last Read At
-  - Date Finished
-  - Source = WeRead
 
-## Setup
+- Syncs books, reading progress, and highlights to Notion
+- Works from Mac, iPhone, or Notion itself
+- No server required - uses GitHub Actions (free)
+- Auto-refreshes cookies when they expire
 
-### 1) Install deps
+## Quick Start
+
+### 1. Install
+
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+git clone https://github.com/YOUR_USERNAME/push_reading_progress_to_notion.git
+cd push_reading_progress_to_notion
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
-### 2) Create `.env`
+### 2. Configure `.env`
+
+Edit `.env` with your values:
 
 ```bash
-cp .env.example .env
-# edit .env with your real values
+# Required
+NOTION_TOKEN=secret_xxxxx          # From notion.so/my-integrations
+NOTION_DATABASE_ID=xxxxx           # Your Notion database ID
+WEREAD_COOKIES="wr_skey=xxx; wr_vid=xxx; wr_rt=xxx"  # From browser
+
+# Optional - for iPhone/Notion trigger
+GH_TOKEN=ghp_xxxxx                 # GitHub token (repo + workflow + gist scopes)
 ```
 
-**⚠️ Security Note:** Your `.env` file contains secrets and is **automatically ignored by git** (see `.gitignore`). Never commit your `.env` file to GitHub. Only `.env.example` (with placeholder values) is safe to commit.
+**Get WeRead Cookies:**
+1. Open [weread.qq.com](https://weread.qq.com) and log in
+2. Press F12 → Application → Cookies → weread.qq.com
+3. Copy `wr_skey`, `wr_vid`, `wr_rt` values
 
-### 3) Choose Your Mode
+Or run: `python scripts/fetch_cookies_auto.py`
 
-#### Option A: Direct API Mode (Recommended)
+---
 
-1. **Get your WeRead cookies:**
-   - Open [weread.qq.com](https://weread.qq.com) in browser and log in
-   - Press F12 → Application tab → Cookies → `weread.qq.com`
-   - Copy cookie values (especially `wr_skey`, `wr_vid`, `wr_rt`)
-   - Format: `wr_skey=xxx; wr_vid=xxx; wr_rt=xxx`
-   - See `scripts/get_weread_cookies.md` for detailed instructions
+## Usage
 
-2. **Add to `.env`:**
-   ```bash
-   WEREAD_COOKIES=wr_skey=your_value; wr_vid=your_value; wr_rt=your_value
-   ```
+### On Mac (Local)
 
-3. **Run the API sync:**
-   ```bash
-   source .venv/bin/activate
-   python3 src/weread_notion_sync_api.py
-   ```
+**One-time sync:**
+```bash
+source venv/bin/activate
+python src/weread_notion_sync_api.py
+```
 
-#### Option B: File Watch Mode (Obsidian)
-
-1. **Set up Obsidian WeRead plugin** (if not already done)
-2. **Add to `.env`:**
-   ```bash
-   WEREAD_ROOT=/path/to/your/Obsidian/WeRead
-   ```
-
-3. **Run the file watcher:**
-   ```bash
-   source .venv/bin/activate
-   python3 src/weread_notion_sync.py
-   ```
-
-## macOS auto-run (launchd)
-
-### For Direct API Mode:
-
-Use the provided `scripts/install_launchd_api.sh` to run sync periodically (default: every hour):
-
+**Auto-sync every hour (launchd):**
 ```bash
 bash scripts/install_launchd_api.sh
 ```
 
-To change sync interval, set `SYNC_INTERVAL` in `.env` (in seconds, default 3600 = 1 hour).
-
-Logs:
-
-* /tmp/weread_notion_sync_api.out.log
-* /tmp/weread_notion_sync_api.err.log
-
-### For File Watch Mode:
-
-Use the provided `scripts/install_launchd.sh` to install a LaunchAgent that watches files continuously:
-
+**Web server (local trigger):**
 ```bash
-bash scripts/install_launchd.sh
+python src/sync_web_server.py
+# Open http://localhost:8765/trigger
 ```
 
-Logs:
+---
 
-* /tmp/weread_notion_sync.out.log
-* /tmp/weread_notion_sync.err.log
+### On iPhone (One-Tap Sync)
 
-## Security: Protecting Your Secrets
+Trigger sync from anywhere using GitHub Actions - no server needed.
 
-**Your `.env` file is automatically ignored by git** and will never be committed. Here's how to verify:
+**Setup (one-time):**
 
-### Before pushing to GitHub:1. **Run the security check:**
+1. **Push to GitHub:**
    ```bash
-   bash scripts/check_secrets.sh
-   ```2. **Verify `.env` is not tracked:**
-   ```bash
-   git status
-   # Should NOT show .env in the output
+   git add . && git commit -m "Setup" && git push
    ```
 
-3. **Double-check what will be committed:**
-   ```bash
-   git diff --cached  # if staging
-   git diff          # if not staging
-   ```### What's safe to commit:
-- ✅ `.env.example` (template with placeholder values)
-- ✅ All code files
-- ✅ `requirements.txt`, `README.md`, etc.
+2. **Add secrets** (GitHub → Settings → Secrets → Actions):
+   | Secret | Value |
+   |--------|-------|
+   | `NOTION_TOKEN` | Your Notion token |
+   | `NOTION_DATABASE_ID` | Your database ID |
+   | `WEREAD_COOKIES` | Your cookies string |
 
-### What's NEVER committed:
-- ❌ `.env` (your real secrets)
-- ❌ Any file with `secret_` tokens
-- ❌ LaunchAgent plist files
+3. **Enable GitHub Pages** (GitHub → Settings → Pages):
+   - Source: Deploy from branch
+   - Branch: `main` / `docs`
 
-**If you accidentally commit `.env`:**
-```bash
-git rm --cached .env
-git commit -m "Remove accidentally committed .env"
-# Then immediately rotate your Notion token in Notion settings
+4. **Create GitHub Token:**
+   - Go to: https://github.com/settings/tokens/new
+   - Scopes: `repo`, `workflow`, `gist`
+   - Copy the token
+
+**Use:**
+
+1. Open `https://YOUR_USERNAME.github.io/push_reading_progress_to_notion/`
+2. Enter your GitHub token and repo name, tap Save
+3. Tap **Sync Now**
+
+**Add to Home Screen:**
+1. Open the URL in Safari
+2. Tap Share → Add to Home Screen
+3. One-tap sync from your home screen!
+
+---
+
+### In Notion
+
+Add a bookmark or link to trigger sync:
+
+**Option 1: Link to trigger page**
 ```
+https://YOUR_USERNAME.github.io/push_reading_progress_to_notion/
+```
+
+**Option 2: Direct GitHub Actions link**
+```
+https://github.com/YOUR_USERNAME/push_reading_progress_to_notion/actions
+```
+Click "Run workflow" to trigger manually.
+
+---
+
+## Auto-Refresh Cookies
+
+WeRead cookies expire. To auto-sync refreshed cookies to GitHub Actions:
+
+1. **Setup cookie gist:**
+   ```bash
+   # Add GH_TOKEN to .env first
+   python scripts/setup_cookie_gist.py
+   ```
+
+2. **Add secrets to GitHub:**
+   - `GH_TOKEN` - your GitHub token
+   - `COOKIE_GIST_ID` - from the script output
+
+Now when you run locally and cookies refresh, they auto-sync to the cloud.
+
+---
+
+## Project Structure
+
+```
+src/
+  config.py                 # Shared configuration
+  weread_api.py             # WeRead API client
+  weread_notion_sync.py     # File watch mode (Obsidian)
+  weread_notion_sync_api.py # Direct API mode
+  sync_web_server.py        # Local web server
+
+scripts/
+  fetch_cookies_auto.py     # Auto-fetch cookies from browser
+  setup_cookie_gist.py      # Setup cloud cookie sync
+  check_cookies.py          # Validate cookies
+
+docs/
+  index.html                # Mobile trigger page (GitHub Pages)
+
+.github/workflows/
+  sync.yml                  # GitHub Actions workflow
+```
+
+---
+
+## Endpoints (Web Server)
+
+When running `python src/sync_web_server.py`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /` | Home page |
+| `GET /trigger` | Mobile-friendly sync button |
+| `GET /sync` | Trigger sync (HTML) |
+| `POST /sync` | Trigger sync (JSON) |
+| `GET /status` | Sync status |
+| `GET /health` | Health check |
+
+---
+
+---
+
+### iOS Shortcuts (Alternative)
+
+Create a shortcut to trigger sync without opening a browser:
+
+1. Open **Shortcuts** app
+2. Create new shortcut → Add action: **Get Contents of URL**
+3. Configure:
+   - URL: `https://api.github.com/repos/YOUR_USERNAME/push_reading_progress_to_notion/actions/workflows/sync.yml/dispatches`
+   - Method: POST
+   - Headers:
+     - `Authorization`: `Bearer YOUR_GITHUB_TOKEN`
+     - `Accept`: `application/vnd.github.v3+json`
+   - Request Body: JSON → `{"ref": "main"}`
+4. Add to Home Screen
+
+---
+
+## Run as Background Service
+
+### macOS (launchd)
+
+Auto-start web server on login:
+
+```bash
+# Create plist
+cat > ~/Library/LaunchAgents/com.weread.sync.server.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.weread.sync.server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>src/sync_web_server.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/path/to/push_reading_progress_to_notion</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Load it
+launchctl load ~/Library/LaunchAgents/com.weread.sync.server.plist
+```
+
+### Linux (systemd)
+
+```bash
+sudo cat > /etc/systemd/system/weread-sync.service << 'EOF'
+[Unit]
+Description=WeRead to Notion Sync Server
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/push_reading_progress_to_notion
+ExecStart=/usr/bin/python3 src/sync_web_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable weread-sync
+sudo systemctl start weread-sync
+```
+
+---
+
+## Security
+
+### API Key Protection
+
+For public endpoints, set an API key in `.env`:
+
+```bash
+SYNC_API_KEY=your-secret-key
+```
+
+Then use: `http://localhost:8765/sync?key=your-secret-key`
+
+### Firewall
+
+Bind to localhost only (no external access):
+```bash
+SYNC_SERVER_HOST=127.0.0.1
+```
+
+### What's Protected
+
+- `.env` is gitignored - never committed
+- Use GitHub Secrets for Actions
+- Cookie gist is private
+
+---
+
+## Troubleshooting
+
+**Cookies expired:**
+- Run `python scripts/fetch_cookies_auto.py` to refresh
+- Or manually copy from browser
+
+**Port already in use:**
+```bash
+lsof -i:8765 | awk 'NR>1 {print $2}' | xargs kill -9
+```
+
+**GitHub Actions fails:**
+- Check Actions tab for error logs
+- Verify secrets are set correctly
+
+**"Bad credentials" on trigger page:**
+- GitHub token needs `repo` and `workflow` scopes
+- Token must start with `ghp_`
+
+---
+
+## License
+
+MIT

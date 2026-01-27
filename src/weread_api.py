@@ -1300,10 +1300,53 @@ class WeReadAPI:
             
             env_path.write_text('\n'.join(new_lines), encoding='utf-8')
             print(f"[API] ✅ Cookies persisted to .env ({len(cookie_dict)} cookies)")
+            
+            # Also update GitHub Gist if configured
+            self._update_gist_cookies(cookie_str)
+            
             return True
             
         except Exception as e:
             print(f"[API] ⚠️  Failed to persist cookies: {e}")
+            return False
+    
+    def _update_gist_cookies(self, cookie_str: str) -> bool:
+        """
+        Update cookies in a private GitHub Gist for cloud sync.
+        Requires GH_TOKEN and COOKIE_GIST_ID environment variables.
+        """
+        try:
+            gh_token = os.environ.get("GH_TOKEN") or env("GH_TOKEN")
+            gist_id = os.environ.get("COOKIE_GIST_ID") or env("COOKIE_GIST_ID")
+            
+            if not gh_token or not gist_id:
+                return False  # Not configured, skip silently
+            
+            response = requests.patch(
+                f"https://api.github.com/gists/{gist_id}",
+                headers={
+                    "Authorization": f"token {gh_token}",
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                json={
+                    "files": {
+                        "weread_cookies.txt": {
+                            "content": cookie_str
+                        }
+                    }
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                print(f"[API] ✅ Cookies synced to GitHub Gist")
+                return True
+            else:
+                print(f"[API] ⚠️  Failed to sync cookies to Gist: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            # Don't fail if gist update fails
             return False
     
     def _update_cookies_from_response(self, response) -> bool:

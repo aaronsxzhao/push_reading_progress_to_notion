@@ -24,11 +24,26 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements.txt
     
+    - name: Fetch cookies from Gist (if configured)
+      if: ${{ secrets.COOKIE_GIST_ID != '' }}
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        COOKIE_GIST_ID: ${{ secrets.COOKIE_GIST_ID }}
+      run: |
+        # Fetch latest cookies from private gist
+        COOKIES=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/gists/$COOKIE_GIST_ID" | \
+          python3 -c "import sys,json; print(json.load(sys.stdin)['files']['weread_cookies.txt']['content'])" 2>/dev/null || echo "")
+        if [ -n "$COOKIES" ]; then
+          echo "WEREAD_COOKIES=$COOKIES" >> $GITHUB_ENV
+          echo "Using cookies from Gist"
+        fi
+    
     - name: Run sync
       env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-        WEREAD_COOKIES: ${{ secrets.WEREAD_COOKIES }}
+        WEREAD_COOKIES: ${{ env.WEREAD_COOKIES || secrets.WEREAD_COOKIES }}
         PYTHONUNBUFFERED: 1
       run: |
         echo "Starting WeRead to Notion sync..."
