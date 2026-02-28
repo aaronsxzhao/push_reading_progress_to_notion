@@ -156,15 +156,15 @@
             <summary>Setup <span id="configStatus"></span></summary>
             
             <label>GitHub Token:</label>
-            <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+            <input type="text" id="githubToken" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <small style="opacity:0.5;font-size:12px;">
                 <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=weread-sync" target="_blank" style="color:#60a5fa;">Get token here</a> (select repo + workflow)
             </small>
             
             <label>GitHub Repo:</label>
-            <input type="text" id="githubRepo" placeholder="username/push_reading_progress_to_notion">
+            <input type="text" id="githubRepo" placeholder="username/push_reading_progress_to_notion" autocorrect="off" autocapitalize="off" spellcheck="false">
             
-            <button class="btn save-btn" onclick="saveConfig()">Save Configuration</button>
+            <button type="button" class="btn save-btn" id="saveBtn">Save Configuration</button>
         </details>
         
         <details class="config" style="margin-top:15px;">
@@ -206,18 +206,40 @@
         }
         
         function saveConfig() {
-            const token = document.getElementById('githubToken').value.trim();
-            const repo = document.getElementById('githubRepo').value.trim();
+            var tokenEl = document.getElementById('githubToken');
+            var repoEl = document.getElementById('githubRepo');
+            
+            // Force iOS to flush pending input
+            tokenEl.blur();
+            repoEl.blur();
+            
+            var token = tokenEl.value.trim();
+            var repo = repoEl.value.trim();
             
             if (!token || !repo) {
                 updateStatus('Please fill in both fields', 'error');
                 return;
             }
             
-            localStorage.setItem('gh_token', token);
-            localStorage.setItem('gh_repo', repo);
-            updateStatus('Saved! Tap Sync Now to test.', 'success');
-            updateConfigStatus();
+            try {
+                localStorage.setItem('gh_token', token);
+                localStorage.setItem('gh_repo', repo);
+                
+                // Verify it was saved
+                var saved = localStorage.getItem('gh_token');
+                if (saved === token) {
+                    updateStatus('Saved! Tap Sync Now to test.', 'success');
+                } else {
+                    updateStatus('Save failed - try disabling private browsing', 'error');
+                    return;
+                }
+            } catch (e) {
+                updateStatus('Cannot save: ' + e.message, 'error');
+                return;
+            }
+            
+            // Delay closing the panel so user sees confirmation
+            setTimeout(function() { updateConfigStatus(); }, 1500);
         }
         
         function updateStatus(message, type = 'info') {
@@ -537,6 +559,15 @@
                 debug.innerHTML += '<p style="color:#f87171;">Error: ' + e.message + '</p>';
             }
         }
+        
+        document.getElementById('saveBtn').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            saveConfig();
+        });
+        document.getElementById('saveBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            saveConfig();
+        });
         
         loadConfig();
     </script>
