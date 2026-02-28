@@ -7,10 +7,11 @@ import os
 import sys
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add src directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.weread_api import WeReadAPI, env
+from weread_api import WeReadAPI
+from config import env
 
 def check_cookies():
     """Check cookie status and diagnose issues"""

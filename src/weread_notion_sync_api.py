@@ -126,7 +126,7 @@ def get_callout(content: str, style: Optional[int] = None, color_style: Optional
     if style == 0:
         emoji = "💡"  # Line
     elif style == 1:
-        emoji = "⭐"  # Background
+        emoji = "〰️"  # Background
     
     # If reviewId is present, it's a note
     if review_id is not None:
@@ -286,243 +286,208 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
     return existing_blocks
 
 
-def sync_blocks_to_page(notion: Client, page_id: str, new_blocks: list, clear_existing: bool = False) -> Tuple[int, int, int]:
+def add_children(notion: Client, page_id: str, children: list) -> list:
+    """Append blocks to a page in chunks of 100 (Notion API limit). Returns result blocks."""
+    results = []
+    for i in range(0, len(children), 100):
+        time.sleep(0.3)
+        try:
+            resp = notion.blocks.children.append(
+                block_id=page_id, children=children[i:i + 100],
+            )
+            results.extend(resp.get("results", []))
+        except Exception as e:
+            print(f"[ERROR] Failed to add blocks chunk {i // 100 + 1}: {e}")
+    return results
+
+
+def add_grandchildren(notion: Client, results: list, grandchild: Dict[int, Dict[str, Any]]):
+    """Nest quote blocks inside callout blocks (the abstract under a note)."""
+    for idx, quote_block in grandchild.items():
+        if idx < len(results):
+            block_id = results[idx].get("id")
+            if block_id:
+                time.sleep(0.3)
+                try:
+                    notion.blocks.children.append(block_id=block_id, children=[quote_block])
+                except Exception as e:
+                    print(f"[WARNING] Failed to add grandchild to block {block_id}: {e}")
+
+
+def sync_blocks_to_page(
+    notion: Client,
+    page_id: str,
+    new_blocks: list,
+    grandchild: Optional[Dict[int, Dict[str, Any]]] = None,
+    clear_existing: bool = False,
+) -> Tuple[int, int, int]:
     """
-    Fully sync blocks to a Notion page - adds new blocks, deletes removed blocks, keeps existing ones.
-    This ensures the Notion page exactly matches the WeRead data.
-    
-    Args:
-        notion: Notion client
-        page_id: Page ID to sync blocks to
-        new_blocks: List of block objects that should exist (from WeRead)
-        clear_existing: If True, clear all existing blocks first (for new pages)
-    
-    Returns:
-        Tuple of (added_count, deleted_count, kept_count)
+    Sync blocks to a Notion page.
+
+    When there are grandchild blocks (notes with abstracts) or clear_existing
+    is set, we clear the page and re-add everything — this is the only way to
+    reliably nest quote blocks inside callouts (Notion doesn't allow appending
+    children to existing blocks that weren't just created).
+
+    Otherwise, we diff by content signature for efficiency.
     """
-    if clear_existing:
-        # For new pages, just clear and add all blocks
+    if clear_existing or grandchild:
         clear_page_blocks(notion, page_id)
-        existing_blocks = {}
-    else:
-        # For existing pages, get current blocks for comparison
-        existing_blocks = get_existing_blocks(notion, page_id)
-    
+        results = add_children(notion, page_id, new_blocks)
+        if grandchild and results:
+            add_grandchildren(notion, results, grandchild)
+        return len(results), 0, 0
+
+    existing_blocks = get_existing_blocks(notion, page_id)
+
     if not new_blocks:
-        # If no new blocks, delete all existing ones
         deleted_count = len(existing_blocks)
         for block_id in existing_blocks.values():
             try:
-                time.sleep(0.1)  # Rate limiting
+                time.sleep(0.1)
                 notion.blocks.delete(block_id=block_id)
             except Exception as e:
                 print(f"[WARNING] Failed to delete block {block_id}: {e}")
         return 0, deleted_count, 0
-    
-    # Create signatures for new blocks
-    new_signatures = {}  # signature -> block
+
+    new_signatures = {}
     for block in new_blocks:
-        signature = get_block_signature(block)
-        if signature not in new_signatures:
-            new_signatures[signature] = block
-    
-    # Find blocks to delete (exist in Notion but not in new data)
-    blocks_to_delete = []
-    for signature, block_id in existing_blocks.items():
-        if signature not in new_signatures:
-            blocks_to_delete.append(block_id)
-    
-    # Find blocks to add (exist in new data but not in Notion)
-    blocks_to_add = []
-    for signature, block in new_signatures.items():
-        if signature not in existing_blocks:
-            blocks_to_add.append(block)
-    
-    # Count blocks that will be kept
-    kept_count = len(existing_blocks) - len(blocks_to_delete)
-    
-    # Delete blocks that no longer exist
+        sig = get_block_signature(block)
+        if sig not in new_signatures:
+            new_signatures[sig] = block
+
+    to_delete = [bid for sig, bid in existing_blocks.items() if sig not in new_signatures]
+    to_add = [block for sig, block in new_signatures.items() if sig not in existing_blocks]
+    kept_count = len(existing_blocks) - len(to_delete)
+
     deleted_count = 0
-    for block_id in blocks_to_delete:
+    for block_id in to_delete:
         try:
-            time.sleep(0.1)  # Rate limiting
+            time.sleep(0.1)
             notion.blocks.delete(block_id=block_id)
             deleted_count += 1
         except Exception as e:
             print(f"[WARNING] Failed to delete block {block_id}: {e}")
-    
-    # Add new blocks
+
     added_count = 0
-    if blocks_to_add:
-        # Notion API limits to 100 blocks per request
-        for i in range(0, len(blocks_to_add), 100):
-            time.sleep(0.3)  # Rate limiting
-            chunk = blocks_to_add[i:i + 100]
-            try:
-                response = notion.blocks.children.append(block_id=page_id, children=chunk)
-                added_count += len(response.get("results", []))
-            except Exception as e:
-                print(f"[ERROR] Failed to add blocks chunk {i//100 + 1}: {e}")
-                # Continue with next chunk even if one fails
-                continue
-    
+    if to_add:
+        results = add_children(notion, page_id, to_add)
+        added_count = len(results)
+
     return added_count, deleted_count, kept_count
 
 
-def create_book_content_blocks(book_data: Dict[str, Any], styles: Optional[list] = None, colors: Optional[list] = None) -> list:
+def create_book_content_blocks(
+    book_data: Dict[str, Any],
+    styles: Optional[list] = None,
+    colors: Optional[list] = None,
+) -> Tuple[list, Dict[int, Dict[str, Any]]]:
     """
-    Create Notion blocks for book content (bookmarks, reviews, quotes, callouts)
-    
-    Args:
-        book_data: Book data dictionary with bookmarks, reviews, chapter_info, page_notes, chapter_notes
-        styles: Optional list of allowed highlight styles (filter)
-        colors: Optional list of allowed highlight colors (filter)
+    Build Notion blocks for a book's highlights, notes, and reviews.
+
+    Returns (children, grandchild) where:
+      - children: flat list of blocks to append to the page
+      - grandchild: {block_index: quote_block} — blocks to nest inside
+        the callout at that index (the highlighted passage under a note)
+
+    This matches the weread2notion two-pass pattern: first append children,
+    then use the returned block IDs to append grandchildren.
     """
-    blocks = []
+    children: list = []
+    grandchild: Dict[int, Dict[str, Any]] = {}
+
     chapter_info = book_data.get("chapter_info")
     bookmarks = book_data.get("bookmarks", [])
     summary_reviews = book_data.get("summary_reviews", [])
     page_notes = book_data.get("page_notes", [])
     chapter_notes = book_data.get("chapter_notes", [])
-    
+
     if not bookmarks and not summary_reviews and not page_notes and not chapter_notes:
-        return blocks
-    
-    # Group bookmarks by chapter
+        return children, grandchild
+
+    def _add_bookmark(bookmark):
+        """Add a single bookmark/note as callout, track abstract for nesting."""
+        if bookmark.get("reviewId") is None:
+            if styles is not None and bookmark.get("style") not in styles:
+                return
+            if colors is not None and bookmark.get("colorStyle") not in colors:
+                return
+
+        mark_text = bookmark.get("markText", "")
+        if not mark_text:
+            return
+
+        for j in range(0, len(mark_text), 2000):
+            children.append(get_callout(
+                mark_text[j:j + 2000],
+                bookmark.get("style"),
+                bookmark.get("colorStyle"),
+                bookmark.get("reviewId"),
+            ))
+
+        abstract = bookmark.get("abstract")
+        if abstract:
+            grandchild[len(children) - 1] = get_quote(abstract)
+
     if chapter_info:
-        # Add table of contents
-        blocks.append(get_table_of_contents())
-        
-        # Group bookmarks by chapter
-        bookmarks_by_chapter = {}
-        for bookmark in bookmarks:
-            chapter_uid = bookmark.get("chapterUid", 1)
-            if chapter_uid not in bookmarks_by_chapter:
-                bookmarks_by_chapter[chapter_uid] = []
-            bookmarks_by_chapter[chapter_uid].append(bookmark)
-        
-        # Add chapters and their bookmarks
-        for chapter_uid, chapter_bookmarks in sorted(bookmarks_by_chapter.items()):
-            if chapter_uid in chapter_info:
-                chapter_data = chapter_info[chapter_uid]
-                chapter_title = chapter_data.get("title", f"Chapter {chapter_uid}")
-                chapter_level = chapter_data.get("level", 2)
-                blocks.append(get_heading(chapter_level, chapter_title))
-            
-            # Add bookmarks for this chapter
-            for bookmark in chapter_bookmarks:
-                # Apply style/color filters if provided
-                if bookmark.get("reviewId") is None:
-                    if styles is not None and bookmark.get("style") not in styles:
-                        continue
-                    if colors is not None and bookmark.get("colorStyle") not in colors:
-                        continue
-                
-                mark_text = bookmark.get("markText", "")
-                if not mark_text:
-                    continue
-                
-                # Split long text into chunks (Notion has limits)
-                for j in range(0, len(mark_text), 2000):
-                    chunk = mark_text[j:j + 2000]
-                    blocks.append(get_callout(
-                        chunk,
-                        bookmark.get("style"),
-                        bookmark.get("colorStyle"),
-                        bookmark.get("reviewId")
-                    ))
-                
-                # Add abstract/quote if present
-                abstract = bookmark.get("abstract")
-                if abstract:
-                    blocks.append(get_quote(abstract))
+        children.append(get_table_of_contents())
+
+        by_chapter: Dict[int, list] = {}
+        for bm in bookmarks:
+            uid = bm.get("chapterUid", 1)
+            by_chapter.setdefault(uid, []).append(bm)
+
+        for uid in sorted(by_chapter):
+            if uid in chapter_info:
+                ch = chapter_info[uid]
+                children.append(get_heading(ch.get("level", 2), ch.get("title", "")))
+            for bm in by_chapter[uid]:
+                _add_bookmark(bm)
     else:
-        # No chapter info - add bookmarks in order
-        for bookmark in bookmarks:
-            # Apply style/color filters if provided
-            if bookmark.get("reviewId") is None:
-                if styles is not None and bookmark.get("style") not in styles:
-                    continue
-                if colors is not None and bookmark.get("colorStyle") not in colors:
-                    continue
-            
-            mark_text = bookmark.get("markText", "")
-            if not mark_text:
-                continue
-            
-            # Split long text into chunks
-            for j in range(0, len(mark_text), 2000):
-                chunk = mark_text[j:j + 2000]
-                blocks.append(get_callout(
-                    chunk,
-                    bookmark.get("style"),
-                    bookmark.get("colorStyle"),
-                    bookmark.get("reviewId")
-                ))
-    
-    # Add page notes (页面笔记)
+        for bm in bookmarks:
+            _add_bookmark(bm)
+
     if page_notes:
-        blocks.append(get_heading(1, "页面笔记"))
+        children.append(get_heading(1, "页面笔记"))
         for note in page_notes:
             content = note.get("content", "").strip()
-            page = note.get("page", note.get("pageNum", "?"))
-            if not content:
-                continue
-            
-            # Create callout with page info
-            page_info = f"第 {page} 页: {content}"
-            for j in range(0, len(page_info), 2000):
-                chunk = page_info[j:j + 2000]
-                blocks.append(get_callout(chunk, None, None, None))
-    
-    # Add chapter notes (章节笔记)
+            if content:
+                children.append(get_callout(content, None, None, None))
+
     if chapter_notes:
-        blocks.append(get_heading(1, "章节笔记"))
+        children.append(get_heading(1, "章节笔记"))
         for note in chapter_notes:
             content = note.get("content", "").strip()
-            chapter_uid = note.get("chapterUid", "?")
+            uid = note.get("chapterUid")
             if not content:
                 continue
-            
-            # Get chapter title if available
-            chapter_title = ""
-            if chapter_info and chapter_uid in chapter_info:
-                chapter_title = chapter_info[chapter_uid].get("title", f"章节 {chapter_uid}")
+            title = ""
+            if chapter_info and uid in chapter_info:
+                title = chapter_info[uid].get("title", f"章节 {uid}")
             else:
-                chapter_title = f"章节 {chapter_uid}"
-            
-            # Create callout with chapter info
-            chapter_info_text = f"{chapter_title}: {content}"
-            for j in range(0, len(chapter_info_text), 2000):
-                chunk = chapter_info_text[j:j + 2000]
-                blocks.append(get_callout(chunk, None, None, None))
-    
-    # Add summary reviews (书籍书评)
+                title = f"章节 {uid}"
+            children.append(get_callout(f"{title}: {content}", None, None, None))
+
     if summary_reviews:
-        blocks.append(get_heading(1, "书籍书评"))
-        for review_item in summary_reviews:
-            review = review_item.get("review", {})
+        children.append(get_heading(1, "点评"))
+        for item in summary_reviews:
+            review = item.get("review", {})
             content = review.get("content", "")
             if not content:
                 continue
-            
-            # Split long text into chunks
             for j in range(0, len(content), 2000):
-                chunk = content[j:j + 2000]
-                blocks.append(get_callout(
-                    chunk,
-                    review_item.get("style"),
-                    review_item.get("colorStyle"),
-                    review.get("reviewId")
+                children.append(get_callout(
+                    content[j:j + 2000],
+                    item.get("style"),
+                    item.get("colorStyle"),
+                    review.get("reviewId"),
                 ))
-    
-    return blocks
+
+    return children, grandchild
 
 
 def print_all_notes(book_data: Dict[str, Any], book_title: str):
-    """
-    Print summary of all types of notes from WeRead (simplified output)
-    """
+    """Print summary of all types of notes from WeRead"""
     bookmarks = book_data.get("bookmarks", [])
     page_notes = book_data.get("page_notes", [])
     chapter_notes = book_data.get("chapter_notes", [])
@@ -531,7 +496,9 @@ def print_all_notes(book_data: Dict[str, Any], book_title: str):
     total_notes = len(bookmarks) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
     
     if total_notes > 0:
-        print(f"   📝 Notes: {len(bookmarks)} 划线, {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
+        pure_highlights = sum(1 for b in bookmarks if b.get("reviewId") is None)
+        with_comments = sum(1 for b in bookmarks if b.get("reviewId") is not None)
+        print(f"   📝 {pure_highlights} 划线, {with_comments} 笔记, {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
 
 
 def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, Any], weread_cookies: str, limit: Optional[int] = None, test_book_title: Optional[str] = None):
@@ -563,7 +530,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     shelf_data, all_books_list, book_progress_list = client.get_shelf()
     
     # Get the current (possibly refreshed) cookies for thread clients
-    current_cookies = "; ".join(f"{k}={v}" for k, v in client.cookie_dict.items()) if hasattr(client, 'cookie_dict') else weread_cookies
+    current_cookies = client.get_cookie_string()
     
     total_books = shelf_data.get("bookCount", 0) or shelf_data.get("pureBookCount", 0) or len(all_books_list)
     print(f"[API] Total books in shelf: {total_books}")
@@ -726,17 +693,18 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             book_data = thread_client.get_single_book_data(book_id, book_item)
             
             if book_data:
-                # Print notes summary (simplified)
                 bookmarks = book_data.get("bookmarks", [])
-                notes = book_data.get("notes", [])  # Highlights without thoughts
                 page_notes = book_data.get("page_notes", [])
                 chapter_notes = book_data.get("chapter_notes", [])
                 summary_reviews = book_data.get("summary_reviews", [])
-                total_notes = len(bookmarks) + len(notes) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
+                total_notes = len(bookmarks) + len(page_notes) + len(chapter_notes) + len(summary_reviews)
                 
                 if total_notes > 0:
+                    # Count pure highlights vs highlights with user comments
+                    pure_highlights = sum(1 for b in bookmarks if b.get("reviewId") is None)
+                    with_comments = sum(1 for b in bookmarks if b.get("reviewId") is not None)
                     with print_lock:
-                        print(f"   [{i}/{total_to_process}] 📝 Notes: {len(notes)} 纯划线, {len(bookmarks)} 划线(含想法), {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
+                        print(f"   [{i}/{total_to_process}] 📝 {pure_highlights} 划线, {with_comments} 笔记, {len(page_notes)} 页面, {len(chapter_notes)} 章节, {len(summary_reviews)} 书评")
                 
                 # Map status values
                 status_map = {
@@ -783,9 +751,13 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                         else:
                             clear_existing = False  # For existing pages, use full sync (not clear)
                         
-                        blocks = create_book_content_blocks(book_data, styles=styles, colors=colors)
-                        if blocks or not is_new:  # Sync even if no blocks (to delete removed notes)
-                            added_count, deleted_count, kept_count = sync_blocks_to_page(notion, page_id, blocks, clear_existing=clear_existing)
+                        blocks, grandchild = create_book_content_blocks(book_data, styles=styles, colors=colors)
+                        if blocks or not is_new:
+                            added_count, deleted_count, kept_count = sync_blocks_to_page(
+                                notion, page_id, blocks,
+                                grandchild=grandchild,
+                                clear_existing=clear_existing,
+                            )
                             with print_lock:
                                 if is_new:
                                     print(f"[{i}/{total_to_process}] ✅ Added {added_count} blocks (bookmarks/reviews)")

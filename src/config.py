@@ -99,22 +99,14 @@ def parse_cookies(cookie_str: str) -> dict:
     return cookies
 
 
-# WeRead API endpoints
+# WeRead API endpoints (only the ones that actually exist)
 WEREAD_API_BASE = "https://weread.qq.com"
-WEREAD_NOTEBOOKS_API = f"{WEREAD_API_BASE}/api/user/notebook"
 WEREAD_SHELF_API = f"{WEREAD_API_BASE}/web/shelf/sync"
-WEREAD_BOOK_INFO_API = f"{WEREAD_API_BASE}/web/book/bookDetail"
-WEREAD_BOOK_INFO_API_V2 = f"{WEREAD_API_BASE}/web/book/info"
-WEREAD_READING_DATA_API = f"{WEREAD_API_BASE}/web/readingData"
-WEREAD_BOOK_LIST_API = f"{WEREAD_API_BASE}/web/shelf/bookList"
+WEREAD_BOOK_INFO_API = f"{WEREAD_API_BASE}/web/book/info"
 WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readinfo"
-WEREAD_BOOK_READING_API = f"{WEREAD_API_BASE}/web/book/reading"
-WEREAD_USER_READING_API = f"{WEREAD_API_BASE}/web/user/reading"
 WEREAD_BOOKMARKLIST_API = f"{WEREAD_API_BASE}/web/book/bookmarklist"
 WEREAD_REVIEW_LIST_API = f"{WEREAD_API_BASE}/web/review/list"
-WEREAD_NOTE_LIST_API = f"{WEREAD_API_BASE}/web/book/note"
 WEREAD_CHAPTER_INFO_API = f"{WEREAD_API_BASE}/web/book/chapterInfos"
-WEREAD_GET_PROGRESS_API = f"{WEREAD_API_BASE}/web/book/getProgress"
 
 # Notion property names (configurable via env)
 PROP_TITLE = env("NOTION_TITLE_PROP", "Name")
