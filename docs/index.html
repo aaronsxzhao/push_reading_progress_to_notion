@@ -369,15 +369,23 @@
                 
                 if (status === 'completed') {
                     stopPolling();
+                    // Always check logs for cookie errors on completion
+                    await fetchProgressFromLogs(token, repo);
                     if (conclusion === 'success') {
-                        updateStatus('Sync completed successfully!', 'success');
-                        // Try to get final counts from logs
-                        await fetchFinalProgress(token, repo);
+                        // Only show success if we didn't already show a cookie error
+                        var currentStatus = document.getElementById('status').className;
+                        if (currentStatus.indexOf('error') === -1) {
+                            updateStatus('Sync completed successfully!', 'success');
+                        }
                     } else if (conclusion === 'cancelled') {
                         updateStatus('Sync was cancelled', 'info');
                         hideProgress();
                     } else {
-                        updateStatus('Sync failed: ' + conclusion, 'error');
+                        // Check logs to see if it was a cookie error
+                        var statusEl = document.getElementById('status');
+                        if (statusEl.className.indexOf('error') === -1) {
+                            updateStatus('Sync failed: ' + conclusion, 'error');
+                        }
                         hideProgress();
                     }
                     return;
@@ -432,35 +440,48 @@
         }
         
         function parseProgressFromLogs(logs) {
+            // Check for cookie/login expiration
+            if (logs.match(/登录超时|COOKIE.*EXPIR|COOKIE.*VALIDATION.*FAIL|errCode.*-2012/i)) {
+                updateStatus('WeRead cookies expired! Please refresh cookies in .env and GitHub Secrets.', 'error');
+                stopPolling();
+                hideProgress();
+                return;
+            }
+            
+            // Check for cookie auth errors during sync
+            if (logs.match(/COOKIE EXPIRATION DETECTED/i)) {
+                var cookieErrMatch = logs.match(/(\d+)\s+API call\(s\)\s+failed due to authentication/);
+                var msg = 'WeRead cookies expired!';
+                if (cookieErrMatch) {
+                    msg += ' (' + cookieErrMatch[1] + ' API calls failed)';
+                }
+                msg += ' Update cookies in .env & GitHub Secrets.';
+                updateStatus(msg, 'error');
+            }
+            
             // Look for progress lines like: [PROGRESS] 10/50 books processed | ✅ 9 synced | ❌ 1 errors
-            const progressMatch = logs.match(/\[PROGRESS\]\s+(\d+)\/(\d+)\s+books?\s+processed\s*\|\s*✅\s*(\d+)\s*synced\s*\|\s*❌\s*(\d+)\s*errors?/g);
+            var progressMatch = logs.match(/\[PROGRESS\]\s+(\d+)\/(\d+)\s+books?\s+processed\s*\|\s*✅\s*(\d+)\s*synced\s*\|\s*❌\s*(\d+)\s*errors?/g);
             
             if (progressMatch && progressMatch.length > 0) {
-                const lastProgress = progressMatch[progressMatch.length - 1];
-                const match = lastProgress.match(/(\d+)\/(\d+)\s+books?\s+processed\s*\|\s*✅\s*(\d+)\s*synced\s*\|\s*❌\s*(\d+)/);
+                var lastProgress = progressMatch[progressMatch.length - 1];
+                var match = lastProgress.match(/(\d+)\/(\d+)\s+books?\s+processed\s*\|\s*✅\s*(\d+)\s*synced\s*\|\s*❌\s*(\d+)/);
                 
                 if (match) {
-                    const current = parseInt(match[1]);
-                    const total = parseInt(match[2]);
-                    const synced = parseInt(match[3]);
-                    const errors = parseInt(match[4]);
-                    showProgress(current, total, synced, errors);
+                    showProgress(parseInt(match[1]), parseInt(match[2]), parseInt(match[3]), parseInt(match[4]));
                 }
             } else {
                 // Look for simpler progress: Processing X books
-                const totalMatch = logs.match(/Processing\s+(\d+)\s+book/);
+                var totalMatch = logs.match(/Processing\s+(\d+)\s+book/);
                 if (totalMatch) {
-                    const total = parseInt(totalMatch[1]);
-                    showProgress(0, total, 0, 0);
+                    showProgress(0, parseInt(totalMatch[1]), 0, 0);
                 }
                 
                 // Count completed books from ✅ lines
-                const completedMatches = logs.match(/✅\s*\[\d+\/\d+\]/g);
+                var completedMatches = logs.match(/✅\s*\[\d+\/\d+\]/g);
                 if (completedMatches) {
-                    const current = completedMatches.length;
-                    const totalFromLine = logs.match(/✅\s*\[\d+\/(\d+)\]/);
+                    var totalFromLine = logs.match(/✅\s*\[\d+\/(\d+)\]/);
                     if (totalFromLine) {
-                        showProgress(current, parseInt(totalFromLine[1]), current, 0);
+                        showProgress(completedMatches.length, parseInt(totalFromLine[1]), completedMatches.length, 0);
                     }
                 }
             }
