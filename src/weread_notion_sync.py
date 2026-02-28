@@ -302,12 +302,13 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
     if fields.get("genre") and prop_exists(db_props, PROP_GENRE):
         prop_type = db_props[PROP_GENRE].get("type")
+        genres = fields["genre"] if isinstance(fields["genre"], list) else [fields["genre"]]
         if prop_type == "select":
-            props[PROP_GENRE] = {"select": {"name": fields["genre"]}}
+            props[PROP_GENRE] = {"select": {"name": genres[0]}}
         elif prop_type == "multi_select":
-            props[PROP_GENRE] = {"multi_select": [{"name": fields["genre"]}]}
+            props[PROP_GENRE] = {"multi_select": [{"name": g} for g in genres]}
         elif prop_type == "rich_text":
-            props[PROP_GENRE] = {"rich_text": [{"text": {"content": fields["genre"]}}]}
+            props[PROP_GENRE] = {"rich_text": [{"text": {"content": ", ".join(genres)}}]}
 
     if fields.get("year_started") is not None and prop_exists(db_props, PROP_YEAR_STARTED):
         prop_type = db_props[PROP_YEAR_STARTED].get("type")

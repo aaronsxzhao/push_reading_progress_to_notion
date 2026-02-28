@@ -331,24 +331,7 @@ def sync_blocks_to_page(
 
     Otherwise, we diff by content signature for efficiency.
     """
-    if clear_existing or grandchild:
-        clear_page_blocks(notion, page_id)
-        results = add_children(notion, page_id, new_blocks)
-        if grandchild and results:
-            add_grandchildren(notion, results, grandchild)
-        return len(results), 0, 0
-
-    existing_blocks = get_existing_blocks(notion, page_id)
-
-    if not new_blocks:
-        deleted_count = len(existing_blocks)
-        for block_id in existing_blocks.values():
-            try:
-                time.sleep(0.1)
-                notion.blocks.delete(block_id=block_id)
-            except Exception as e:
-                print(f"[WARNING] Failed to delete block {block_id}: {e}")
-        return 0, deleted_count, 0
+    existing_blocks = {} if clear_existing else get_existing_blocks(notion, page_id)
 
     new_signatures = {}
     for block in new_blocks:
@@ -359,6 +342,19 @@ def sync_blocks_to_page(
     to_delete = [bid for sig, bid in existing_blocks.items() if sig not in new_signatures]
     to_add = [block for sig, block in new_signatures.items() if sig not in existing_blocks]
     kept_count = len(existing_blocks) - len(to_delete)
+
+    if not to_add and not to_delete:
+        return 0, 0, kept_count
+
+    # When we have grandchild blocks (nested quotes inside callouts), we must
+    # clear and re-add — Notion only allows appending children to freshly
+    # created blocks.  But only do this when the content actually changed.
+    if grandchild:
+        clear_page_blocks(notion, page_id)
+        results = add_children(notion, page_id, new_blocks)
+        if results:
+            add_grandchildren(notion, results, grandchild)
+        return len(results), 0, 0
 
     deleted_count = 0
     for block_id in to_delete:

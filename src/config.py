@@ -131,3 +131,67 @@ STATUS_READ = env("STATUS_READ", "Read")
 
 # Source identifier
 SOURCE_WEREAD = env("SOURCE_WEREAD", "WeRead")
+
+# WeRead Chinese category → English genre mapping.
+# Each Chinese category maps to a list of English genre tags (multi-select).
+# Existing Notion genres are reused exactly as-is.
+GENRE_MAP: dict[str, list[str]] = {
+    "个人成长-人在职场":   ["Career", "Self-Help"],
+    "个人成长-人生哲学":   ["Philosophy", "Self-Help"],
+    "个人成长-励志成长":   ["Self-Help"],
+    "个人成长-沟通表达":   ["Communication", "Self-Help"],
+    "个人成长-认知思维":   ["Psychology", "Self-Help"],
+    "人物传记-传记综合":   ["Biography"],
+    "人物传记-军政领袖":   ["Biography", "Politics"],
+    "人物传记-财经人物":   ["Biography", "Business"],
+    "医学健康-健康":      ["Health"],
+    "医学健康-医学":      ["Medicine"],
+    "历史-历史读物":      ["History"],
+    "哲学宗教-哲学读物":   ["Philosophy"],
+    "哲学宗教-宗教":      ["Religion"],
+    "哲学宗教-西方哲学":   ["Philosophy"],
+    "心理-发展心理学":    ["Psychology"],
+    "心理-心理学应用":    ["Psychology"],
+    "心理-心理学研究":    ["Psychology"],
+    "心理-社会心理学":    ["Psychology", "Sociology"],
+    "心理-积极心理学":    ["Psychology", "Self-Help"],
+    "心理-认知与行为":    ["Psychology"],
+    "政治军事-政治":      ["Politics"],
+    "文学-世界名著":      ["Literary Classics"],
+    "文学-外国文学":      ["Literature"],
+    "文学-散文杂著":      ["Essays"],
+    "文学-现代诗歌":      ["Poetry"],
+    "文学-经典作品":      ["Literary Classics"],
+    "社会文化-文化":      ["Culture"],
+    "社会文化-社科":      ["Social Science"],
+    "科学技术-科学科普":   ["Popular Science"],
+    "科学技术-自然科学":   ["Natural Science"],
+    "精品小说-年代小说":   ["Historical fiction"],
+    "精品小说-影视原著":   ["Fiction"],
+    "精品小说-悬疑推理":   ["Thriller / Mystery"],
+    "精品小说-治愈小说":   ["Fiction"],
+    "精品小说-社会小说":   ["Literary Fiction"],
+    "精品小说-科幻小说":   ["Sci-Fi"],
+    "精品小说-青春文学":   ["Young Adult"],
+    "经济理财-商业":      ["Business"],
+    "经济理财-理财":      ["Finance", "Personal Finance"],
+    "经济理财-管理":      ["Management"],
+    "经济理财-财经":      ["Economics", "Finance"],
+    "艺术-设计":         ["Design"],
+    "计算机-编程设计":    ["Programming"],
+}
+
+
+def translate_genres(categories: list[dict] | None) -> list[str]:
+    """Translate WeRead category dicts into deduplicated English genre tags."""
+    if not categories:
+        return []
+    seen: set[str] = set()
+    result: list[str] = []
+    for cat in categories:
+        title = cat.get("title", "")
+        for eng in GENRE_MAP.get(title, []):
+            if eng not in seen:
+                seen.add(eng)
+                result.append(eng)
+    return result

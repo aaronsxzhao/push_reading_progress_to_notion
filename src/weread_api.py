@@ -28,6 +28,7 @@ from dateutil import parser as dtparser
 
 from config import (
     env,
+    translate_genres,
     WEREAD_API_BASE,
     WEREAD_SHELF_API,
     WEREAD_BOOK_INFO_API,
@@ -533,7 +534,7 @@ class WeReadAPI:
                 "date_finished": date_finished,
                 "source": "WeRead",
                 "cover_image": book_info.get("cover"),
-                "genre": book_info.get("category"),
+                "genre": translate_genres(book_info.get("categories")),
                 "year_started": started_at.year if started_at else None,
                 "rating": float(book_info["rating"]) if book_info.get("rating") else None,
                 "bookmarks": all_bookmarks,
