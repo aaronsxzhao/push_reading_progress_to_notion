@@ -129,6 +129,26 @@
         .footer { margin-top: 30px; font-size: 12px; opacity: 0.5; }
         .footer a { color: #60a5fa; }
         .checkmark { color: #22c55e; margin-left: 5px; }
+        
+        .bookmarklet-link {
+            display: block;
+            padding: 16px;
+            margin: 12px 0;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #fff;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+            -webkit-touch-callout: default;
+        }
+        .steps { text-align: left; font-size: 13px; line-height: 1.8; opacity: 0.85; margin-top: 12px; }
+        .steps li { margin: 4px 0; }
+        .cookie-status { font-size: 13px; margin-top: 10px; padding: 10px; border-radius: 8px; }
+        .cookie-status.ok { background: rgba(34,197,94,0.2); }
+        .cookie-status.expired { background: rgba(239,68,68,0.2); }
     </style>
 </head>
 <body>
@@ -164,7 +184,43 @@
             <label>GitHub Repo:</label>
             <input type="text" id="githubRepo" placeholder="username/push_reading_progress_to_notion" autocorrect="off" autocapitalize="off" spellcheck="false">
             
+            <label>Gist ID <span style="opacity:0.5;">(for cookie sync)</span>:</label>
+            <input type="text" id="gistId" placeholder="abc123def456..." autocorrect="off" autocapitalize="off" spellcheck="false">
+            <small style="opacity:0.5;font-size:12px;">
+                From your GitHub Secrets COOKIE_GIST_ID value
+            </small>
+            
             <button type="button" class="btn save-btn" id="saveBtn">Save Configuration</button>
+        </details>
+        
+        <details class="config" style="margin-top:15px;" id="cookiePanel">
+            <summary>Cookie Refresher <span id="cookieStatus"></span></summary>
+            
+            <p style="font-size:13px;opacity:0.8;margin-bottom:12px;">
+                When WeRead cookies expire, use this bookmarklet to refresh them from your phone.
+            </p>
+            
+            <div id="bookmarkletContainer" style="display:none;">
+                <a id="bookmarkletLink" class="bookmarklet-link" href="#">
+                    Refresh WeRead Cookies
+                </a>
+                
+                <div id="cookieStatusMsg" class="cookie-status" style="display:none;"></div>
+                
+                <ol class="steps">
+                    <li><strong>Long-press</strong> the button above and choose <strong>"Copy Link"</strong></li>
+                    <li>Open <strong>weread.qq.com</strong> in Safari/Chrome and <strong>log in</strong></li>
+                    <li>Create a <strong>new bookmark</strong> for that page (tap Share → Add Bookmark)</li>
+                    <li><strong>Edit the bookmark</strong>: replace the URL with the copied link</li>
+                    <li>When cookies expire, open weread.qq.com and <strong>tap the bookmark</strong></li>
+                </ol>
+                
+                <button type="button" class="btn save-btn" id="testBookmarkletBtn">Test Gist Connection</button>
+            </div>
+            
+            <div id="bookmarkletMissing" style="font-size:13px;opacity:0.7;">
+                <p>Requires GitHub Token and Gist ID in Setup above.</p>
+            </div>
         </details>
         
         <details class="config" style="margin-top:15px;">
@@ -185,9 +241,12 @@
         function loadConfig() {
             const token = localStorage.getItem('gh_token');
             const repo = localStorage.getItem('gh_repo');
+            const gistId = localStorage.getItem('gh_gist_id');
             if (token) document.getElementById('githubToken').value = token;
             if (repo) document.getElementById('githubRepo').value = repo;
+            if (gistId) document.getElementById('gistId').value = gistId;
             updateConfigStatus();
+            updateBookmarklet();
         }
         
         function updateConfigStatus() {
@@ -208,24 +267,31 @@
         function saveConfig() {
             var tokenEl = document.getElementById('githubToken');
             var repoEl = document.getElementById('githubRepo');
+            var gistEl = document.getElementById('gistId');
             
             // Force iOS to flush pending input
             tokenEl.blur();
             repoEl.blur();
+            gistEl.blur();
             
             var token = tokenEl.value.trim();
             var repo = repoEl.value.trim();
+            var gistId = gistEl.value.trim();
             
             if (!token || !repo) {
-                updateStatus('Please fill in both fields', 'error');
+                updateStatus('Please fill in Token and Repo fields', 'error');
                 return;
             }
             
             try {
                 localStorage.setItem('gh_token', token);
                 localStorage.setItem('gh_repo', repo);
+                if (gistId) {
+                    localStorage.setItem('gh_gist_id', gistId);
+                } else {
+                    localStorage.removeItem('gh_gist_id');
+                }
                 
-                // Verify it was saved
                 var saved = localStorage.getItem('gh_token');
                 if (saved === token) {
                     updateStatus('Saved! Tap Sync Now to test.', 'success');
@@ -238,7 +304,7 @@
                 return;
             }
             
-            // Delay closing the panel so user sees confirmation
+            updateBookmarklet();
             setTimeout(function() { updateConfigStatus(); }, 1500);
         }
         
@@ -442,7 +508,15 @@
         function parseProgressFromLogs(logs) {
             // Check for cookie/login expiration
             if (logs.match(/登录超时|COOKIE.*EXPIR|COOKIE.*VALIDATION.*FAIL|errCode.*-2012/i)) {
-                updateStatus('WeRead cookies expired! Please refresh cookies in .env and GitHub Secrets.', 'error');
+                var hasGist = !!localStorage.getItem('gh_gist_id');
+                var msg = 'WeRead cookies expired! ';
+                if (hasGist) {
+                    msg += 'Open weread.qq.com and tap your Cookie Refresher bookmark to fix.';
+                } else {
+                    msg += 'Update cookies in .env & GitHub Secrets.';
+                }
+                updateStatus(msg, 'error');
+                document.getElementById('cookiePanel').open = true;
                 stopPolling();
                 hideProgress();
                 return;
@@ -451,12 +525,18 @@
             // Check for cookie auth errors during sync
             if (logs.match(/COOKIE EXPIRATION DETECTED/i)) {
                 var cookieErrMatch = logs.match(/(\d+)\s+API call\(s\)\s+failed due to authentication/);
-                var msg = 'WeRead cookies expired!';
+                var hasGist2 = !!localStorage.getItem('gh_gist_id');
+                var msg2 = 'WeRead cookies expired!';
                 if (cookieErrMatch) {
-                    msg += ' (' + cookieErrMatch[1] + ' API calls failed)';
+                    msg2 += ' (' + cookieErrMatch[1] + ' API calls failed)';
                 }
-                msg += ' Update cookies in .env & GitHub Secrets.';
-                updateStatus(msg, 'error');
+                if (hasGist2) {
+                    msg2 += ' Use Cookie Refresher bookmark on weread.qq.com.';
+                } else {
+                    msg2 += ' Update cookies in .env & GitHub Secrets.';
+                }
+                updateStatus(msg2, 'error');
+                document.getElementById('cookiePanel').open = true;
             }
             
             // Look for progress lines like: [PROGRESS] 10/50 books processed | ✅ 9 synced | ❌ 1 errors
@@ -541,6 +621,116 @@
             cancelBtn.disabled = false;
         }
         
+        function updateBookmarklet() {
+            var token = localStorage.getItem('gh_token');
+            var gistId = localStorage.getItem('gh_gist_id');
+            var container = document.getElementById('bookmarkletContainer');
+            var missing = document.getElementById('bookmarkletMissing');
+            var link = document.getElementById('bookmarkletLink');
+            var statusEl = document.getElementById('cookieStatus');
+            
+            if (token && gistId) {
+                container.style.display = 'block';
+                missing.style.display = 'none';
+                statusEl.innerHTML = '<span class="checkmark">✓</span>';
+                
+                // Build the bookmarklet JS
+                var js = "(function(){" +
+                    "try{" +
+                    "var c=document.cookie;" +
+                    "if(!c||c.indexOf('wr_')===-1){alert('Not on weread.qq.com or not logged in!');return;}" +
+                    "var pairs=c.split(';');" +
+                    "var wr=[];" +
+                    "for(var i=0;i<pairs.length;i++){" +
+                    "var p=pairs[i].trim();" +
+                    "if(p.indexOf('wr_')===0)wr.push(p);" +
+                    "}" +
+                    "if(wr.length===0){alert('No WeRead cookies found. Make sure you are logged in.');return;}" +
+                    "var cs=wr.join('; ');" +
+                    "var has_skey=false,has_vid=false,has_rt=false;" +
+                    "for(var j=0;j<wr.length;j++){" +
+                    "if(wr[j].indexOf('wr_skey=')===0)has_skey=true;" +
+                    "if(wr[j].indexOf('wr_vid=')===0)has_vid=true;" +
+                    "if(wr[j].indexOf('wr_rt=')===0)has_rt=true;" +
+                    "}" +
+                    "if(!has_skey||!has_vid||!has_rt){alert('Missing required cookies (wr_skey, wr_vid, wr_rt). Try refreshing the page after login.');return;}" +
+                    "var x=new XMLHttpRequest();" +
+                    "x.open('PATCH','https://api.github.com/gists/" + gistId + "',false);" +
+                    "x.setRequestHeader('Authorization','Bearer " + token + "');" +
+                    "x.setRequestHeader('Content-Type','application/json');" +
+                    "x.setRequestHeader('Accept','application/vnd.github.v3+json');" +
+                    "x.send(JSON.stringify({files:{'weread_cookies.txt':{content:cs}}}));" +
+                    "if(x.status===200){alert('Cookies saved! ('+wr.length+' cookies)\\nNext sync will use fresh cookies.')}" +
+                    "else{alert('Failed to save: '+x.status+'\\n'+x.responseText)}" +
+                    "}catch(e){alert('Error: '+e.message)}" +
+                    "})()";
+                
+                link.href = "javascript:" + encodeURIComponent(js);
+            } else {
+                container.style.display = 'none';
+                missing.style.display = 'block';
+                if (gistId && !token) {
+                    statusEl.innerHTML = '<span style="color:#f87171;">Need token</span>';
+                } else {
+                    statusEl.innerHTML = '';
+                }
+            }
+        }
+        
+        async function testGistConnection() {
+            var token = localStorage.getItem('gh_token');
+            var gistId = localStorage.getItem('gh_gist_id');
+            var msgEl = document.getElementById('cookieStatusMsg');
+            
+            if (!token || !gistId) {
+                msgEl.style.display = 'block';
+                msgEl.className = 'cookie-status expired';
+                msgEl.textContent = 'Missing token or Gist ID';
+                return;
+            }
+            
+            msgEl.style.display = 'block';
+            msgEl.className = 'cookie-status';
+            msgEl.textContent = 'Testing...';
+            
+            try {
+                var resp = await fetch('https://api.github.com/gists/' + gistId, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (resp.ok) {
+                    var data = await resp.json();
+                    var file = data.files && data.files['weread_cookies.txt'];
+                    if (file && file.content) {
+                        var hasSkey = file.content.indexOf('wr_skey=') !== -1;
+                        var updated = data.updated_at ? new Date(data.updated_at).toLocaleString() : 'unknown';
+                        if (hasSkey) {
+                            msgEl.className = 'cookie-status ok';
+                            msgEl.textContent = 'Gist OK. Last updated: ' + updated;
+                        } else {
+                            msgEl.className = 'cookie-status expired';
+                            msgEl.textContent = 'Gist found but cookies may be incomplete. Last updated: ' + updated;
+                        }
+                    } else {
+                        msgEl.className = 'cookie-status expired';
+                        msgEl.textContent = 'Gist found but weread_cookies.txt is missing';
+                    }
+                } else if (resp.status === 404) {
+                    msgEl.className = 'cookie-status expired';
+                    msgEl.textContent = 'Gist not found - check your Gist ID';
+                } else if (resp.status === 401) {
+                    msgEl.className = 'cookie-status expired';
+                    msgEl.textContent = 'Auth failed - token may lack gist scope';
+                } else {
+                    msgEl.className = 'cookie-status expired';
+                    msgEl.textContent = 'Error: HTTP ' + resp.status;
+                }
+            } catch (e) {
+                msgEl.className = 'cookie-status expired';
+                msgEl.textContent = 'Error: ' + e.message;
+            }
+        }
+        
         async function testConnection() {
             const debug = document.getElementById('debugInfo');
             const token = localStorage.getItem('gh_token');
@@ -588,6 +778,14 @@
         document.getElementById('saveBtn').addEventListener('click', function(e) {
             e.preventDefault();
             saveConfig();
+        });
+        document.getElementById('testBookmarkletBtn').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            testGistConnection();
+        });
+        document.getElementById('testBookmarkletBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            testGistConnection();
         });
         
         loadConfig();
