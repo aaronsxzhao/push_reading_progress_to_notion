@@ -592,15 +592,27 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
     # Check for duplicate by title AND author
     existing = find_page_by_title_and_author(notion, database_id, db_props, title, author)
     
+    cover_url = fields.get("cover_image", "")
+    page_cover = {"type": "external", "external": {"url": cover_url}} if cover_url else None
+    page_icon = page_cover  # use same image as icon (matches weread2notion)
+
     if existing:
         # Duplicate found - only update: status, last_read_at, date_finished, current_page
         print(f"[INFO] Duplicate found (title: '{title}', author: '{author}') - updating only: status, last_read_at, date_finished, current_page")
         
         # Build update props (only the fields we want to update)
         update_props = build_update_props(notion, existing["id"], db_props, fields)
-        
+
+        # Set page cover/icon if missing
+        update_kwargs: Dict[str, Any] = {}
         if update_props:
-            notion.pages.update(page_id=existing["id"], properties=update_props)
+            update_kwargs["properties"] = update_props
+        if page_cover and not existing.get("cover"):
+            update_kwargs["cover"] = page_cover
+            update_kwargs["icon"] = page_icon
+
+        if update_kwargs:
+            notion.pages.update(page_id=existing["id"], **update_kwargs)
             print(f"[INFO] Updated page {existing['id']} with: {list(update_props.keys())}")
         
         # Append review if it exists
@@ -612,7 +624,14 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
     # No duplicate - create new page with all fields
     print(f"[INFO] Creating new page (title: '{title}', author: '{author}')")
     props = build_props(db_props, fields)
-    created = notion.pages.create(parent={"database_id": database_id}, properties=props)
+    create_kwargs: Dict[str, Any] = {
+        "parent": {"database_id": database_id},
+        "properties": props,
+    }
+    if page_cover:
+        create_kwargs["cover"] = page_cover
+        create_kwargs["icon"] = page_icon
+    created = notion.pages.create(**create_kwargs)
     return created["id"], True  # Return page_id and True (is new)
 
 
