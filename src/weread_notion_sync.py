@@ -467,6 +467,21 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
     if fields.get("total_page") is not None and prop_exists(db_props, PROP_TOTAL_PAGE):
         props[PROP_TOTAL_PAGE] = {"number": int(fields["total_page"])}
 
+    # Fill in cover if missing
+    if fields.get("cover_image") and prop_exists(db_props, PROP_COVER_IMAGE):
+        try:
+            existing_page = notion.pages.retrieve(page_id=page_id) if "existing_page" not in dir() else existing_page
+            existing_cover = existing_page.get("properties", {}).get(PROP_COVER_IMAGE, {})
+            has_cover = bool(existing_cover.get("files"))
+            if not has_cover:
+                prop_type = db_props[PROP_COVER_IMAGE].get("type")
+                if prop_type == "files":
+                    props[PROP_COVER_IMAGE] = {"files": [{"type": "external", "name": "Cover", "external": {"url": fields["cover_image"]}}]}
+                elif prop_type == "url":
+                    props[PROP_COVER_IMAGE] = {"url": fields["cover_image"]}
+        except Exception:
+            pass
+
     return props
 
 def append_review(notion: Client, page_id: str, db_props: Dict[str, Any], review_text: str) -> None:
