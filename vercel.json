@@ -4,12 +4,28 @@
     {
       "src": "api/sync.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "api/heatmap_data.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "public/heatmap.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/sync",
       "dest": "api/sync.py"
+    },
+    {
+      "src": "/api/heatmap_data",
+      "dest": "api/heatmap_data.py"
+    },
+    {
+      "src": "/heatmap",
+      "dest": "public/heatmap.html"
     }
   ]
 }
