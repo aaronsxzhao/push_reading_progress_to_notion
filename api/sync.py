@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from urllib.request import Request, urlopen
 
 src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
@@ -22,10 +23,31 @@ from weread_notion_sync import get_db_properties
 from weread_notion_sync_api import sync_books_from_api
 
 
+def _get_fresh_cookies() -> str:
+    """Fetch latest cookies from GitHub Gist, fall back to env var."""
+    gh_token = os.environ.get("GH_TOKEN", "")
+    gist_id = os.environ.get("COOKIE_GIST_ID", "")
+    if gh_token and gist_id:
+        try:
+            req = Request(
+                f"https://api.github.com/gists/{gist_id}",
+                headers={"Authorization": f"token {gh_token}",
+                         "Accept": "application/vnd.github.v3+json"},
+            )
+            with urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read())
+                cookies = data["files"]["weread_cookies.txt"]["content"]
+                if cookies:
+                    return cookies
+        except Exception:
+            pass
+    return os.environ.get("WEREAD_COOKIES", "")
+
+
 def _run_sync(query_params: dict) -> tuple[int, dict]:
     NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
     NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
-    WEREAD_COOKIES = os.environ.get("WEREAD_COOKIES")
+    WEREAD_COOKIES = _get_fresh_cookies()
 
     expected_key = os.environ.get("SYNC_API_KEY", "")
     api_key = query_params.get("key", [None])[0]

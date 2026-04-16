@@ -23,12 +23,34 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler
+from urllib.request import Request, urlopen
 
 src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 from weread_api import WeReadAPI
+
+
+def _get_fresh_cookies() -> str:
+    """Fetch latest cookies from GitHub Gist, fall back to env var."""
+    gh_token = os.environ.get("GH_TOKEN", "")
+    gist_id = os.environ.get("COOKIE_GIST_ID", "")
+    if gh_token and gist_id:
+        try:
+            req = Request(
+                f"https://api.github.com/gists/{gist_id}",
+                headers={"Authorization": f"token {gh_token}",
+                         "Accept": "application/vnd.github.v3+json"},
+            )
+            with urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+                cookies = data["files"]["weread_cookies.txt"]["content"]
+                if cookies:
+                    return cookies
+        except Exception:
+            pass
+    return os.environ.get("WEREAD_COOKIES", "")
 
 _cache = {"data": None, "ts": 0}
 CACHE_TTL = 3600
@@ -143,7 +165,7 @@ class handler(BaseHTTPRequestHandler):
     """Vercel serverless handler."""
 
     def do_GET(self):
-        cookies = os.environ.get("WEREAD_COOKIES", "")
+        cookies = _get_fresh_cookies()
         if not cookies:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
