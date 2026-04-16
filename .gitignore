@@ -21,3 +21,4 @@ launchd.local.plist
 # But allow .env.example (safe template)
 !.env.example
 .vercel
+.browser_state/

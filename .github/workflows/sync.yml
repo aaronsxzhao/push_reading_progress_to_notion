@@ -5,8 +5,7 @@ on:
   repository_dispatch:  # Webhook trigger from anywhere
     types: [sync]
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC (10 AM Beijing) — full sync
-    - cron: '0 0-14 * * *'  # Hourly 8AM-10PM Beijing (UTC 0-14) — cookie renewal only
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC (10 AM Beijing)
 
 jobs:
   sync:
@@ -67,7 +66,6 @@ jobs:
         "
 
     - name: Run sync
-      if: github.event.schedule != '0 0-14 * * *'
       env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}

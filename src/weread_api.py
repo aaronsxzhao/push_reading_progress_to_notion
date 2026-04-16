@@ -287,11 +287,32 @@ class WeReadAPI:
         """
         try:
             print("[AUTH] Attempting silent cookie renewal via /web/login/renewal ...")
-            resp = self.session.post(WEREAD_RENEW_URL, timeout=10)
-            if resp.status_code == 200 and self._update_cookies_from_response(resp):
+            # Use a standalone request (not self.session) so a failed renewal
+            # can't wipe session cookies via Set-Cookie clear headers.
+            resp = requests.post(
+                WEREAD_RENEW_URL,
+                cookies=self.cookie_dict,
+                headers={"Content-Type": "application/json"},
+                data='{"rq":"%2Fweb%2Fbook%2Fread"}',
+                timeout=10,
+            )
+
+            # Check for API-level errors even on HTTP 200
+            try:
+                body = resp.json()
+                err = body.get("errCode")
+                if err and err != 0:
+                    print(f"[AUTH] Silent renewal rejected: errCode={err} "
+                          f"errMsg={body.get('errMsg', '')}")
+                    return False
+            except ValueError:
+                pass
+
+            if self._update_cookies_from_response(resp):
                 self._persist_cookies_to_env()
                 print("[AUTH] Silent renewal succeeded — wr_skey refreshed")
                 return True
+
             print(f"[AUTH] Silent renewal returned status={resp.status_code}, "
                   f"no new cookies in Set-Cookie header")
         except Exception as e:
@@ -299,18 +320,25 @@ class WeReadAPI:
         return False
 
     def _refresh_cookies_from_browser(self) -> bool:
-        """Run scripts/fetch_cookies_auto.py and reload cookies."""
+        """Run scripts/fetch_cookies_auto.py (headless first, then interactive)."""
         try:
             import subprocess, sys
             script = Path(__file__).parent.parent / "scripts" / "fetch_cookies_auto.py"
             if not script.exists():
                 return False
 
-            print("[AUTH] Opening browser for login...")
+            # Try headless first (reuses saved browser profile, no GUI needed)
+            print("[AUTH] Trying headless browser cookie refresh ...")
             result = subprocess.run(
-                [sys.executable, str(script)],
-                capture_output=True, text=True, timeout=120,
+                [sys.executable, str(script), "--headless"],
+                capture_output=True, text=True, timeout=60,
             )
+            if result.returncode != 0:
+                print("[AUTH] Headless refresh failed — opening browser for login ...")
+                result = subprocess.run(
+                    [sys.executable, str(script)],
+                    capture_output=True, text=True, timeout=120,
+                )
             if result.returncode != 0:
                 return False
 
