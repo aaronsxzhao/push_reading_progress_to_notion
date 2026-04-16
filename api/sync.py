@@ -55,6 +55,11 @@ def _run_sync(query_params: dict) -> tuple[int, dict]:
         ):
             test_book_title = None
 
+        # Proactively renew cookies before syncing
+        api = WeReadAPI(WEREAD_COOKIES, auto_refresh=False)
+        if api.renew_cookies_silent():
+            WEREAD_COOKIES = api.get_cookie_string()
+
         notion = Client(auth=NOTION_TOKEN)
         db_props = get_db_properties(notion, NOTION_DATABASE_ID)
         sync_books_from_api(

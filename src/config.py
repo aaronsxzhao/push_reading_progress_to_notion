@@ -107,6 +107,7 @@ WEREAD_READ_INFO_API = f"{WEREAD_API_BASE}/web/book/readinfo"
 WEREAD_BOOKMARKLIST_API = f"{WEREAD_API_BASE}/web/book/bookmarklist"
 WEREAD_REVIEW_LIST_API = f"{WEREAD_API_BASE}/web/review/list"
 WEREAD_CHAPTER_INFO_API = f"{WEREAD_API_BASE}/web/book/chapterInfos"
+WEREAD_RENEW_URL = f"{WEREAD_API_BASE}/web/login/renewal"
 
 # Notion property names (configurable via env)
 PROP_TITLE = env("NOTION_TITLE_PROP", "Name")

@@ -5,7 +5,8 @@ on:
   repository_dispatch:  # Webhook trigger from anywhere
     types: [sync]
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC (10 AM Beijing) — full sync
+    - cron: '0 0-14 * * *'  # Hourly 8AM-10PM Beijing (UTC 0-14) — cookie renewal only
 
 jobs:
   sync:
@@ -43,7 +44,30 @@ jobs:
           echo "Using cookies from Gist"
         fi
     
+    - name: Renew cookies silently
+      env:
+        WEREAD_COOKIES: ${{ env.WEREAD_COOKIES || secrets.WEREAD_COOKIES }}
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        COOKIE_GIST_ID: ${{ secrets.COOKIE_GIST_ID }}
+        PYTHONUNBUFFERED: 1
+      run: |
+        python3 -u -c "
+        import sys; sys.path.insert(0, 'src')
+        from weread_api import WeReadAPI
+        import os
+        cookies = os.environ.get('WEREAD_COOKIES', '')
+        api = WeReadAPI(cookies)
+        if api.renew_cookies_silent():
+            print('Cookie renewal succeeded')
+            new_cookies = api.get_cookie_string()
+            with open(os.environ['GITHUB_ENV'], 'a') as f:
+                f.write(f'WEREAD_COOKIES={new_cookies}\n')
+        else:
+            print('Cookie renewal skipped or failed (will use existing cookies)')
+        "
+
     - name: Run sync
+      if: github.event.schedule != '0 0-14 * * *'
       env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}

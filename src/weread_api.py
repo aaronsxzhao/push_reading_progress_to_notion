@@ -36,6 +36,7 @@ from config import (
     WEREAD_BOOKMARKLIST_API,
     WEREAD_REVIEW_LIST_API,
     WEREAD_CHAPTER_INFO_API,
+    WEREAD_RENEW_URL,
 )
 
 
@@ -189,6 +190,11 @@ class WeReadAPI:
         if err_code:
             print(f"[AUTH] errCode={err_code}  errMsg={err_msg}")
 
+        # Try silent renewal first (works headlessly, no browser needed)
+        if self.renew_cookies_silent():
+            return True
+
+        # Fall back to browser-based refresh if enabled
         if self.auto_refresh:
             print("[AUTH] Attempting automatic browser-based cookie refresh...")
             if self._refresh_cookies_from_browser():
@@ -272,6 +278,25 @@ class WeReadAPI:
             return r.status_code == 200
         except Exception:
             return False
+
+    def renew_cookies_silent(self) -> bool:
+        """Renew wr_skey via POST /web/login/renewal using the long-lived wr_rt token.
+
+        Returns True if the session was refreshed (new wr_skey obtained).
+        No browser or user interaction needed.
+        """
+        try:
+            print("[AUTH] Attempting silent cookie renewal via /web/login/renewal ...")
+            resp = self.session.post(WEREAD_RENEW_URL, timeout=10)
+            if resp.status_code == 200 and self._update_cookies_from_response(resp):
+                self._persist_cookies_to_env()
+                print("[AUTH] Silent renewal succeeded — wr_skey refreshed")
+                return True
+            print(f"[AUTH] Silent renewal returned status={resp.status_code}, "
+                  f"no new cookies in Set-Cookie header")
+        except Exception as e:
+            print(f"[AUTH] Silent renewal failed: {e}")
+        return False
 
     def _refresh_cookies_from_browser(self) -> bool:
         """Run scripts/fetch_cookies_auto.py and reload cookies."""

@@ -40,6 +40,7 @@ def _fetch_heatmap_data(cookies: str) -> dict:
         return _cache["data"]
 
     api = WeReadAPI(cookies, auto_refresh=False)
+    api.renew_cookies_silent()
     shelf_data, books, progress = api.get_shelf()
 
     books_with_time = [
