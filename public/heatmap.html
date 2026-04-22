@@ -233,10 +233,11 @@ function render(data){
   legendEl.innerHTML+='<span>More</span>';
 }
 
-// Determine API URL: use query param, relative path, or same-origin
-var apiUrl=params.get('api')||'/api/heatmap_data';
+// Build absolute API URL so the fetch works inside Notion's sandboxed iframe
+var baseUrl=params.get('base')||location.origin||'https://pushreadingprogresstonotion.vercel.app';
+var apiUrl=params.get('api')||(baseUrl+'/api/heatmap_data');
 
-fetch(apiUrl)
+fetch(apiUrl,{mode:'cors'})
   .then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.json();
