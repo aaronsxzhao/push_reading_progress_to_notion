@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Installs a launchd job that refreshes WeRead cookies every hour
-# (8 AM – 10 PM Beijing / 0:00 – 14:00 UTC) using the saved browser profile.
+# Installs a launchd job that refreshes WeRead cookies and syncs to
+# Notion every hour while the Mac is awake.
 #
 # First-time setup:
 #   1. Run interactively to log in and save the browser profile:
@@ -12,15 +12,8 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLIST_PATH="$HOME/Library/LaunchAgents/com.aaron.weread.cookie.refresh.plist"
-PYTHON_BIN="$PROJECT_DIR/.venv/bin/python3"
-SCRIPT_PATH="$PROJECT_DIR/scripts/fetch_cookies_auto.py"
+SCRIPT_PATH="$PROJECT_DIR/scripts/refresh_and_sync.sh"
 ENV_FILE="$PROJECT_DIR/.env"
-
-if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo "Missing venv python at: $PYTHON_BIN"
-  echo "Create: python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
-  exit 1
-fi
 
 if [[ ! -d "$PROJECT_DIR/.browser_state" ]]; then
   echo "No saved browser state. Run interactively first:"
@@ -28,10 +21,10 @@ if [[ ! -d "$PROJECT_DIR/.browser_state" ]]; then
   exit 1
 fi
 
-# Load .env for GH_TOKEN / COOKIE_GIST_ID
-set -a
-source "$ENV_FILE"
-set +a
+if [[ ! -f "$SCRIPT_PATH" ]]; then
+  echo "Missing: $SCRIPT_PATH"
+  exit 1
+fi
 
 cat > "$PLIST_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -43,16 +36,9 @@ cat > "$PLIST_PATH" <<EOF
 
   <key>ProgramArguments</key>
   <array>
-    <string>$PYTHON_BIN</string>
+    <string>/bin/bash</string>
     <string>$SCRIPT_PATH</string>
-    <string>--headless</string>
   </array>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>GH_TOKEN</key><string>${GH_TOKEN:-}</string>
-    <key>COOKIE_GIST_ID</key><string>${COOKIE_GIST_ID:-}</string>
-  </dict>
 
   <key>StartInterval</key>
   <integer>3600</integer>
@@ -73,5 +59,6 @@ echo "Wrote LaunchAgent: $PLIST_PATH"
 launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load "$PLIST_PATH"
 
-echo "Installed: com.aaron.weread.cookie.refresh (runs every hour)"
-echo "Logs: tail -f /tmp/weread_cookie_refresh.out.log"
+echo "Installed: com.aaron.weread.cookie.refresh"
+echo "  Runs every hour: cookie refresh + Notion sync"
+echo "  Logs: tail -f /tmp/weread_cookie_refresh.out.log"
