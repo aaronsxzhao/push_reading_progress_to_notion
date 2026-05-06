@@ -235,7 +235,9 @@ function render(data){
 
 // Build absolute API URL so the fetch works inside Notion's sandboxed iframe
 var baseUrl=params.get('base')||location.origin||'https://pushreadingprogresstonotion.vercel.app';
-var apiUrl=params.get('api')||(baseUrl+'/api/heatmap_data');
+// Bust Vercel's edge cache by including the current 5-minute bucket as a query param
+var bucket=Math.floor(Date.now()/300000);
+var apiUrl=params.get('api')||(baseUrl+'/api/heatmap_data?_t='+bucket);
 
 fetch(apiUrl,{mode:'cors',cache:'no-cache'})
   .then(function(r){

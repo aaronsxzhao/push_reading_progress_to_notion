@@ -61,7 +61,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "public, max-age=3600, s-maxage=3600")
+        self.send_header("Cache-Control", "public, max-age=300, s-maxage=300")
         self.end_headers()
         self.wfile.write(body.encode())
 
