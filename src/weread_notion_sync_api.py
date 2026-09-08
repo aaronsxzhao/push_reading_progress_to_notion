@@ -952,6 +952,10 @@ def main():
     
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)
+    if "Start Date Source" not in db_props:
+        notion.databases.update(database_id=NOTION_DATABASE_ID,
+                                properties={"Start Date Source": {"rich_text": {}}})
+        db_props = get_db_properties(notion, NOTION_DATABASE_ID)
     
     sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit, test_book_title=test_book_title)
 

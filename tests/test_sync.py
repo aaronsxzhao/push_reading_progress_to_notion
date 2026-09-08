@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from weread_gateway import WeReadGateway, create_weread_client
 from weread_api import WeReadAPI
 import weread_notion_sync_api as sync
-from weread_notion_sync import build_props, build_update_props
+from weread_notion_sync import build_props, build_update_props, upsert_page
 
 
 class GatewayTests(unittest.TestCase):
@@ -81,13 +81,13 @@ class GatewayTests(unittest.TestCase):
         for percent, status in [(0, 'To Be Read'), (1, 'Currently Reading'), (100, 'Read')]:
             self.api.call = Mock(side_effect=[
                 {'title': 'Book', 'wordCount': 550000, 'newRating': 98},
-                {'book': {'progress': percent, 'recordReadingTime': 3660, 'updateTime': 1788798600}},
+                {'book': {'progress': percent, 'recordReadingTime': 0, 'updateTime': 1788798600}},
                 {'updated': [], 'chapters': []}, {'reviews': []},
             ])
             data = self.api.get_single_book_data('1')
             self.assertEqual(data['percent'], percent)
             self.assertEqual(data['status'], status)
-            self.assertEqual(data['reading_time'], '1时1分')
+            self.assertEqual(data['reading_time'], '0时0分')
             for key in ['current_page', 'total_page', 'started_at', 'date_finished', 'rating']:
                 self.assertIsNone(data[key])
 
@@ -112,6 +112,31 @@ class GatewayTests(unittest.TestCase):
                 else:
                     self.assertIsNone(fields['started_at'])
                     self.assertIsNone(fields['year_started'])
+
+    def test_new_book_start_date_fallback(self):
+        cases = [
+            ({'readingTime': 0}, [], [], None, None, 'To Be Read'),
+            ({'readingTime': 2}, [], [], 1735835400, '最早可核验阅读记录（替代）', 'Currently Reading'),
+            ({'readingTime': 20}, [{'createTime': 1735749000}], [{'review': {'createTime': 1735662600}}], 1735662600, '最早可核验阅读记录（替代）', 'Currently Reading'),
+            ({'startReadingTime': 1735835400, 'readingTime': 20}, [{'createTime': 1735662600}], [], 1735835400, '微信读书开始时间', 'Currently Reading'),
+        ]
+        for extra, marks, reviews, expected, source, status in cases:
+            with self.subTest(extra=extra, marks=marks):
+                self.api.call = Mock(return_value={'title': 'New book'})
+                self.api.get_read_info = Mock(return_value={'progress': 0, 'updateTime': 1735835400, **extra})
+                self.api.get_notes = Mock(return_value={'bookmarks': marks, 'summary_reviews': reviews})
+                fields = self.api.get_single_book_data('new')
+                self.assertEqual(fields['started_at'], self.api.timestamp(expected))
+                self.assertEqual(fields['start_date_source'], source)
+                self.assertEqual(fields['status'], status)
+                schema = {'Title': {'type': 'title'}, 'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}, 'Start Date Source': {'type': 'rich_text'}}
+                with patch('weread_notion_sync.PROP_STARTED_AT', 'Date Started'):
+                    props = build_props(schema, fields)
+                if expected:
+                    self.assertEqual(props['Year Started']['select']['name'], '2025')
+                    self.assertEqual(props['Start Date Source']['rich_text'][0]['text']['content'], source)
+                else:
+                    self.assertNotIn('Date Started', props)
 
     def test_review_pagination_and_dedup(self):
         self.api.call = Mock(side_effect=[
@@ -178,6 +203,39 @@ class SyncTests(unittest.TestCase):
         notion.pages.retrieve.side_effect = RuntimeError('read failed')
         with self.assertRaisesRegex(RuntimeError, 'read failed'):
             build_update_props(notion, 'p', {'Date Started': {'type': 'date'}}, {'started_at': datetime(2024, 2, 3)})
+
+    def test_start_date_provenance_and_repeated_sync(self):
+        official, estimate = '微信读书开始时间', '最早可核验阅读记录（替代）'
+        schema = {'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}, 'Start Date Source': {'type': 'rich_text'}}
+        cases = [(estimate, estimate, '2024-02-03', False),
+                 (estimate, official, '2025-01-01', True),
+                 (official, estimate, '2024-02-03', False),
+                 ('', estimate, '2024-02-03', False)]
+        for old_source, incoming_source, expected, changed in cases:
+            with self.subTest(old=old_source, incoming=incoming_source):
+                notion = Mock()
+                notion.pages.retrieve.return_value = {'properties': {'Date Started': {'date': {'start': '2024-02-03'}}, 'Start Date Source': {'rich_text': [{'plain_text': old_source}]}}}
+                props = build_update_props(notion, 'p', schema, {'started_at': datetime(2025, 1, 1), 'start_date_source': incoming_source})
+                self.assertEqual(props['Year Started']['select']['name'], expected[:4])
+                self.assertEqual('Date Started' in props, changed)
+                if changed:
+                    self.assertEqual(props['Date Started']['date']['start'], expected)
+                    self.assertEqual(props['Start Date Source']['rich_text'][0]['text']['content'], official)
+
+    def test_new_book_is_created_once_and_later_activity_keeps_start(self):
+        schema = {'Title': {'type': 'title'}, 'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}, 'Start Date Source': {'type': 'rich_text'}}
+        notion = Mock()
+        notion.pages.create.return_value = {'id': 'new-page'}
+        notion.pages.retrieve.return_value = {'properties': {'Date Started': {'date': {'start': '2024-02-03'}}, 'Start Date Source': {'rich_text': [{'plain_text': '最早可核验阅读记录（替代）'}]}}}
+        fields = {'title': 'New book', 'author': 'Author', 'started_at': datetime(2024, 2, 3), 'year_started': 2024, 'start_date_source': '最早可核验阅读记录（替代）'}
+        with patch('weread_notion_sync.find_page_by_title_and_author', side_effect=[None, {'id': 'new-page'}]), redirect_stdout(io.StringIO()):
+            self.assertEqual(upsert_page(notion, 'db', schema, fields), ('new-page', True))
+            self.assertEqual(upsert_page(notion, 'db', schema, {**fields, 'started_at': datetime(2025, 1, 1), 'year_started': 2025}), ('new-page', False))
+        notion.pages.create.assert_called_once()
+        notion.pages.update.assert_called_once()
+        updated = notion.pages.update.call_args.kwargs['properties']
+        self.assertNotIn('Date Started', updated)
+        self.assertEqual(updated['Year Started']['select']['name'], '2024')
 
     def test_failed_source_never_writes(self):
         api = Mock()

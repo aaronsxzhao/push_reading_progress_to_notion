@@ -200,11 +200,29 @@ class WeReadGateway:
         notes = self.get_notes(book_id)
         percent = progress["progress"]  # 1 means 1%, never 100%.
         # Observed optional gateway field, absent from the abbreviated skill docs.
-        # Zero means unavailable; never substitute last activity or note timestamps.
+        # Zero means unavailable. User-approved fallback uses observed activity,
+        # explicitly labelled as an estimate rather than a true first-read date.
         started_at = self.timestamp(progress.get("startReadingTime"))
+        start_source = "微信读书开始时间" if started_at else None
+        if not started_at:
+            candidates = []
+            note_items = notes["bookmarks"] + [item["review"] for item in notes["summary_reviews"]]
+            for note in note_items:
+                created = self.timestamp(note.get("createTime"))
+                if created:
+                    candidates.append(created)
+            has_reading = any(isinstance(progress.get(key), (int, float))
+                              and not isinstance(progress.get(key), bool) and progress[key] > 0
+                              for key in ("readingTime", "ttsTime", "recordReadingTime"))
+            observed = self.timestamp(progress.get("updateTime")) if has_reading else None
+            if observed:
+                candidates.append(observed)
+            if candidates:
+                started_at = min(candidates)
+                start_source = "最早可核验阅读记录（替代）"
         finished_at = self.timestamp(progress.get("finishTime")) if percent == 100 else None
         status = ("Read" if percent == 100 else "Currently Reading"
-                  if percent > 0 or progress.get("isStartReading") else "To Be Read")
+                  if percent > 0 or progress.get("isStartReading") or started_at else "To Be Read")
         seconds = progress.get("recordReadingTime")
         category = info.get("category")
         genres = translate_genres([{"title": category}]) if isinstance(category, str) else []
@@ -215,6 +233,7 @@ class WeReadGateway:
             "last_read_at": self.timestamp(progress.get("updateTime")),
             "date_finished": finished_at, "cover_image": info.get("cover"),
             "genre": genres, "rating": None, "year_started": started_at.year if started_at else None,
+            "start_date_source": start_source,
             **notes,
             "read_info": progress, "reading_time_seconds": seconds,
             "reading_time": f"{seconds // 3600}时{seconds % 3600 // 60}分" if seconds is not None else None,

@@ -267,6 +267,8 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
         else:
             date_str = str(started_at)
         props[PROP_STARTED_AT] = {"date": {"start": date_str}}
+        if fields.get("start_date_source") and db_props.get("Start Date Source", {}).get("type") == "rich_text":
+            props["Start Date Source"] = {"rich_text": [{"text": {"content": fields["start_date_source"]}}]}
 
     if fields.get("last_read_at") and prop_exists(db_props, PROP_LAST_READ_AT):
         # Convert to local timezone if needed, then format as date (same as date_finished)
@@ -435,9 +437,19 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
         incoming = fields["started_at"]
         incoming_date = incoming.date() if hasattr(incoming, "date") else dtparser.parse(str(incoming)).date()
         existing_date = dtparser.parse(date_prop["start"]).date() if date_prop and date_prop.get("start") else None
+        source_prop = existing_page.get("properties", {}).get("Start Date Source", {})
+        old_source = "".join(item.get("plain_text", item.get("text", {}).get("content", "")) for item in source_prop.get("rich_text", []))
         effective_date = min(existing_date, incoming_date) if existing_date else incoming_date
+        if existing_date and old_source == "微信读书开始时间" and fields.get("start_date_source") == "最早可核验阅读记录（替代）":
+            effective_date = existing_date
+        # An explicit start time supersedes a previously labelled estimate.
+        if fields.get("start_date_source") == "微信读书开始时间" and old_source == "最早可核验阅读记录（替代）":
+            effective_date = incoming_date
         if existing_date != effective_date:
             props[PROP_STARTED_AT] = {"date": {"start": effective_date.isoformat()}}
+        if fields.get("start_date_source") and db_props.get("Start Date Source", {}).get("type") == "rich_text":
+            if existing_date != effective_date or (old_source and effective_date == incoming_date and fields["start_date_source"] == "微信读书开始时间"):
+                props["Start Date Source"] = {"rich_text": [{"text": {"content": fields["start_date_source"]}}]}
         props.update(build_props(db_props, {"year_started": effective_date.year}))
 
     # Update total_page if available
@@ -763,4 +775,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
