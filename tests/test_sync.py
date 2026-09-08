@@ -95,6 +95,26 @@ class GatewayTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.api.get_reviews('1')
 
+    def test_notebooks_paginate_and_include_removed_shelf_books(self):
+        self.api.get_shelf = Mock(return_value=({}, [{'bookId': '1', 'title': 'On shelf'}], []))
+        self.api.call = Mock(side_effect=[
+            {'books': [{'bookId': '1', 'sort': 22}], 'hasMore': 1},
+            {'books': [{'bookId': '1'}, {'bookId': '2', 'book': {'title': 'Removed'}}], 'hasMore': 0},
+        ])
+        books = self.api.get_sync_books()[1]
+        self.assertEqual(len(books), 2)
+        self.assertEqual(books[1]['book'], {'bookId': '2', 'title': 'Removed'})
+        self.assertEqual(self.api.call.call_args.kwargs, {'count': 100, 'lastSort': 22})
+
+    def test_notebook_pagination_failure_is_not_silently_truncated(self):
+        for page in [
+            {'books': [], 'hasMore': 1},
+            {'books': [{'bookId': '1', 'sort': 22}], 'hasMore': 1},
+        ]:
+            self.api.call = Mock(return_value=page)
+            with self.assertRaisesRegex(RuntimeError, 'pagination'):
+                self.api.get_notebooks()
+
     def test_key_preferred_over_cookies(self):
         with patch.dict(os.environ, {'WEREAD_API_KEY': 'wrk-test'}):
             self.assertIsInstance(create_weread_client('invalid cookies'), WeReadGateway)
@@ -160,6 +180,29 @@ class SyncTests(unittest.TestCase):
                 self.assertEqual(build_props(props, {'percent': 1})['Reading Progress']['number'], expected)
                 self.assertEqual(build_update_props(Mock(), 'p', props, {'percent': 1})['Reading Progress']['number'], expected)
             self.assertEqual(build_props({'Reading Progress': {'type': 'formula'}}, {'percent': 1}), {})
+
+    def test_existing_thought_repairs_missing_quote_without_repeating_text(self):
+        notion = Mock()
+        block = sync.get_callout('my thought', review_id='r')
+        old_quote = sync.get_quote('preserved original')
+        missing_quote = sync.get_quote('missing original')
+        with patch.object(sync, 'get_existing_blocks', side_effect=[
+            {sync.get_block_signature(block): 'parent'},
+            {sync.get_block_signature(old_quote): 'child'},
+        ]), patch.object(sync, 'add_children', side_effect=[[{'id': 'new-quote'}], []]) as append:
+            self.assertEqual(sync.sync_blocks_to_page(notion, 'page', [block], {0: missing_quote})[0], 1)
+            self.assertEqual(append.call_args_list[0].args, (notion, 'parent', [missing_quote]))
+            self.assertEqual(append.call_args_list[1].args, (notion, 'page', []))
+            notion.blocks.delete.assert_not_called()
+
+    def test_same_thought_text_preserves_distinct_quotes(self):
+        block = sync.get_callout('same thought', review_id='r')
+        with patch.object(sync, 'get_existing_blocks', return_value={}), patch.object(sync, 'add_children', return_value=[{}]) as append:
+            sync.sync_blocks_to_page(Mock(), 'page', [block, block],
+                                     {0: sync.get_quote('first'), 1: sync.get_quote('second')})
+            new_blocks = append.call_args.args[2]
+            self.assertEqual(len(new_blocks), 1)
+            self.assertEqual(len(new_blocks[0]['callout']['children']), 2)
 
     def test_legacy_does_not_invent_dates_or_pages(self):
         api = WeReadAPI('')

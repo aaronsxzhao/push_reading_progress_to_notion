@@ -92,6 +92,41 @@ class WeReadGateway:
             raise RuntimeError(f"WeRead {book_id}: invalid reading progress")
         return progress
 
+    def get_notebooks(self):
+        books, seen_ids, seen_cursors = [], set(), set()
+        params = {"count": 100}
+        while True:
+            data = self.call("/user/notebooks", **params)
+            page = data.get("books")
+            if not isinstance(page, list):
+                raise RuntimeError("WeRead: missing notebooks array")
+            for item in page:
+                book_id = str(item.get("bookId", ""))
+                if not book_id:
+                    raise RuntimeError("WeRead: notebook missing book ID")
+                if book_id not in seen_ids:
+                    books.append(item)
+                    seen_ids.add(book_id)
+            if data.get("hasMore") not in (1, True, "1"):
+                return books
+            cursor = page[-1].get("sort") if page else None
+            if cursor is None or cursor in seen_cursors:
+                raise RuntimeError("WeRead: notebook pagination did not advance")
+            seen_cursors.add(cursor)
+            params["lastSort"] = cursor
+
+    def get_sync_books(self):
+        data, shelf, progress = self.get_shelf()
+        books = list(shelf)
+        ids = {str(item.get("book", item.get("bookInfo", item)).get("bookId")) for item in books}
+        for item in self.get_notebooks():
+            book_id = str(item["bookId"])
+            if book_id not in ids:
+                books.append({"book": {**item.get("book", {}), "bookId": book_id}})
+                ids.add(book_id)
+        print(f"[API] Including {len(books) - len(shelf)} books with notes outside the shelf")
+        return data, books, progress
+
     def get_reviews(self, book_id):
         items, seen_cursors, seen_ids = [], {0}, set()
         cursor = 0
@@ -120,11 +155,7 @@ class WeReadGateway:
             return None
         return datetime.fromtimestamp(value, CST)
 
-    def get_single_book_data(self, book_id, book_item=None):
-        info = self.call("/book/info", bookId=book_id)
-        if not info.get("title"):
-            raise RuntimeError(f"WeRead {book_id}: missing book title")
-        progress = self.get_read_info(book_id)
+    def get_notes(self, book_id):
         highlights = self.call("/book/bookmarklist", bookId=book_id)
         if not isinstance(highlights.get("updated"), list):
             raise RuntimeError(f"WeRead {book_id}: missing highlights array")
@@ -139,6 +170,15 @@ class WeReadGateway:
                 bookmarks.append({**review, "markText": review.get("content", "")})
             else:
                 summaries.append({"review": review})
+        return {"bookmarks": bookmarks, "summary_reviews": summaries,
+                "page_notes": [], "chapter_notes": [], "chapter_info": chapters}
+
+    def get_single_book_data(self, book_id, book_item=None):
+        info = self.call("/book/info", bookId=book_id)
+        if not info.get("title"):
+            raise RuntimeError(f"WeRead {book_id}: missing book title")
+        progress = self.get_read_info(book_id)
+        notes = self.get_notes(book_id)
         percent = progress["progress"]  # 1 means 1%, never 100%.
         finished_at = self.timestamp(progress.get("finishTime")) if percent == 100 else None
         status = ("Read" if percent == 100 else "Currently Reading"
@@ -153,8 +193,7 @@ class WeReadGateway:
             "last_read_at": self.timestamp(progress.get("updateTime")),
             "date_finished": finished_at, "cover_image": info.get("cover"),
             "genre": genres, "rating": None, "year_started": None,
-            "bookmarks": bookmarks, "summary_reviews": summaries,
-            "page_notes": [], "chapter_notes": [], "chapter_info": chapters,
+            **notes,
             "read_info": progress, "reading_time_seconds": seconds,
             "reading_time": f"{seconds // 3600}时{seconds % 3600 // 60}分" if seconds is not None else None,
             "data_source": "weread_official_gateway",

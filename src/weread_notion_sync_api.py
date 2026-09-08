@@ -51,7 +51,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from notion_client import Client
 from weread_api import WeReadAPI
-from weread_gateway import create_weread_client
+from weread_gateway import WeReadGateway, create_weread_client
 from config import (
     env,
     PROP_TITLE, PROP_AUTHOR, PROP_STATUS, PROP_CURRENT_PAGE, PROP_TOTAL_PAGE,
@@ -349,22 +349,45 @@ def sync_blocks_to_page(
     """
     import copy
     existing = get_existing_blocks(notion, page_id)
-    seen = set(existing)
+    pending = {}
+    existing_quotes = {}
+    repaired_quotes = 0
     to_add = []
     for index, block in enumerate(new_blocks):
         signature = get_block_signature(block)
-        if signature in seen:
-            continue
-        seen.add(signature)
-        block = copy.deepcopy(block)
+        quotes = []
         if grandchild and index in grandchild and block.get("type") == "callout":
-            quote = grandchild[index]
-            content = _extract_text_from_rich_text(quote["quote"]["rich_text"])
-            block["callout"]["children"] = [get_quote(content[i:i + 2000])
-                                                for i in range(0, len(content), 2000)]
+            content = _extract_text_from_rich_text(grandchild[index]["quote"]["rich_text"])
+            quotes = [get_quote(content[i:i + 2000]) for i in range(0, len(content), 2000)]
+        if signature in existing:
+            if quotes:
+                parent_id = existing[signature]
+                if parent_id not in existing_quotes:
+                    existing_quotes[parent_id] = set(get_existing_blocks(notion, parent_id))
+                missing = []
+                for quote in quotes:
+                    quote_signature = get_block_signature(quote)
+                    if quote_signature not in existing_quotes[parent_id]:
+                        missing.append(quote)
+                        existing_quotes[parent_id].add(quote_signature)
+                repaired_quotes += len(add_children(notion, parent_id, missing))
+            continue
+        if signature in pending:
+            if quotes:
+                nested = pending[signature]["callout"].setdefault("children", [])
+                seen_quotes = {get_block_signature(quote) for quote in nested}
+                for quote in quotes:
+                    if get_block_signature(quote) not in seen_quotes:
+                        nested.append(quote)
+                        seen_quotes.add(get_block_signature(quote))
+            continue
+        block = copy.deepcopy(block)
+        if quotes:
+            block["callout"]["children"] = quotes
+        pending[signature] = block
         to_add.append(block)
     results = add_children(notion, page_id, to_add)
-    return len(results), 0, len(existing)
+    return len(results) + repaired_quotes, 0, len(existing)
 
 
 def create_book_content_blocks(
@@ -508,13 +531,15 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
 
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
-    shelf_data, all_books_list, book_progress_list = client.get_shelf()
+    shelf_data, all_books_list, book_progress_list = (
+        client.get_sync_books() if isinstance(client, WeReadGateway) else client.get_shelf()
+    )
     
     # Get the current (possibly refreshed) cookies for thread clients
     current_cookies = client.get_cookie_string() if isinstance(client, WeReadAPI) else ""
     
     total_books = len(all_books_list)
-    print(f"[API] Total books in shelf: {total_books}")
+    print(f"[API] Total books selected from source: {total_books}")
     
     # Build a map of book_id -> book info from the 'books' field (has full info)
     books_map = {}
