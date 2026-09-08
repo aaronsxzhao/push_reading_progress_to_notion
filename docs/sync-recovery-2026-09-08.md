@@ -28,7 +28,9 @@
 
 ## 云端验证
 
-[运行 #189](https://github.com/aaronsxzhao/push_reading_progress_to_notion/actions/runs/34193413725) 书籍同步完成：170/170 成功，0 错误；使用新版官方接口，跳过旧 Cookie 续期。Notion 读回核验《原生家庭》2%、《反脆弱》34%，最近阅读日期均为 2026-09-07。热力图成功汇总 547 个有记录日期、219 小时（取整），但 Gist 上传返回 401，旧 GH_TOKEN 已失效，整体工作流因此正确标记失败。正在更新该凭据以完成展示端恢复。
+[运行 #189](https://github.com/aaronsxzhao/push_reading_progress_to_notion/actions/runs/34193413725) 书籍同步完成：170/170 成功，0 错误；使用新版官方接口，跳过旧 Cookie 续期。Notion 读回核验《原生家庭》2%、《反脆弱》34%，最近阅读日期均为 2026-09-07。热力图成功汇总 547 个有记录日期、219 小时（取整），但 Gist 上传返回 401，旧 GH_TOKEN 已失效，整体工作流因此正确标记失败。随后已更新 GH_TOKEN，恢复结果见下。
+
+[运行 #190](https://github.com/aaronsxzhao/push_reading_progress_to_notion/actions/runs/34197450277) 仅运行热力图更新，全部步骤成功。日志确认 Gist 上传成功；展示 API 无缓存请求返回 HTTP 200，dataSource 为 weread_official_readdata，更新时间 2026-09-08 15:07（北京时间），最近阅读日 2026-09-07，总时长 789627 秒，官方有效阅读天数 550。
 
 保持原定时计划：每天 UTC 02:00 / 北京时间 10:00，GitHub 排程可能延迟。也可在工作流页面手动 Run workflow；勾选 heatmap_only 可仅更新热力图。热力图仍通过已有 GH_TOKEN、COOKIE_GIST_ID 更新原 Gist，并由 Vercel 展示。
 

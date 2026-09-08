@@ -217,7 +217,9 @@ function render(data){
     {label:'Longest streak',val:data.longestStreak+' days'},
     {label:'Books tracked',val:data.booksWithTime},
   ];
-  statsEl.innerHTML=statItems.map(function(s){
+  statsEl.innerHTML=statItems.filter(function(s){
+    return s.val!==null && s.val!==undefined;
+  }).map(function(s){
     return '<div class="stat"><span class="val">'+s.val+'</span> '+s.label+'</div>';
   }).join('');
 
