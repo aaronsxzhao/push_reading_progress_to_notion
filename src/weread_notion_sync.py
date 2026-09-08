@@ -243,6 +243,14 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
                 else:
                     props[PROP_STATUS] = {"select": {"name": status_value}}
 
+    progress_name = env("PROP_PROGRESS", "Reading Progress")
+    progress_prop = db_props.get(progress_name, {})
+    if fields.get("percent") is not None and progress_prop.get("type") == "number":
+        percent = float(fields["percent"])
+        if progress_prop.get("number", {}).get("format") == "percent":
+            percent /= 100
+        props[progress_name] = {"number": percent}
+
     if fields.get("current_page") is not None and prop_exists(db_props, PROP_CURRENT_PAGE):
         props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
 
@@ -267,7 +275,7 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
             # Convert to local timezone if it has timezone info
             import dateutil.tz
             if last_read_at.tzinfo is not None:
-                last_read_at = last_read_at.astimezone(dateutil.tz.tzlocal())
+                last_read_at = last_read_at.astimezone(dateutil.tz.gettz("Asia/Shanghai"))
         if hasattr(last_read_at, 'date'):
             date_str = last_read_at.date().isoformat()
         elif hasattr(last_read_at, 'isoformat'):
@@ -375,6 +383,14 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
                 else:
                     props[PROP_STATUS] = {"select": {"name": status_value}}
 
+    progress_name = env("PROP_PROGRESS", "Reading Progress")
+    progress_prop = db_props.get(progress_name, {})
+    if fields.get("percent") is not None and progress_prop.get("type") == "number":
+        percent = float(fields["percent"])
+        if progress_prop.get("number", {}).get("format") == "percent":
+            percent /= 100
+        props[progress_name] = {"number": percent}
+
     if fields.get("current_page") is not None and prop_exists(db_props, PROP_CURRENT_PAGE):
         props[PROP_CURRENT_PAGE] = {"number": int(fields["current_page"])}
 
@@ -385,7 +401,7 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
             # Convert to local timezone if it has timezone info
             import dateutil.tz
             if last_read_at.tzinfo is not None:
-                last_read_at = last_read_at.astimezone(dateutil.tz.tzlocal())
+                last_read_at = last_read_at.astimezone(dateutil.tz.gettz("Asia/Shanghai"))
         if hasattr(last_read_at, 'date'):
             date_str = last_read_at.date().isoformat()
         elif hasattr(last_read_at, 'isoformat'):
@@ -401,7 +417,7 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
             # Convert to local timezone if it has timezone info
             import dateutil.tz
             if date_finished.tzinfo is not None:
-                date_finished = date_finished.astimezone(dateutil.tz.tzlocal())
+                date_finished = date_finished.astimezone(dateutil.tz.gettz("Asia/Shanghai"))
         if hasattr(date_finished, 'date'):
             date_str = date_finished.date().isoformat()
         elif hasattr(date_finished, 'isoformat'):

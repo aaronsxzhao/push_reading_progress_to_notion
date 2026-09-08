@@ -2,6 +2,19 @@
 
 Sync your WeRead (微信读书) reading progress to Notion automatically.
 
+## Official API migration (2026-09)
+
+The sync now prefers the official WeRead Skills gateway when `WEREAD_API_KEY`
+is set. Get your key from https://weread.qq.com/r/weread-skills and store it in
+`.env` locally or GitHub Actions Secrets. Cookies are only a legacy fallback.
+Use Python 3.11 or newer.
+
+See [the recovery report](docs/sync-recovery-2026-09-08.md) for verified failure
+causes, data-field changes, read-only checks, and deployment steps. Existing
+Notion notes are preserved; source deletions are not mirrored. Real reading
+percentage is written only to an existing numeric `Reading Progress` property
+(configurable via `PROP_PROGRESS`). Page counts and missing dates are not estimated.
+
 ## Features
 
 - Syncs books, reading progress, and highlights to Notion
@@ -30,7 +43,7 @@ Edit `.env` with your values:
 # Required
 NOTION_TOKEN=secret_xxxxx          # From notion.so/my-integrations
 NOTION_DATABASE_ID=xxxxx           # Your Notion database ID
-WEREAD_COOKIES="wr_skey=xxx; wr_vid=xxx; wr_rt=xxx"  # From browser
+WEREAD_API_KEY=wrk-xxxxx          # Use the actual wrk- key from the official page
 
 # Optional - for iPhone/Notion trigger
 GH_TOKEN=ghp_xxxxx                 # GitHub token (repo + workflow + gist scopes)
@@ -84,7 +97,7 @@ Trigger sync from anywhere using GitHub Actions - no server needed.
    |--------|-------|
    | `NOTION_TOKEN` | Your Notion token |
    | `NOTION_DATABASE_ID` | Your database ID |
-   | `WEREAD_COOKIES` | Your cookies string |
+   | `WEREAD_API_KEY` | Your official WeRead API key (recommended) |
 
 3. **Enable GitHub Pages** (GitHub → Settings → Pages):
    - Source: Deploy from branch

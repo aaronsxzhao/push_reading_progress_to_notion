@@ -92,6 +92,7 @@ class WeReadAPI:
         """
         self.auto_refresh = auto_refresh
         self.session = requests.Session()
+        self.session.hooks["response"].append(self._check_response)
         # Do NOT set Referer — WeRead's bookmarklist API returns empty when
         # a Referer header is present. The weread2notion project sets no
         # custom headers at all; we only keep a minimal User-Agent.
@@ -117,6 +118,22 @@ class WeReadAPI:
     # ------------------------------------------------------------------
     # Cookie helpers
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_response(response, *args, **kwargs):
+        if "/web/" not in response.url or "/web/login/renewal" in response.url:
+            return response
+        response.raise_for_status()
+        try:
+            data = response.json()
+        except ValueError:
+            raise RuntimeError("WeRead returned non-JSON data; authentication may have expired")
+        if isinstance(data, dict):
+            for key in ("errCode", "errcode"):
+                if data.get(key) not in (None, 0, "0"):
+                    raise requests.exceptions.HTTPError(
+                        f"WeRead API failed: {key}={data[key]}; refresh credentials", response=response)
+        return response
 
     @staticmethod
     def _parse_cookie_string(raw: str) -> Dict[str, str]:
@@ -380,9 +397,11 @@ class WeReadAPI:
         err = data.get("errCode")
         if err and err in (-2010, -2012, -1, 401, 403):
             self._handle_auth_error(resp, "get_shelf")
-            return {}, [], []
+            raise RuntimeError("WeRead authentication failed while fetching shelf")
 
-        books = data.get("books", [])
+        if not isinstance(data.get("books"), list):
+            raise RuntimeError("WeRead shelf response missing books array")
+        books = data["books"]
         progress = data.get("bookProgress", [])
         print(f"[API] Shelf: {len(books)} books, {len(progress)} with progress")
         return data, books, progress
@@ -493,28 +512,13 @@ class WeReadAPI:
             # --- Book info (from shelf or /web/book/info) ---
             book_info, progress = self._extract_book_info(book_id, book_item)
 
-            # --- Read info (progress, dates, reading time) ---
-            try:
-                read_info = self.get_read_info(book_id)
-            except Exception:
-                read_info = None
-
-            # --- Bookmarks + reviews ---
-            try:
-                bookmarks = self.get_bookmark_list(book_id)
-            except Exception:
-                bookmarks = []
-            try:
-                summary_reviews, regular_reviews, page_notes, chapter_notes = \
-                    self.get_review_list(book_id)
-            except Exception:
-                summary_reviews, regular_reviews, page_notes, chapter_notes = [], [], [], []
-
-            # --- Chapter info ---
-            try:
-                chapter_info = self.get_chapter_info(book_id)
-            except Exception:
-                chapter_info = None
+            # All source calls must succeed before any Notion writes.
+            read_info = self.get_read_info(book_id)
+            if not read_info:
+                raise RuntimeError("Missing reading data")
+            bookmarks = self.get_bookmark_list(book_id)
+            summary_reviews, regular_reviews, page_notes, chapter_notes = self.get_review_list(book_id)
+            chapter_info = self.get_chapter_info(book_id)
 
             # --- Merge bookmarks + type-1 reviews, sort by position ---
             all_bookmarks = bookmarks + regular_reviews
@@ -533,7 +537,7 @@ class WeReadAPI:
             reading_progress = None
             if read_info:
                 reading_progress = read_info.get("readingProgress")
-                if not percent:
+                if reading_progress is not None:
                     percent = reading_progress
 
             total_page = self._calc_total_pages(chapter_info, book_info)
@@ -542,7 +546,7 @@ class WeReadAPI:
             is_finished = self._check_finished(book_info, book_item, read_info)
             if is_finished:
                 status = "Read"
-            elif percent is not None and percent >= 5:
+            elif percent is not None and percent > 0:
                 status = "Currently Reading"
             else:
                 status = "To Be Read"
@@ -645,15 +649,7 @@ class WeReadAPI:
         chapter_info: Optional[Dict[int, Dict[str, Any]]],
         book_info: Dict[str, Any],
     ) -> Optional[int]:
-        """Derive total page count from chapter word counts or book metadata."""
-        if chapter_info:
-            words = sum(
-                ch.get("wordCount", 0)
-                for ch in chapter_info.values()
-                if isinstance(ch.get("wordCount"), (int, float))
-            )
-            if words > 0:
-                return round(words / 550)
+        """Use an explicit page count only; word counts are not printed pages."""
 
         return book_info.get("pageCount") or None
 
@@ -694,24 +690,19 @@ class WeReadAPI:
                 last_read_at = last_from_detail
 
         if book_item:
-            t = self._ts(book_item.get("readUpdateTime") or book_item.get("updateTime"))
+            t = self._ts(book_item.get("readUpdateTime"))
             if t and (not last_read_at or t > last_read_at):
                 last_read_at = t
-
-        if not date_finished and status == "Read" and last_read_at:
-            date_finished = last_read_at
-        if status == "To Be Read" and not started_at and last_read_at:
-            started_at = last_read_at
 
         return started_at, last_read_at, date_finished
 
     @staticmethod
     def _ts(value: Any) -> Optional[datetime]:
         """Parse a timestamp (unix seconds/ms) or date string."""
-        if value is None:
+        if value is None or value == 0:
             return None
         try:
-            tz = dateutil.tz.tzlocal()
+            tz = dateutil.tz.gettz("Asia/Shanghai")
             if isinstance(value, (int, float)):
                 if value > 1e10:
                     return datetime.fromtimestamp(value / 1000, tz=tz)

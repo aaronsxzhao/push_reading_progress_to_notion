@@ -7,9 +7,19 @@ on:
   schedule:
     - cron: '0 2 * * *'  # Daily at 2 AM UTC (10 AM Beijing)
 
+concurrency:
+  group: weread-notion-sync
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
+      WEREAD_AUTO_REFRESH_COOKIES: 0
+      WEREAD_MAX_WORKERS: 2
+      TZ: Asia/Shanghai
     
     steps:
     - name: Checkout code
@@ -25,6 +35,7 @@ jobs:
       run: pip install -r requirements.txt
     
     - name: Fetch cookies from Gist (if configured)
+      if: ${{ env.WEREAD_API_KEY == '' }}
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         COOKIE_GIST_ID: ${{ secrets.COOKIE_GIST_ID }}
@@ -44,6 +55,7 @@ jobs:
         fi
     
     - name: Renew cookies silently
+      if: ${{ env.WEREAD_API_KEY == '' }}
       env:
         WEREAD_COOKIES: ${{ env.WEREAD_COOKIES || secrets.WEREAD_COOKIES }}
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -74,3 +86,14 @@ jobs:
       run: |
         echo "Starting WeRead to Notion sync..."
         python3 -u src/weread_notion_sync_api.py
+
+    - name: Refresh heatmap from official statistics
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        COOKIE_GIST_ID: ${{ secrets.COOKIE_GIST_ID }}
+      run: |
+        if [ -n "$WEREAD_API_KEY" ] && [ -n "$GH_TOKEN" ] && [ -n "$COOKIE_GIST_ID" ]; then
+          python3 -u scripts/compute_heatmap.py
+        else
+          echo "Heatmap refresh skipped: requires WEREAD_API_KEY, GH_TOKEN and COOKIE_GIST_ID"
+        fi

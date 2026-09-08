@@ -47,7 +47,7 @@ def _get_fresh_cookies() -> str:
 def _run_sync(query_params: dict) -> tuple[int, dict]:
     NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
     NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
-    WEREAD_COOKIES = _get_fresh_cookies()
+    WEREAD_COOKIES = "" if os.environ.get("WEREAD_API_KEY") else _get_fresh_cookies()
 
     expected_key = os.environ.get("SYNC_API_KEY", "")
     api_key = query_params.get("key", [None])[0]
@@ -57,8 +57,8 @@ def _run_sync(query_params: dict) -> tuple[int, dict]:
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         return 500, {"error": "Missing NOTION_TOKEN or NOTION_DATABASE_ID"}
 
-    if not WEREAD_COOKIES:
-        return 500, {"error": "Missing WEREAD_COOKIES"}
+    if not WEREAD_COOKIES and not os.environ.get("WEREAD_API_KEY"):
+        return 500, {"error": "Missing WEREAD_API_KEY or WEREAD_COOKIES"}
 
     try:
         limit = None
@@ -78,9 +78,10 @@ def _run_sync(query_params: dict) -> tuple[int, dict]:
             test_book_title = None
 
         # Proactively renew cookies before syncing
-        api = WeReadAPI(WEREAD_COOKIES, auto_refresh=False)
-        if api.renew_cookies_silent():
-            WEREAD_COOKIES = api.get_cookie_string()
+        if not os.environ.get("WEREAD_API_KEY"):
+            api = WeReadAPI(WEREAD_COOKIES, auto_refresh=False)
+            if api.renew_cookies_silent():
+                WEREAD_COOKIES = api.get_cookie_string()
 
         notion = Client(auth=NOTION_TOKEN)
         db_props = get_db_properties(notion, NOTION_DATABASE_ID)

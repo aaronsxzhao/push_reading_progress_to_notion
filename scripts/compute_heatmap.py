@@ -17,11 +17,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from weread_api import WeReadAPI
+from weread_gateway import WeReadGateway
+from config import env
 
 CST = timezone(timedelta(hours=8))
 
 
 def compute(cookies: str) -> dict:
+    if env("WEREAD_API_KEY"):
+        return compute_official(WeReadGateway(env("WEREAD_API_KEY")))
     api = WeReadAPI(cookies, auto_refresh=False)
     _, _, progress = api.get_shelf()
     books_with_time = [p for p in progress if p.get("readingTime", 0) > 0]
@@ -34,7 +38,7 @@ def compute(cookies: str) -> dict:
         try:
             info = api.get_read_info(book_id)
             if not info:
-                return {}
+                raise RuntimeError("Missing daily reading data")
             entries = info.get("readDetail", {}).get("data", [])
             result = {}
             for e in entries:
@@ -43,8 +47,8 @@ def compute(cookies: str) -> dict:
                     ds = datetime.fromtimestamp(ts, tz=CST).strftime("%Y-%m-%d")
                     result[ds] = result.get(ds, 0) + secs
             return result
-        except Exception:
-            return {}
+        except Exception as exc:
+            raise RuntimeError(f"Daily reading data failed for book {book_id}; old heatmap retained") from exc
 
     print(f"Fetching daily reading data for {len(books_with_time)} books ...")
     with ThreadPoolExecutor(max_workers=10) as pool:
@@ -57,7 +61,48 @@ def compute(cookies: str) -> dict:
             if done % 20 == 0:
                 print(f"  {done}/{len(books_with_time)} books processed")
 
-    sorted_dates = sorted(days.keys())
+    return summarize(days, total_seconds, len(books_with_time), "legacy_shelf_read_detail")
+
+
+def compute_official(api):
+    """Use official totals; annual daily data or monthly daily buckets for heatmap."""
+    overall = api.call("/readdata/detail", mode="overall", baseTime=0)
+    if "totalReadTime" not in overall or not overall.get("registTime"):
+        raise RuntimeError("Official totals/registration date missing; old heatmap retained")
+    now = datetime.now(CST)
+    first_year = datetime.fromtimestamp(overall["registTime"], CST).year
+    if not 2010 <= first_year <= now.year:
+        raise RuntimeError("Invalid registration year")
+    days = {}
+    for year in range(first_year, now.year + 1):
+        annual = api.call("/readdata/detail", mode="annually",
+                          baseTime=int(datetime(year, 1, 1, tzinfo=CST).timestamp()))
+        buckets = annual.get("dailyReadTimes")
+        if not isinstance(buckets, dict) or (not buckets and annual.get("totalReadTime", 0) > 0):
+            buckets = {}
+            for month in range(1, (now.month if year == now.year else 12) + 1):
+                data = api.call("/readdata/detail", mode="monthly",
+                                baseTime=int(datetime(year, month, 1, tzinfo=CST).timestamp()))
+                if not isinstance(data.get("readTimes"), dict):
+                    raise RuntimeError("Official daily buckets missing; old heatmap retained")
+                for timestamp, seconds in data["readTimes"].items():
+                    date = datetime.fromtimestamp(int(timestamp), CST)
+                    if date.year != year or date.month != month:
+                        raise RuntimeError("Official daily bucket outside requested period")
+                    buckets[timestamp] = seconds
+        for timestamp, seconds in buckets.items():
+            date = datetime.fromtimestamp(int(timestamp), CST)
+            if date.year != year or date.date() > now.date() or not isinstance(seconds, (int, float)) or seconds < 0:
+                raise RuntimeError("Invalid official daily reading bucket")
+            if seconds:
+                days[date.strftime("%Y-%m-%d")] = seconds
+    result = summarize(days, overall["totalReadTime"], None, "weread_official_readdata")
+    result["totalDays"] = overall.get("readDays", result["totalDays"])
+    return result
+
+
+def summarize(days, total_seconds, books_count, source):
+    sorted_dates = sorted(d for d, seconds in days.items() if seconds >= 60)
     current_streak = longest_streak = 0
 
     if sorted_dates:
@@ -73,23 +118,25 @@ def compute(cookies: str) -> dict:
 
         streak = 0
         check = today
-        while check in days:
+        while days.get(check, 0) >= 60:
             streak += 1
             check = (datetime.strptime(check, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
         if streak == 0:
             check = yesterday
-            while check in days:
+            while days.get(check, 0) >= 60:
                 streak += 1
                 check = (datetime.strptime(check, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
         current_streak = streak
 
     result = {
         "days": days,
+        "updatedAt": datetime.now(CST).isoformat(),
+        "dataSource": source,
         "totalSeconds": total_seconds,
-        "totalDays": len(days),
+        "totalDays": len(sorted_dates),
         "currentStreak": current_streak,
         "longestStreak": longest_streak,
-        "booksWithTime": len(books_with_time),
+        "booksWithTime": books_count,
     }
     print(f"Done: {len(days)} days, {total_seconds // 3600}h total, "
           f"streak {current_streak}d, longest {longest_streak}d")
@@ -130,12 +177,13 @@ def main():
         pass
 
     cookies = os.environ.get("WEREAD_COOKIES", "")
-    if not cookies:
-        print("WEREAD_COOKIES not set")
+    if not cookies and not env("WEREAD_API_KEY"):
+        print("WEREAD_API_KEY or WEREAD_COOKIES not set")
         sys.exit(1)
 
     data = compute(cookies)
-    push_to_gist(data)
+    if not push_to_gist(data):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

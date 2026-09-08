@@ -51,6 +51,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from notion_client import Client
 from weread_api import WeReadAPI
+from weread_gateway import create_weread_client
 from config import (
     env,
     PROP_TITLE, PROP_AUTHOR, PROP_STATUS, PROP_CURRENT_PAGE, PROP_TOTAL_PAGE,
@@ -169,8 +170,18 @@ def clear_page_blocks(notion: Client, page_id: str):
         has_more = True
         block_ids = []
         
+        cursor = None
+        seen_cursors = set()
         while has_more:
-            response = notion.blocks.children.list(block_id=page_id)
+            kwargs = {"block_id": page_id}
+            if cursor:
+                kwargs["start_cursor"] = cursor
+            response = notion.blocks.children.list(**kwargs)
+            if response.get("has_more"):
+                cursor = response.get("next_cursor")
+                if not cursor or cursor in seen_cursors:
+                    raise RuntimeError("Notion block pagination did not advance")
+                seen_cursors.add(cursor)
             blocks = response.get("results", [])
             block_ids.extend([b["id"] for b in blocks])
             has_more = response.get("has_more", False)
@@ -246,8 +257,18 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
     
     try:
         has_more = True
+        cursor = None
+        seen_cursors = set()
         while has_more:
-            response = notion.blocks.children.list(block_id=page_id)
+            kwargs = {"block_id": page_id}
+            if cursor:
+                kwargs["start_cursor"] = cursor
+            response = notion.blocks.children.list(**kwargs)
+            if response.get("has_more"):
+                cursor = response.get("next_cursor")
+                if not cursor or cursor in seen_cursors:
+                    raise RuntimeError("Notion block pagination did not advance")
+                seen_cursors.add(cursor)
             blocks = response.get("results", [])
             
             for block in blocks:
@@ -281,7 +302,7 @@ def get_existing_blocks(notion: Client, page_id: str) -> Dict[str, str]:
             
             has_more = response.get("has_more", False)
     except Exception as e:
-        print(f"[WARNING] Failed to get existing blocks: {e}")
+        raise RuntimeError("Failed to read existing Notion blocks") from e
     
     return existing_blocks
 
@@ -297,7 +318,7 @@ def add_children(notion: Client, page_id: str, children: list) -> list:
             )
             results.extend(resp.get("results", []))
         except Exception as e:
-            print(f"[ERROR] Failed to add blocks chunk {i // 100 + 1}: {e}")
+            raise RuntimeError("Failed to append Notion blocks") from e
     return results
 
 
@@ -321,56 +342,29 @@ def sync_blocks_to_page(
     grandchild: Optional[Dict[int, Dict[str, Any]]] = None,
     clear_existing: bool = False,
 ) -> Tuple[int, int, int]:
+    """Append new notes by signature, preserving existing and user-written content.
+
+    clear_existing remains in the signature for callers but never erases pages.
+    Quotes are attached atomically as children of newly created callouts.
     """
-    Sync blocks to a Notion page.
-
-    When there are grandchild blocks (notes with abstracts) or clear_existing
-    is set, we clear the page and re-add everything — this is the only way to
-    reliably nest quote blocks inside callouts (Notion doesn't allow appending
-    children to existing blocks that weren't just created).
-
-    Otherwise, we diff by content signature for efficiency.
-    """
-    existing_blocks = {} if clear_existing else get_existing_blocks(notion, page_id)
-
-    new_signatures = {}
-    for block in new_blocks:
-        sig = get_block_signature(block)
-        if sig not in new_signatures:
-            new_signatures[sig] = block
-
-    to_delete = [bid for sig, bid in existing_blocks.items() if sig not in new_signatures]
-    to_add = [block for sig, block in new_signatures.items() if sig not in existing_blocks]
-    kept_count = len(existing_blocks) - len(to_delete)
-
-    if not to_add and not to_delete:
-        return 0, 0, kept_count
-
-    # When we have grandchild blocks (nested quotes inside callouts), we must
-    # clear and re-add — Notion only allows appending children to freshly
-    # created blocks.  But only do this when the content actually changed.
-    if grandchild:
-        clear_page_blocks(notion, page_id)
-        results = add_children(notion, page_id, new_blocks)
-        if results:
-            add_grandchildren(notion, results, grandchild)
-        return len(results), 0, 0
-
-    deleted_count = 0
-    for block_id in to_delete:
-        try:
-            time.sleep(0.1)
-            notion.blocks.delete(block_id=block_id)
-            deleted_count += 1
-        except Exception as e:
-            print(f"[WARNING] Failed to delete block {block_id}: {e}")
-
-    added_count = 0
-    if to_add:
-        results = add_children(notion, page_id, to_add)
-        added_count = len(results)
-
-    return added_count, deleted_count, kept_count
+    import copy
+    existing = get_existing_blocks(notion, page_id)
+    seen = set(existing)
+    to_add = []
+    for index, block in enumerate(new_blocks):
+        signature = get_block_signature(block)
+        if signature in seen:
+            continue
+        seen.add(signature)
+        block = copy.deepcopy(block)
+        if grandchild and index in grandchild and block.get("type") == "callout":
+            quote = grandchild[index]
+            content = _extract_text_from_rich_text(quote["quote"]["rich_text"])
+            block["callout"]["children"] = [get_quote(content[i:i + 2000])
+                                                for i in range(0, len(content), 2000)]
+        to_add.append(block)
+    results = add_children(notion, page_id, to_add)
+    return len(results), 0, len(existing)
 
 
 def create_book_content_blocks(
@@ -430,10 +424,10 @@ def create_book_content_blocks(
 
         by_chapter: Dict[int, list] = {}
         for bm in bookmarks:
-            uid = bm.get("chapterUid", 1)
+            uid = bm.get("chapterUid") or 0
             by_chapter.setdefault(uid, []).append(bm)
 
-        for uid in sorted(by_chapter):
+        for uid in sorted(by_chapter, key=str):
             if uid in chapter_info:
                 ch = chapter_info[uid]
                 children.append(get_heading(ch.get("level", 2), ch.get("title", "")))
@@ -504,31 +498,22 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     
     print("[API] Initializing WeRead API client...")
     
-    # Enable automatic cookie refresh if configured
-    auto_refresh = env("WEREAD_AUTO_REFRESH_COOKIES", "1").lower() in ("1", "true", "yes")
-    client = WeReadAPI(weread_cookies, auto_refresh=auto_refresh)
-    
-    if auto_refresh:
-        print("[API] ✅ Automatic cookie refresh enabled")
-        print("[API]    If cookies expire, browser will open automatically for login")
-    
-    # Validate cookies before proceeding
-    print("[API] Validating cookies...")
-    if not client.validate_cookies():
-        print("\n❌ Cookie validation failed. Please update your cookies in .env file.")
-        if auto_refresh:
-            print("   Automatic refresh will be attempted when API calls fail.\n")
-        else:
-            print("   The sync will continue but may fail with authentication errors.\n")
-    
+    auto_refresh = (not env("GITHUB_ACTIONS") and
+                    env("WEREAD_AUTO_REFRESH_COOKIES", "0").lower() in ("1", "true", "yes"))
+    client = create_weread_client(weread_cookies, auto_refresh=auto_refresh)
+    if isinstance(client, WeReadAPI) and not client.validate_cookies():
+        # Validation may renew cookies; check the fresh session once more.
+        if not client.validate_cookies():
+            raise RuntimeError("WeRead authentication failed; configure WEREAD_API_KEY or refresh cookies")
+
     # Get shelf data first to know total count
     print("[API] Fetching shelf data...")
     shelf_data, all_books_list, book_progress_list = client.get_shelf()
     
     # Get the current (possibly refreshed) cookies for thread clients
-    current_cookies = client.get_cookie_string()
+    current_cookies = client.get_cookie_string() if isinstance(client, WeReadAPI) else ""
     
-    total_books = shelf_data.get("bookCount", 0) or shelf_data.get("pureBookCount", 0) or len(all_books_list)
+    total_books = len(all_books_list)
     print(f"[API] Total books in shelf: {total_books}")
     
     # Build a map of book_id -> book info from the 'books' field (has full info)
@@ -606,8 +591,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     print(f"[API] Combined {len(all_book_items)} books with full info and progress data")
     
     if not all_book_items:
-        print("[ERROR] No books found!")
-        return
+        raise RuntimeError("No book entries returned; sync aborted without writing to Notion")
     
     # Filter by test book title if specified (for troubleshooting)
     if test_book_title:
@@ -631,7 +615,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 book_info = book_item.get("book", {})
                 title = book_info.get("title") or book_info.get("name") or f"Book {book_item.get('bookId')}"
                 print(f"[TEST]   {i}. {title}")
-            return  # Only return if no books found
+            raise RuntimeError("No books matched WEREAD_TEST_BOOK_TITLE; nothing synced")
     
     # Apply limit
     if limit is not None and limit > 0:
@@ -683,7 +667,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             # Create a new client instance for this thread (thread-safe)
             # Use current_cookies which may have been refreshed by main client
             # Disable auto_refresh in threads - main client handles refresh
-            thread_client = WeReadAPI(current_cookies, auto_refresh=False)
+            thread_client = create_weread_client(current_cookies, auto_refresh=False)
             
             # Get book data (this is where the work happens)
             book_data = thread_client.get_single_book_data(book_id, book_item)
@@ -768,6 +752,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                         if limit == 1:  # Show full traceback for first book only
                             import traceback
                             traceback.print_exc()
+                        raise
                 
                 result["success"] = True
                 result["book_data"] = book_data
@@ -867,6 +852,10 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         print(f"\n   💡 TIP: Check your .env file - make sure cookies are complete and not truncated")
         print(f"{'='*80}\n")
 
+    if error_count:
+        raise RuntimeError(f"Sync incomplete: {synced_count} synced, {error_count} failed")
+    return {"synced": synced_count, "errors": error_count}
+
 
 def main():
     # Check if user wants to start web server
@@ -933,8 +922,8 @@ def main():
     
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
         raise SystemExit("Missing NOTION_TOKEN or NOTION_DATABASE_ID env vars.")
-    if not WEREAD_COOKIES:
-        raise SystemExit("Missing WEREAD_COOKIES env var. See README for how to get cookies.")
+    if not WEREAD_COOKIES and not env("WEREAD_API_KEY"):
+        raise SystemExit("Missing WEREAD_API_KEY (recommended) or WEREAD_COOKIES")
     
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)

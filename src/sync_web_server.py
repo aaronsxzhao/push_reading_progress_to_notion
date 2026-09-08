@@ -85,8 +85,8 @@ def run_sync_in_thread():
         
         if not config["notion_token"] or not config["notion_database_id"]:
             raise ValueError("Missing NOTION_TOKEN or NOTION_DATABASE_ID")
-        if not config["weread_cookies"]:
-            raise ValueError("Missing WEREAD_COOKIES")
+        if not config["weread_cookies"] and not env("WEREAD_API_KEY"):
+            raise ValueError("Missing WEREAD_API_KEY or WEREAD_COOKIES")
         
         notion = Client(auth=config["notion_token"])
         db_props = get_db_properties(notion, config["notion_database_id"])
