@@ -61,6 +61,22 @@ class GatewayTests(unittest.TestCase):
                 self.api.get_shelf()
         self.assertEqual(self.api.session.post.call_count, 4)
 
+    def test_server_retry_after_is_respected(self):
+        limited = self.response({'errcode': -2014}, 499)
+        limited.headers = {'Retry-After': '180'}
+        self.api.session.post.side_effect = [limited, self.response({'ok': True})]
+        with patch.object(WeReadGateway, '_cool_down') as cooldown:
+            self.api.call('/readdata/detail')
+            cooldown.assert_called_once_with(180)
+
+    def test_repeated_throttling_increases_backoff(self):
+        limited = self.response({'errcode': -2014}, 499)
+        limited.headers = {}
+        self.api.session.post.side_effect = [limited, limited, limited, self.response({'ok': True})]
+        with patch.object(WeReadGateway, '_cool_down') as cooldown:
+            self.api.call('/readdata/detail')
+            self.assertEqual([c.args[0] for c in cooldown.call_args_list], [60, 120, 240])
+
     def test_progress_and_unknown_fields(self):
         for percent, status in [(0, 'To Be Read'), (1, 'Currently Reading'), (100, 'Read')]:
             self.api.call = Mock(side_effect=[

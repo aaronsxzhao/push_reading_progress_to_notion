@@ -3,8 +3,8 @@
 """
 Compute heatmap data from WeRead and push the result to a GitHub Gist.
 
-Designed to run locally (where cookies are always fresh) so we can
-fetch readDetail for every book without the Vercel serverless timeout.
+Runs in GitHub Actions or locally. Official historical data is reused between
+periodic full checks, while the latest two months are refreshed on each run.
 """
 
 import json
@@ -23,9 +23,12 @@ from config import env
 CST = timezone(timedelta(hours=8))
 
 
-def compute(cookies: str) -> dict:
+def compute(cookies: str, previous=None) -> dict:
     if env("WEREAD_API_KEY"):
-        return compute_official(WeReadGateway(env("WEREAD_API_KEY")))
+        api = WeReadGateway(env("WEREAD_API_KEY"))
+        result = compute_official(api, previous)
+        print(f"[API] Heatmap official requests: {api.request_count}")
+        return result
     api = WeReadAPI(cookies, auto_refresh=False)
     _, _, progress = api.get_shelf()
     books_with_time = [p for p in progress if p.get("readingTime", 0) > 0]
@@ -64,7 +67,42 @@ def compute(cookies: str) -> dict:
     return summarize(days, total_seconds, len(books_with_time), "legacy_shelf_read_detail")
 
 
-def compute_official(api):
+def reusable_history(previous, now):
+    if not isinstance(previous, dict) or previous.get("dataSource") != "weread_official_readdata":
+        return False
+    try:
+        # Before incremental sync existed, every official result was a full scan.
+        checked = datetime.fromisoformat(previous.get("historyVerifiedAt", previous["updatedAt"]))
+        updated = datetime.fromisoformat(previous["updatedAt"])
+        if not checked.tzinfo or not updated.tzinfo or not 0 <= (now - checked).total_seconds() < 30 * 86400:
+            return False
+        if not checked <= updated <= now or not isinstance(previous["days"], dict):
+            return False
+        for day, seconds in previous["days"].items():
+            date = datetime.strptime(day, "%Y-%m-%d").date()
+            if date > updated.astimezone(CST).date() or isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds < 0:
+                return False
+        return True
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
+def read_month(api, year, month):
+    data = api.call("/readdata/detail", mode="monthly",
+                    baseTime=int(datetime(year, month, 1, tzinfo=CST).timestamp()))
+    if not isinstance(data.get("readTimes"), dict):
+        raise RuntimeError("Official daily buckets missing; old heatmap retained")
+    days = {}
+    for timestamp, seconds in data["readTimes"].items():
+        date = datetime.fromtimestamp(int(timestamp), CST)
+        if date.year != year or date.month != month or date.date() > datetime.now(CST).date() or isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds < 0:
+            raise RuntimeError("Invalid official monthly bucket; old heatmap retained")
+        if seconds:
+            days[date.strftime("%Y-%m-%d")] = seconds
+    return days
+
+
+def compute_official(api, previous=None):
     """Use official totals; annual daily data or monthly daily buckets for heatmap."""
     overall = api.call("/readdata/detail", mode="overall", baseTime=0)
     if "totalReadTime" not in overall or not overall.get("registTime"):
@@ -73,11 +111,26 @@ def compute_official(api):
     first_year = datetime.fromtimestamp(overall["registTime"], CST).year
     if not 2010 <= first_year <= now.year:
         raise RuntimeError("Invalid registration year")
+    if reusable_history(previous, now):
+        this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month = (this_month - timedelta(days=1)).replace(day=1)
+        months = [(last_month.year, last_month.month), (this_month.year, this_month.month)]
+        prefixes = tuple(f"{year}-{month:02d}-" for year, month in months)
+        days = {day: value for day, value in previous["days"].items() if not day.startswith(prefixes)}
+        for year, month in months:
+            days.update(read_month(api, year, month))
+        result = summarize(days, overall["totalReadTime"], None, "weread_official_readdata")
+        result["totalDays"] = overall.get("readDays", result["totalDays"])
+        result["historyVerifiedAt"] = previous.get("historyVerifiedAt", previous["updatedAt"])
+        print("[CACHE] Reused official history; refreshed current and previous month")
+        return result
     days = {}
     for year in range(first_year, now.year + 1):
         annual = api.call("/readdata/detail", mode="annually",
                           baseTime=int(datetime(year, 1, 1, tzinfo=CST).timestamp()))
         buckets = annual.get("dailyReadTimes")
+        if not buckets and annual.get("totalReadTime") == 0:
+            buckets = {}
         if not isinstance(buckets, dict) or (not buckets and annual.get("totalReadTime", 0) > 0):
             buckets = {}
             for month in range(1, (now.month if year == now.year else 12) + 1):
@@ -98,7 +151,26 @@ def compute_official(api):
                 days[date.strftime("%Y-%m-%d")] = seconds
     result = summarize(days, overall["totalReadTime"], None, "weread_official_readdata")
     result["totalDays"] = overall.get("readDays", result["totalDays"])
+    result["historyVerifiedAt"] = result["updatedAt"]
+    print("[CACHE] Completed full official history verification")
     return result
+
+
+def load_previous_heatmap():
+    gh_token, gist_id = os.environ.get("GH_TOKEN"), os.environ.get("COOKIE_GIST_ID")
+    if not gh_token or not gist_id:
+        return None
+    import requests
+    response = requests.get(f"https://api.github.com/gists/{gist_id}",
+                            headers={"Authorization": f"token {gh_token}",
+                                     "Accept": "application/vnd.github.v3+json"}, timeout=15)
+    if response.status_code != 200:
+        raise RuntimeError(f"Cannot read heatmap Gist (HTTP {response.status_code}); check GH_TOKEN and COOKIE_GIST_ID")
+    content = response.json().get("files", {}).get("heatmap_data.json", {}).get("content")
+    try:
+        return json.loads(content) if content else None
+    except (ValueError, TypeError):
+        return None
 
 
 def summarize(days, total_seconds, books_count, source):
@@ -181,7 +253,8 @@ def main():
         print("WEREAD_API_KEY or WEREAD_COOKIES not set")
         sys.exit(1)
 
-    data = compute(cookies)
+    previous = load_previous_heatmap() if env("WEREAD_API_KEY") else None
+    data = compute(cookies, previous)
     if not push_to_gist(data):
         sys.exit(1)
 

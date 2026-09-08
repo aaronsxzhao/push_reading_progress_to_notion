@@ -18,9 +18,10 @@ CST = timezone(timedelta(hours=8))
 
 
 class WeReadGateway:
-    # All worker clients share a quota. Keep under 60 requests/minute by default.
+    # Local pacing policy, not an official published quota. Shared within a process.
     _request_lock = Lock()
     _next_request = 0.0
+    _adaptive_interval = 1.1
 
     @classmethod
     def _wait_for_slot(cls):
@@ -28,11 +29,12 @@ class WeReadGateway:
             delay = cls._next_request - time.monotonic()
             if delay > 0:
                 time.sleep(delay)
-            cls._next_request = time.monotonic() + max(1.1, float(env("WEREAD_REQUEST_INTERVAL", "1.1")))
+            cls._next_request = time.monotonic() + max(cls._adaptive_interval, float(env("WEREAD_REQUEST_INTERVAL", "1.1")))
 
     @classmethod
     def _cool_down(cls, seconds):
         with cls._request_lock:
+            cls._adaptive_interval = min(30.0, cls._adaptive_interval * 2)
             cls._next_request = max(cls._next_request, time.monotonic() + seconds)
 
     def __init__(self, api_key):
@@ -40,11 +42,13 @@ class WeReadGateway:
             raise ValueError("WEREAD_API_KEY must be an official wrk- key")
         self.session = requests.Session()
         self.session.headers.update({"Authorization": f"Bearer {api_key}"})
+        self.request_count = 0
 
     def call(self, api_name, **params):
         payload = {**params, "api_name": api_name, "skill_version": SKILL_VERSION}
         for attempt in range(4):
             self._wait_for_slot()
+            self.request_count += 1
             response = self.session.post(GATEWAY, json=payload, timeout=30)
             try:
                 data = response.json()
@@ -56,8 +60,20 @@ class WeReadGateway:
             )
             if limited:
                 if attempt < 3:
-                    print("[API] Rate limited; waiting 60 seconds before retry")
-                    self._cool_down(60)
+                    delay = 60 * (2 ** attempt)
+                    retry_after = response.headers.get("Retry-After")
+                    if isinstance(retry_after, str):
+                        try:
+                            delay = max(delay, float(retry_after))
+                        except ValueError:
+                            from email.utils import parsedate_to_datetime
+                            try:
+                                delay = max(delay, parsedate_to_datetime(retry_after).timestamp() - time.time())
+                            except (ValueError, TypeError, OverflowError):
+                                pass
+                    print(f"[API] {api_name} rate limited (HTTP {response.status_code}); "
+                          f"waiting {delay:g} seconds and slowing subsequent requests")
+                    self._cool_down(delay)
                     continue
                 raise RuntimeError("WeRead request quota exceeded after retries; try again later")
             if response.status_code >= 500 and attempt < 3:
