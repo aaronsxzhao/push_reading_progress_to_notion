@@ -97,6 +97,22 @@ class GatewayTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.api.get_read_info('1')
 
+    def test_start_time_is_optional_and_uses_shanghai_year(self):
+        for value in [None, 0, True, 'unknown', float('nan'), float('inf'), 1735662600]:
+            with self.subTest(value=value):
+                self.api.call = Mock(side_effect=[
+                    {'title': 'Book'},
+                    {'book': {'progress': 5, 'startReadingTime': value, 'updateTime': 1788798600}},
+                    {'updated': []}, {'reviews': []},
+                ])
+                fields = self.api.get_single_book_data('1')
+                if value == 1735662600:  # 2024-12-31 16:30 UTC = 2025 in Shanghai
+                    self.assertEqual(fields['started_at'].date().isoformat(), '2025-01-01')
+                    self.assertEqual(fields['year_started'], 2025)
+                else:
+                    self.assertIsNone(fields['started_at'])
+                    self.assertIsNone(fields['year_started'])
+
     def test_review_pagination_and_dedup(self):
         self.api.call = Mock(side_effect=[
             {'reviews': [{'review': {'reviewId': 'a', 'content': 'one'}}], 'hasMore': 1, 'synckey': 22},
@@ -137,6 +153,32 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def setUp(self):
+        # Personal .env aliases must not change test schemas.
+        for name, value in [('PROP_STARTED_AT', 'Date Started'), ('PROP_YEAR_STARTED', 'Year Started')]:
+            setting = patch('weread_notion_sync.' + name, value)
+            setting.start()
+            self.addCleanup(setting.stop)
+
+    def test_start_date_and_year_are_updated_together(self):
+        schema = {'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}}
+        for existing, expected in [(None, '2024-02-03'), ('2023-12-01', '2023-12-01'), ('2025-01-01', '2024-02-03')]:
+            with self.subTest(existing=existing):
+                notion = Mock()
+                notion.pages.retrieve.return_value = {'properties': {'Date Started': {'date': {'start': existing} if existing else None}}}
+                props = build_update_props(notion, 'p', schema, {'started_at': datetime(2024, 2, 3), 'year_started': 2024})
+                self.assertEqual(props['Year Started']['select']['name'], expected[:4])
+                if existing == expected:
+                    self.assertNotIn('Date Started', props)
+                else:
+                    self.assertEqual(props['Date Started']['date']['start'], expected)
+
+    def test_failed_date_read_does_not_overwrite_existing_date(self):
+        notion = Mock()
+        notion.pages.retrieve.side_effect = RuntimeError('read failed')
+        with self.assertRaisesRegex(RuntimeError, 'read failed'):
+            build_update_props(notion, 'p', {'Date Started': {'type': 'date'}}, {'started_at': datetime(2024, 2, 3)})
+
     def test_failed_source_never_writes(self):
         api = Mock()
         api.get_shelf.side_effect = RuntimeError('expired')

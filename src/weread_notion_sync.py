@@ -426,58 +426,19 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
             date_str = str(date_finished)
         props[PROP_DATE_FINISHED] = {"date": {"start": date_str}}
 
-    # Update started_at only if new value is earlier than existing one
+    # Preserve earlier dates and derive the year from the date actually retained.
     if fields.get("started_at") and prop_exists(db_props, PROP_STARTED_AT):
-        try:
-            # Get existing page to check current started_at
-            existing_page = notion.pages.retrieve(page_id=page_id)
-            existing_props = existing_page.get("properties", {})
-            
-            existing_started_at = None
-            if PROP_STARTED_AT in existing_props:
-                date_prop = existing_props[PROP_STARTED_AT].get("date")
-                if date_prop and date_prop.get("start"):
-                    try:
-                        from dateutil import parser as dtparser
-                        existing_started_at = dtparser.parse(date_prop["start"])
-                    except:
-                        pass
-            
-            # Only update if new value is earlier (or if no existing value)
-            new_started_at = fields["started_at"]
-            should_update = True
-            if existing_started_at and new_started_at:
-                if hasattr(new_started_at, 'date'):
-                    new_date = new_started_at.date()
-                else:
-                    new_date = new_started_at
-                if hasattr(existing_started_at, 'date'):
-                    existing_date = existing_started_at.date()
-                else:
-                    existing_date = existing_started_at
-                
-                if new_date >= existing_date:
-                    should_update = False
-            
-            if should_update:
-                # Format new started_at
-                if hasattr(new_started_at, 'date'):
-                    date_str = new_started_at.date().isoformat()
-                elif hasattr(new_started_at, 'isoformat'):
-                    date_str = new_started_at.isoformat()
-                else:
-                    date_str = str(new_started_at)
-                props[PROP_STARTED_AT] = {"date": {"start": date_str}}
-        except Exception as e:
-            # If we can't check existing value, update anyway
-            started_at = fields["started_at"]
-            if hasattr(started_at, 'date'):
-                date_str = started_at.date().isoformat()
-            elif hasattr(started_at, 'isoformat'):
-                date_str = started_at.isoformat()
-            else:
-                date_str = str(started_at)
-            props[PROP_STARTED_AT] = {"date": {"start": date_str}}
+        # A failed read must stop the update, not overwrite an unknown existing date.
+        existing_page = notion.pages.retrieve(page_id=page_id)
+        date_prop = existing_page.get("properties", {}).get(PROP_STARTED_AT, {}).get("date")
+        from dateutil import parser as dtparser
+        incoming = fields["started_at"]
+        incoming_date = incoming.date() if hasattr(incoming, "date") else dtparser.parse(str(incoming)).date()
+        existing_date = dtparser.parse(date_prop["start"]).date() if date_prop and date_prop.get("start") else None
+        effective_date = min(existing_date, incoming_date) if existing_date else incoming_date
+        if existing_date != effective_date:
+            props[PROP_STARTED_AT] = {"date": {"start": effective_date.isoformat()}}
+        props.update(build_props(db_props, {"year_started": effective_date.year}))
 
     # Update total_page if available
     if fields.get("total_page") is not None and prop_exists(db_props, PROP_TOTAL_PAGE):

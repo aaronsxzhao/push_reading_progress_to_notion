@@ -1,7 +1,7 @@
 """Official WeRead Skills 1.0.4 gateway, independent of browser cookies.
 
 Contract: https://github.com/Tencent/WeChatReading/tree/main/skills
-Only documented personal data is used; missing pages/dates stay unknown.
+Use documented fields and observed optional fields; missing pages/dates stay unknown.
 """
 
 import time
@@ -167,9 +167,12 @@ class WeReadGateway:
 
     @staticmethod
     def timestamp(value):
-        if not isinstance(value, (int, float)) or value <= 0:
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
             return None
-        return datetime.fromtimestamp(value, CST)
+        try:
+            return datetime.fromtimestamp(value, CST)
+        except (ValueError, OverflowError, OSError):
+            return None
 
     def get_notes(self, book_id):
         highlights = self.call("/book/bookmarklist", bookId=book_id)
@@ -196,6 +199,9 @@ class WeReadGateway:
         progress = self.get_read_info(book_id)
         notes = self.get_notes(book_id)
         percent = progress["progress"]  # 1 means 1%, never 100%.
+        # Observed optional gateway field, absent from the abbreviated skill docs.
+        # Zero means unavailable; never substitute last activity or note timestamps.
+        started_at = self.timestamp(progress.get("startReadingTime"))
         finished_at = self.timestamp(progress.get("finishTime")) if percent == 100 else None
         status = ("Read" if percent == 100 else "Currently Reading"
                   if percent > 0 or progress.get("isStartReading") else "To Be Read")
@@ -205,10 +211,10 @@ class WeReadGateway:
         return {
             "book_id": book_id, "title": info["title"], "author": info.get("author", ""),
             "percent": percent, "status": status, "source": "WeRead",
-            "current_page": None, "total_page": None, "started_at": None,
+            "current_page": None, "total_page": None, "started_at": started_at,
             "last_read_at": self.timestamp(progress.get("updateTime")),
             "date_finished": finished_at, "cover_image": info.get("cover"),
-            "genre": genres, "rating": None, "year_started": None,
+            "genre": genres, "rating": None, "year_started": started_at.year if started_at else None,
             **notes,
             "read_info": progress, "reading_time_seconds": seconds,
             "reading_time": f"{seconds // 3600}时{seconds % 3600 // 60}分" if seconds is not None else None,
