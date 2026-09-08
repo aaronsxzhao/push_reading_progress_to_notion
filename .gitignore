@@ -14,6 +14,8 @@ logs/
 
 # Local secrets
 .env
+.env.bak
+.env.backup
 .env.local
 .env.*.local
 launchd.local.plist

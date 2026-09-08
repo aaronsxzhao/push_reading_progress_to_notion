@@ -1,19 +1,41 @@
-# WeRead sync recovery — 2026-09-08
+# 微信读书 → Notion 自动同步恢复（2026-09-08）
 
-The previous workflow reported success after an expired Cookie returned an empty bookshelf. Its last run was July 6 and the workflow was disabled. The sync now prefers the official WeRead Skills 1.0.4 API gateway via WEREAD_API_KEY, fails on incomplete reads/writes, and preserves existing Notion notes.
+## 原因
 
-Live verification confirmed 170 electronic book entries and one article-collection entry. The Notion connection and a single-book progress write/read-back succeeded. A Reading Progress numeric property stores official 0–100 progress, converted to 0–1 for Notion percent formatting. Missing page counts and dates are not guessed. Audio albums and the article-collection entry are reported separately and are not imported as electronic books.
+1. 旧 Cookie 已过期：2026-07-06 的运行 #188 返回 `-2012 登录超时`，续期返回 `-2013 鉴权失败`。
+2. 原程序把失败转换为空书架，正常退出，造成 GitHub 显示成功但实际没有同步。
+3. 工作流此前处于 Disabled 状态。
+4. 热力图展示端仍返回旧统计，最新日期停在 2026-05-14。
 
-The first bulk run hit HTTP 499 / errcode -2014 (request-frequency limit). A shared limiter now keeps calls below approximately 55/minute, with 60-second cooldown and bounded retries. Run statistics report actual successes and failures.
+## 已完成
 
-Personal reviews are fully paginated. New notes are appended without deleting existing or manually edited content. This is not bidirectional note editing/deletion synchronization. Official read-time totals and daily buckets feed the heatmap; all reading durations use seconds.
+- 配置并验证官方 `WEREAD_API_KEY`；读取到 170 本书和 1 个文章收藏入口。
+- 验证原 Notion 数据库，恢复本地 `.env`；在原数据库增加 `Reading Progress` 数字字段，以百分比显示官方进度。
+- 单本测试《原生家庭：如何修补自己的性格缺陷》成功：2%，最近阅读日期 2026-09-07；已读回核验。
+- 配置 GitHub 加密 Secret `WEREAD_API_KEY`，发布恢复代码，工作流恢复可运行。
+- 本地首轮更新 35 本后遇到官方 HTTP 499 / `-2014 请求频率超限`；增加所有线程共用的请求间隔（至少 1.1 秒）、60 秒等待与有限重试。修改后本地重试连续完成 42 本，无错误，随后停止本地进程，由 GitHub 执行全量验证。
+- 23 项回归测试通过。
 
-## Deployment
+## 数据规则
 
-Set repository Secret WEREAD_API_KEY using your key from https://weread.qq.com/r/weread-skills. Existing NOTION_TOKEN and NOTION_DATABASE_ID secrets remain required. Re-enable the existing Sync WeRead to Notion workflow and run it once. The daily schedule remains 02:00 UTC / 10:00 Asia/Shanghai; GitHub scheduling may be delayed. Heatmap publication additionally needs a working GH_TOKEN with Gist write access and COOKIE_GIST_ID.
+- 进度使用官方 0–100 百分比，1 表示 1%；Notion Percent 格式写入 0–1。
+- 不从字数估算真实页数，不从书籍更新时间推断阅读日期，不把公共评分当个人评分。
+- 未提供的数据不覆盖已有值；原有页数字段和公式保留。
+- 个人想法完整分页。笔记只追加新内容，保留已有/手写内容；不做源端编辑和删除的双向同步，去重仍按内容签名。
+- 本次同步 books[]；有声专辑和文章收藏入口单独报告，不伪装为电子书。
+- 热力图总量采用官方 totalReadTime（秒），年度日明细缺失时查询月度日桶；有效阅读日/连续天数按至少 60 秒计算。
+- 空书架、源端错误、Notion 写入失败、部分书籍失败都会上报失败，不再假成功。
 
-Use Python 3.11+. For local read-only verification run `.venv/bin/python scripts/diagnose_sync.py --limit 3`. A local `.env` may hold the same configuration; never commit it. Set PROP_PROGRESS for an existing numeric property with a different name. Formula properties are not overwritten.
+## 云端验证
 
-23 offline regression tests passed. Full bulk and scheduled-run completion must be checked separately in run logs; a working single-book test does not prove the scheduled workflow is running.
+[运行 #189](https://github.com/aaronsxzhao/push_reading_progress_to_notion/actions/runs/34193413725) 书籍同步完成：170/170 成功，0 错误；使用新版官方接口，跳过旧 Cookie 续期。Notion 读回核验《原生家庭》2%、《反脆弱》34%，最近阅读日期均为 2026-09-07。热力图成功汇总 547 个有记录日期、219 小时（取整），但 Gist 上传返回 401，旧 GH_TOKEN 已失效，整体工作流因此正确标记失败。正在更新该凭据以完成展示端恢复。
 
-Official contract: https://github.com/Tencent/WeChatReading/tree/main/skills
+保持原定时计划：每天 UTC 02:00 / 北京时间 10:00，GitHub 排程可能延迟。也可在工作流页面手动 Run workflow；勾选 heatmap_only 可仅更新热力图。热力图仍通过已有 GH_TOKEN、COOKIE_GIST_ID 更新原 Gist，并由 Vercel 展示。
+
+本地只读诊断：`.venv/bin/python scripts/diagnose_sync.py --limit 3`。需要 Python 3.11 或以上。新微信读书密钥只存于本地 `.env` 和 GitHub Secrets，不提交到代码。
+
+[官方接口说明](https://github.com/Tencent/WeChatReading/tree/main/skills)
+
+## 另需处理的历史凭据问题
+
+仓库历史备份 `.env.bak` 和 `.env.backup` 含有效的 Notion 凭据。应在 Notion 轮换凭据，并同时更新 GitHub Secrets 和本地 `.env`；仅移除当前文件不能撤销历史泄露。此次已将这两个备份移出当前版本并加入忽略规则，本地备份保留；未轮换凭据或改写 Git 历史。

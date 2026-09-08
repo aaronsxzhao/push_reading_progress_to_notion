@@ -2,6 +2,12 @@ name: Sync WeRead to Notion
 
 on:
   workflow_dispatch:  # Manual trigger from GitHub UI
+    inputs:
+      heatmap_only:
+        description: 'Only refresh heatmap (skip book sync)'
+        required: false
+        default: false
+        type: boolean
   repository_dispatch:  # Webhook trigger from anywhere
     types: [sync]
   schedule:
@@ -78,6 +84,7 @@ jobs:
         "
 
     - name: Run sync
+      if: ${{ !inputs.heatmap_only }}
       env:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
