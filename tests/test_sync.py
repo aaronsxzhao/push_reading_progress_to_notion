@@ -257,6 +257,7 @@ class SyncTests(unittest.TestCase):
     def test_source_categories_are_not_silently_dropped(self):
         self.assertEqual(translate_genres([{'title': '历史-中国古代'}, {'title': '历史-中国近现代'}]), ['History'])
         self.assertEqual(translate_genres([{'title': '个人成长-情绪心灵'}]), ['Psychology', 'Self-Help'])
+        self.assertEqual(translate_genres([{'title': '哲学宗教-逻辑学'}]), ['Philosophy'])
         self.assertEqual(translate_genres([{'title': 'New official category'}, {'title': None}]), ['New official category'])
 
     def test_missing_metadata_is_filled_without_overwriting_existing_choices(self):

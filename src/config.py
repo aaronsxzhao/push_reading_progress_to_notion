@@ -152,6 +152,7 @@ GENRE_MAP: dict[str, list[str]] = {
     "历史-中国近现代":    ["History"],
     "历史-中国古代":      ["History"],
     "哲学宗教-哲学读物":   ["Philosophy"],
+    "哲学宗教-逻辑学":     ["Philosophy"],
     "哲学宗教-宗教":      ["Religion"],
     "哲学宗教-西方哲学":   ["Philosophy"],
     "心理-发展心理学":    ["Psychology"],
