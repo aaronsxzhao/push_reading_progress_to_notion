@@ -5,6 +5,7 @@ Use documented fields and observed optional fields; missing pages/dates stay unk
 """
 
 import time
+import math
 from threading import Lock
 from datetime import datetime, timedelta, timezone
 
@@ -223,13 +224,22 @@ class WeReadGateway:
         finished_at = self.timestamp(progress.get("finishTime")) if percent == 100 else None
         status = ("Read" if percent == 100 else "Currently Reading"
                   if percent > 0 or progress.get("isStartReading") or started_at else "To Be Read")
+        current_chapter = self.get_current_chapter(book_id, progress, notes, status)
+        total_words = info.get("wordCount")
+        if isinstance(total_words, bool) or not isinstance(total_words, int) or total_words < 0:
+            total_words = None
+        # Existing Notion Page Count formulas use these legacy estimated-page
+        # fields. Keep their original 550-words/page convention, including 0 read.
+        total_page = max(1, round(total_words / 550)) if total_words else None
+        current_page = math.ceil(total_page * percent / 100) if total_page is not None else None
         seconds = progress.get("recordReadingTime")
         category = info.get("category")
         genres = translate_genres([{"title": category}]) if isinstance(category, str) else []
         return {
             "book_id": book_id, "title": info["title"], "author": info.get("author", ""),
             "percent": percent, "status": status, "source": "WeRead",
-            "current_page": None, "total_page": None, "started_at": started_at,
+            "current_page": current_page, "total_page": total_page, "started_at": started_at,
+            "current_chapter": current_chapter, "total_words": total_words,
             "last_read_at": self.timestamp(progress.get("updateTime")),
             "date_finished": finished_at, "cover_image": info.get("cover"),
             "genre": genres, "rating": None, "year_started": started_at.year if started_at else None,
@@ -239,6 +249,26 @@ class WeReadGateway:
             "reading_time": f"{seconds // 3600}时{seconds % 3600 // 60}分" if seconds is not None else None,
             "data_source": "weread_official_gateway",
         }
+
+    def get_current_chapter(self, book_id, progress, notes, status):
+        if status == "To Be Read":
+            return "未开始阅读"
+        chapter_uid = progress.get("chapterUid")
+        if isinstance(chapter_uid, bool) or chapter_uid in (None, 0, "0", ""):
+            return "已读完" if status == "Read" else "章节名称暂不可用"
+        # Reuse note chapter metadata when present; UID is not an array index.
+        chapters = notes.get("chapter_info", {}).values()
+        title = next((c.get("title") for c in chapters
+                      if str(c.get("chapterUid")) == str(chapter_uid) and c.get("title")), None)
+        if not title:
+            data = self.call("/book/chapterinfo", bookId=book_id)
+            chapters = data.get("chapters")
+            if not isinstance(chapters, list):
+                raise RuntimeError(f"WeRead {book_id}: missing chapter list")
+            title = next((c.get("title") for c in chapters
+                          if str(c.get("chapterUid")) == str(chapter_uid) and c.get("title")), None)
+        # Do not retain a stale chapter or invent a page/character count.
+        return title if isinstance(title, str) else "章节名称暂不可用"
 
 
 def create_weread_client(cookies="", auto_refresh=False):

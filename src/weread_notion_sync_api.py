@@ -952,12 +952,23 @@ def main():
     
     notion = Client(auth=NOTION_TOKEN)
     db_props = get_db_properties(notion, NOTION_DATABASE_ID)
-    if "Start Date Source" not in db_props:
-        notion.databases.update(database_id=NOTION_DATABASE_ID,
-                                properties={"Start Date Source": {"rich_text": {}}})
-        db_props = get_db_properties(notion, NOTION_DATABASE_ID)
+    db_props = ensure_sync_properties(notion, NOTION_DATABASE_ID, db_props)
     
     sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit, test_book_title=test_book_title)
+
+
+def ensure_sync_properties(notion, database_id, db_props):
+    required = {"Start Date Source": "rich_text", "Current Chapter": "rich_text", "Total Words": "number"}
+    additions = {}
+    for name, kind in required.items():
+        if name not in db_props:
+            additions[name] = {kind: {}}
+        elif db_props[name].get("type") != kind:
+            raise ValueError(f"Notion property {name!r} must have type {kind}; existing property left unchanged")
+    if additions:
+        notion.databases.update(database_id=database_id, properties=additions)
+        return get_db_properties(notion, database_id)
+    return db_props
 
 
 if __name__ == "__main__":

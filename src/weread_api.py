@@ -554,6 +554,7 @@ class WeReadAPI:
             # --- Current page ---
             current_page = None
             if total_page:
+                current_page = 0
                 if status == "Read":
                     current_page = total_page
                 elif reading_progress and reading_progress > 0:
@@ -582,7 +583,7 @@ class WeReadAPI:
             return {
                 "title": title,
                 "author": author,
-                "current_page": int(current_page) if current_page else None,
+                "current_page": int(current_page) if current_page is not None else None,
                 "total_page": int(total_page) if total_page else None,
                 "percent": float(percent) if percent is not None else None,
                 "status": status,
@@ -649,8 +650,14 @@ class WeReadAPI:
         chapter_info: Optional[Dict[int, Dict[str, Any]]],
         book_info: Dict[str, Any],
     ) -> Optional[int]:
-        """Use an explicit page count only; word counts are not printed pages."""
-
+        """Restore the existing Notion convention: estimated pages at 550 words/page."""
+        words = book_info.get("wordCount")
+        if not isinstance(words, (int, float)) or isinstance(words, bool) or words <= 0:
+            words = sum(ch.get("wordCount", 0) for ch in (chapter_info or {}).values()
+                        if isinstance(ch.get("wordCount"), (int, float))
+                        and not isinstance(ch.get("wordCount"), bool) and ch["wordCount"] > 0)
+        if words > 0:
+            return max(1, round(words / 550))
         return book_info.get("pageCount") or None
 
     @staticmethod

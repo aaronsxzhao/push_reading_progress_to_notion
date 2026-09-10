@@ -24,3 +24,18 @@ Dates are interpreted in Asia/Shanghai. Invalid/missing timestamps are ignored;
 publication dates, import dates and zero-duration position records are not used.
 
 Run regression checks with `python -m unittest discover -s tests -q`.
+
+## Reading position and existing progress formulas
+
+`Total Page` retains the original estimated-page convention: full book word
+count divided by 550 and rounded (minimum 1 for a nonempty book). `Current Page`
+is the rounded-up result of `Total Page * progress / 100`, including an explicit
+0 for unread books. These are estimates for the existing Notion formula, not
+printed edition page numbers. Both properties update on every successful sync;
+the `Page Count` formula and progress display settings are left unchanged.
+
+`Total Words` stores the official book-level `wordCount`. `Current Chapter`
+resolves the current reading `chapterUid` to its title, reusing available note
+metadata or fetching the official chapter directory when needed. Chapter IDs
+are never treated as array positions. Unavailable chapter titles are labelled
+explicitly. Missing word counts do not overwrite existing page/word counts.

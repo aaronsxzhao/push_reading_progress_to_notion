@@ -188,8 +188,19 @@ def get_db_properties(notion: Client, database_id: str) -> Dict[str, Any]:
 def prop_exists(db_props: Dict[str, Any], name: str) -> bool:
     return name in db_props
 
+def build_reading_detail_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    props = {}
+    if fields.get("current_chapter") is not None and db_props.get("Current Chapter", {}).get("type") == "rich_text":
+        # Notion rich-text items have a 2,000-character limit.
+        title = fields["current_chapter"]
+        props["Current Chapter"] = {"rich_text": [{"text": {"content": title[i:i + 2000]}}
+                                                     for i in range(0, min(len(title), 10000), 2000)]}
+    if fields.get("total_words") is not None and db_props.get("Total Words", {}).get("type") == "number":
+        props["Total Words"] = {"number": fields["total_words"]}
+    return props
+
 def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
-    props: Dict[str, Any] = {}
+    props: Dict[str, Any] = build_reading_detail_props(db_props, fields)
 
     if fields.get("title"):
         # Find the title property (there's exactly one in every Notion database)
@@ -352,7 +363,7 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
 def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
     """Build properties for update only: status, last_read_at, date_finished, current_page, started_at (if earlier), total_page"""
-    props: Dict[str, Any] = {}
+    props: Dict[str, Any] = build_reading_detail_props(db_props, fields)
 
     if fields.get("status") and prop_exists(db_props, PROP_STATUS):
         status_prop = db_props[PROP_STATUS]

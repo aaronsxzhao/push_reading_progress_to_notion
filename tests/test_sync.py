@@ -88,7 +88,10 @@ class GatewayTests(unittest.TestCase):
             self.assertEqual(data['percent'], percent)
             self.assertEqual(data['status'], status)
             self.assertEqual(data['reading_time'], '0时0分')
-            for key in ['current_page', 'total_page', 'started_at', 'date_finished', 'rating']:
+            self.assertEqual(data['total_words'], 550000)
+            self.assertEqual(data['total_page'], 1000)
+            self.assertEqual(data['current_page'], percent * 10)
+            for key in ['started_at', 'date_finished', 'rating']:
                 self.assertIsNone(data[key])
 
     def test_missing_progress_fails(self):
@@ -96,6 +99,47 @@ class GatewayTests(unittest.TestCase):
             self.api.call = Mock(return_value={'book': progress})
             with self.assertRaises(RuntimeError):
                 self.api.get_read_info('1')
+
+    def test_chapter_resolves_uid_instead_of_using_array_position(self):
+        self.api.call = Mock(return_value={'chapters': [
+            {'chapterUid': 102, 'chapterIdx': 0, 'title': 'Foreword'},
+            {'chapterUid': 7, 'chapterIdx': 9, 'title': 'Chapter 3: Practice'},
+        ]})
+        title = self.api.get_current_chapter('book', {'chapterUid': '7'}, {}, 'Currently Reading')
+        self.assertEqual(title, 'Chapter 3: Practice')
+        self.api.call.assert_called_once_with('/book/chapterinfo', bookId='book')
+
+    def test_note_chapter_metadata_avoids_extra_request(self):
+        self.api.call = Mock()
+        notes = {'chapter_info': {7: {'chapterUid': 7, 'title': 'Chapter 3'}}}
+        self.assertEqual(self.api.get_current_chapter('book', {'chapterUid': 7}, notes, 'Read'), 'Chapter 3')
+        self.api.call.assert_not_called()
+
+    def test_no_position_and_missing_chapter_are_explicit(self):
+        self.api.call = Mock(return_value={'chapters': []})
+        self.assertEqual(self.api.get_current_chapter('book', {'chapterUid': 7}, {}, 'To Be Read'), '未开始阅读')
+        self.api.call.assert_not_called()
+        self.assertEqual(self.api.get_current_chapter('book', {}, {}, 'Read'), '已读完')
+        self.assertEqual(self.api.get_current_chapter('book', {'chapterUid': 7}, {}, 'Currently Reading'), '章节名称暂不可用')
+        self.api.call.return_value = {}
+        with self.assertRaisesRegex(RuntimeError, 'missing chapter list'):
+            self.api.get_current_chapter('book', {'chapterUid': 7}, {}, 'Currently Reading')
+
+    def test_invalid_word_counts_do_not_invent_estimated_pages(self):
+        for value in [None, -1, True, '10000', 3.5, 0, 120000]:
+            with self.subTest(value=value):
+                self.api.call = Mock(return_value={'title': 'Book', 'wordCount': value})
+                self.api.get_read_info = Mock(return_value={'progress': 0})
+                self.api.get_notes = Mock(return_value={'bookmarks': [], 'summary_reviews': []})
+                fields = self.api.get_single_book_data('book')
+                expected = value if type(value) is int and value >= 0 else None
+                self.assertEqual(fields['total_words'], expected)
+                if expected and expected > 0:
+                    self.assertEqual(fields['current_page'], 0)
+                    self.assertEqual(fields['total_page'], max(1, round(expected / 550)))
+                else:
+                    self.assertIsNone(fields['current_page'])
+                    self.assertIsNone(fields['total_page'])
 
     def test_start_time_is_optional_and_uses_shanghai_year(self):
         for value in [None, 0, True, 'unknown', float('nan'), float('inf'), 1735662600]:
@@ -184,6 +228,36 @@ class SyncTests(unittest.TestCase):
             setting = patch('weread_notion_sync.' + name, value)
             setting.start()
             self.addCleanup(setting.stop)
+
+    def test_reading_details_are_created_and_updated_without_touching_progress(self):
+        schema = {'Current Chapter': {'type': 'rich_text'}, 'Total Words': {'type': 'number'},
+                  'Reading Progress': {'type': 'number'}, 'Page Count': {'type': 'formula'}}
+        fields = {'current_chapter': '第二章 方法', 'total_words': 120345}
+        expected = {'Current Chapter': {'rich_text': [{'text': {'content': '第二章 方法'}}]},
+                    'Total Words': {'number': 120345}}
+        self.assertEqual(build_props(schema, fields), expected)
+        self.assertEqual(build_update_props(Mock(), 'page', schema, fields), expected)
+        self.assertEqual(build_update_props(Mock(), 'page', schema, {'total_words': None}), {})
+        self.assertEqual(build_props(schema, {'total_words': 0}), {'Total Words': {'number': 0}})
+
+    def test_reading_detail_schema_only_adds_missing_fields(self):
+        notion = Mock()
+        schema = {'Reading Progress': {'type': 'formula'}, 'Start Date Source': {'type': 'rich_text'}}
+        with patch.object(sync, 'get_db_properties', return_value={'refreshed': True}):
+            self.assertEqual(sync.ensure_sync_properties(notion, 'db', schema), {'refreshed': True})
+        notion.databases.update.assert_called_once_with(database_id='db', properties={
+            'Current Chapter': {'rich_text': {}}, 'Total Words': {'number': {}}})
+        notion.databases.update.reset_mock()
+        with self.assertRaisesRegex(ValueError, 'Total Words'):
+            sync.ensure_sync_properties(notion, 'db', {'Total Words': {'type': 'formula'}})
+        notion.databases.update.assert_not_called()
+
+    def test_long_chapter_titles_respect_notion_text_limit(self):
+        title = '字' * 2100
+        props = build_props({'Current Chapter': {'type': 'rich_text'}}, {'current_chapter': title})
+        items = props['Current Chapter']['rich_text']
+        self.assertTrue(all(len(item['text']['content']) <= 2000 for item in items))
+        self.assertEqual(''.join(item['text']['content'] for item in items), title)
 
     def test_start_date_and_year_are_updated_together(self):
         schema = {'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}}
@@ -320,10 +394,24 @@ class SyncTests(unittest.TestCase):
             self.assertEqual(len(new_blocks), 1)
             self.assertEqual(len(new_blocks[0]['callout']['children']), 2)
 
-    def test_legacy_does_not_invent_dates_or_pages(self):
+    def test_legacy_restores_word_based_pages_without_inventing_dates(self):
         api = WeReadAPI('')
-        self.assertIsNone(api._calc_total_pages({1: {'wordCount': 550000}}, {}))
+        self.assertEqual(api._calc_total_pages({1: {'wordCount': 550000}}, {}), 1000)
+        self.assertEqual(api._calc_total_pages({}, {'wordCount': 275000}), 500)
+        self.assertIsNone(api._calc_total_pages({}, {}))
         self.assertEqual(api._extract_dates(None, {'updateTime': 1788798600}, 'Read'), (None, None, None))
+
+    def test_original_progress_formula_inputs_create_and_update_including_zero(self):
+        schema = {'Current Page': {'type': 'number'}, 'Total Page': {'type': 'number'}, 'Page Count': {'type': 'formula'}}
+        for current in (0, 38, 100):
+            with self.subTest(current=current):
+                fields = {'current_page': current, 'total_page': 100}
+                with patch('weread_notion_sync.PROP_CURRENT_PAGE', 'Current Page'), patch('weread_notion_sync.PROP_TOTAL_PAGE', 'Total Page'):
+                    created = build_props(schema, fields)
+                    updated = build_update_props(Mock(), 'book', schema, fields)
+                expected = {'Current Page': {'number': current}, 'Total Page': {'number': 100}}
+                self.assertEqual(created, expected)
+                self.assertEqual(updated, expected)
 
     def test_legacy_http200_auth_failure(self):
         response = Mock(url='https://weread.qq.com/web/shelf/sync')
