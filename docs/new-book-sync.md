@@ -55,3 +55,8 @@ book ID also receive the current reading fields, even if their titles differ.
 Only pages tagged WeRead and recognized official cover URL patterns participate.
 Existing pages are preserved; a renamed book reuses its recognized page instead
 of creating another copy. Notes sync to the primary matched page.
+
+The cloud job allows up to 90 minutes for paced requests and quota backoff.
+For a partial recovery, the manual workflow accepts `book_ids` as a comma-separated
+list of stable IDs. Only those current shelf/notebook books are processed; unknown
+IDs abort before writes. Leave it empty for the normal complete daily sync.

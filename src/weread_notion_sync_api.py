@@ -618,6 +618,9 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
     if not all_book_items:
         raise RuntimeError("No book entries returned; sync aborted without writing to Notion")
     
+    # A stable ID list can resume a partial run without reprocessing successes.
+    all_book_items = filter_requested_books(all_book_items, env("WEREAD_BOOK_IDS", ""))
+
     # Filter by test book title if specified (for troubleshooting)
     if test_book_title:
         original_count = len(all_book_items)
@@ -958,6 +961,16 @@ def main():
     db_props = ensure_sync_properties(notion, NOTION_DATABASE_ID, db_props)
     
     sync_books_from_api(notion, NOTION_DATABASE_ID, db_props, WEREAD_COOKIES, limit=limit, test_book_title=test_book_title)
+
+
+def filter_requested_books(items, requested):
+    ids = {value.strip() for value in requested.split(",") if value.strip()}
+    if not ids:
+        return items
+    known = {str(item.get("bookId")) for item in items}
+    if ids - known:
+        raise ValueError("Requested book IDs are absent from the current shelf/notebooks; sync aborted")
+    return [item for item in items if str(item.get("bookId")) in ids]
 
 
 def ensure_sync_properties(notion, database_id, db_props):

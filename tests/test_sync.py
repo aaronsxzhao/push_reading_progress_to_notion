@@ -254,6 +254,13 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def test_partial_sync_filters_stable_ids_and_fails_closed(self):
+        items = [{'bookId': '11'}, {'bookId': 22}, {'bookId': '33'}]
+        self.assertEqual(sync.filter_requested_books(items, ''), items)
+        self.assertEqual(sync.filter_requested_books(items, ' 33,22,22 '), items[1:])
+        with self.assertRaisesRegex(ValueError, 'absent'):
+            sync.filter_requested_books(items, '22,999')
+
     def test_legacy_alias_index_paginates_and_rejects_untrusted_cover_ids(self):
         def page(id, url):
             return {'id': id, 'cover': {'external': {'url': url}}}

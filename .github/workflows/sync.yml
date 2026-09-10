@@ -3,6 +3,11 @@ name: Sync WeRead to Notion
 on:
   workflow_dispatch:  # Manual trigger from GitHub UI
     inputs:
+      book_ids:
+        description: 'Optional comma-separated book IDs for resuming a partial sync; empty syncs all books'
+        required: false
+        default: ''
+        type: string
       heatmap_only:
         description: 'Only refresh heatmap (skip book sync)'
         required: false
@@ -20,7 +25,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
       WEREAD_AUTO_REFRESH_COOKIES: 0
@@ -86,6 +91,7 @@ jobs:
     - name: Run sync
       if: ${{ !inputs.heatmap_only }}
       env:
+        WEREAD_BOOK_IDS: ${{ inputs.book_ids }}
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
         WEREAD_COOKIES: ${{ env.WEREAD_COOKIES || secrets.WEREAD_COOKIES }}
