@@ -397,6 +397,19 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(updated['Current Page']['number'], 220)
         self.assertEqual(updated['Reading Progress']['number'], 1)
 
+    def test_official_finish_date_wins_without_regressing_completion(self):
+        notion = Mock()
+        notion.pages.retrieve.return_value = {'properties': {
+            'Date Finished': {'date': {'start': '2024-01-02'}}}}
+        fields = {'data_source': 'weread_official_gateway', 'percent': 28,
+                  'date_finished': datetime(2025, 2, 3, 20, tzinfo=timezone.utc)}
+        props = build_update_props(notion, 'book', self.completion_schema(), fields)
+        self.assertEqual(props['Date Finished']['date']['start'], '2025-02-04')
+        self.assertEqual(props['Reading Progress']['number'], 1)
+        props = build_update_props(notion, 'book', self.completion_schema(), {**fields, 'date_finished': None})
+        self.assertNotIn('Date Finished', props)
+        self.assertEqual(props['Reading Progress']['number'], 1)
+
     def test_unfinished_progress_still_updates_and_full_old_pages_do_not_imply_completion(self):
         notion = Mock()
         notion.pages.retrieve.return_value = {'properties': {
@@ -421,7 +434,8 @@ class SyncTests(unittest.TestCase):
 
     def test_legacy_alias_index_paginates_and_rejects_untrusted_cover_ids(self):
         def page(id, url):
-            return {'id': id, 'cover': {'external': {'url': url}}}
+            return {'id': id, 'cover': {'external': {'url': url}},
+                    'properties': {'Source': {'multi_select': [{'name': 'WeRead'}]}}}
         notion = Mock()
         notion.databases.query.side_effect = [
             {'results': [page('a', 'https://cdn.weread.qq.com/weread/cover/39/YueWen_123/t6_YueWen_123.jpg'),
@@ -450,6 +464,83 @@ class SyncTests(unittest.TestCase):
         for call in notion.pages.update.call_args_list:
             self.assertNotIn('Title', call.kwargs['properties'])
             self.assertEqual(call.kwargs['properties']['Current Page']['number'], 20)
+
+    def weread_match_fixture(self):
+        schema = {'Title': {'type': 'title'}, 'Author': {'type': 'rich_text'},
+                  'Source': {'type': 'multi_select'}, 'Current Page': {'type': 'number'}}
+        fields = {'title': 'Current title', 'author': 'Author', 'book_id': '123',
+                  'source': 'WeRead', 'current_page': 20}
+        def page(id, sources=('WeRead',), title='Current title', book_id='123'):
+            return {'id': id, 'cover': {'external': {'url': f'https://cdn.weread.qq.com/cover/YueWen_{book_id}/image.jpg'}},
+                    'properties': {'Source': {'multi_select': [{'name': s} for s in sources]},
+                                   'Author': {'rich_text': [{'plain_text': 'Author'}]},
+                                   'Title': {'title': [{'plain_text': title}]}}}
+        return schema, fields, page
+
+    def test_weread_id_match_precedes_title_and_protects_other_sources(self):
+        schema, fields, page = self.weread_match_fixture()
+        paper = page('paper', ('Paperback',))
+        ebook = page('ebook')
+        alias = page('alias', title='Old title')
+        notion = Mock()
+        notion.databases.query.return_value = {'results': [paper]}
+        notion.pages.retrieve.side_effect = lambda page_id: {'ebook': ebook, 'alias': alias}[page_id]
+        self.assertEqual(upsert_page(notion, 'db', schema, fields, [alias, paper, ebook]), ('ebook', False))
+        notion.databases.query.assert_not_called()
+        notion.pages.create.assert_not_called()
+        self.assertEqual([c.kwargs['page_id'] for c in notion.pages.update.call_args_list], ['ebook', 'alias'])
+        for call in notion.pages.update.call_args_list:
+            self.assertNotIn('Source', call.kwargs['properties'])
+            self.assertNotIn('Title', call.kwargs['properties'])
+
+    def test_weread_title_fallback_is_scoped_and_ignores_other_editions(self):
+        schema, fields, page = self.weread_match_fixture()
+        ebook = page('ebook', book_id='opaque')
+        notion = Mock()
+        notion.databases.query.return_value = {'results': [page('paper', ('Paperback',)),
+            page('kindle', ('Kindle',)), page('blank', ()), page('mixed', ('WeRead', 'Paperback')),
+            page('edition', book_id='456'), ebook]}
+        notion.pages.retrieve.return_value = ebook
+        self.assertEqual(upsert_page(notion, 'db', schema, fields), ('ebook', False))
+        self.assertIn({'property': 'Source', 'multi_select': {'contains': 'WeRead'}},
+                      notion.databases.query.call_args.kwargs['filter']['and'])
+        notion.pages.update.assert_called_once()
+        self.assertEqual(notion.pages.update.call_args.kwargs['page_id'], 'ebook')
+
+    def test_weread_new_ebook_does_not_claim_paper_or_unlabelled_record(self):
+        schema, fields, page = self.weread_match_fixture()
+        notion = Mock()
+        notion.databases.query.return_value = {'results': [page('paper', ('Paperback',)), page('blank', ())]}
+        notion.pages.create.return_value = {'id': 'new-ebook'}
+        self.assertEqual(upsert_page(notion, 'db', schema, fields), ('new-ebook', True))
+        notion.pages.update.assert_not_called()
+        self.assertEqual(notion.pages.create.call_args.kwargs['properties']['Source'],
+                         {'multi_select': [{'name': 'WeRead'}]})
+
+    def test_weread_query_failure_never_falls_back_or_writes(self):
+        schema, fields, _ = self.weread_match_fixture()
+        notion = Mock()
+        notion.databases.query.side_effect = RuntimeError('query failed')
+        with self.assertRaisesRegex(RuntimeError, 'query failed'):
+            upsert_page(notion, 'db', schema, fields)
+        notion.databases.query.assert_called_once()
+        notion.pages.create.assert_not_called()
+        notion.pages.update.assert_not_called()
+
+    def test_weread_rechecks_source_before_write_and_requires_source_schema(self):
+        schema, fields, page = self.weread_match_fixture()
+        for sources in [('Paperback',), ('Kindle',), (), ('WeRead', 'Kindle')]:
+            with self.subTest(sources=sources):
+                notion = Mock()
+                notion.pages.retrieve.return_value = page('ebook', sources)
+                with self.assertRaisesRegex(ValueError, 'Refusing WeRead update'):
+                    upsert_page(notion, 'db', schema, fields, [page('ebook')])
+                notion.pages.update.assert_not_called()
+                notion.pages.create.assert_not_called()
+        notion = Mock()
+        with self.assertRaisesRegex(ValueError, 'Source property'):
+            upsert_page(notion, 'db', {}, fields)
+        notion.pages.create.assert_not_called()
 
     def test_source_categories_are_not_silently_dropped(self):
         self.assertEqual(translate_genres([{'title': '历史-中国古代'}, {'title': '历史-中国近现代'}]), ['History'])
@@ -532,6 +623,8 @@ class SyncTests(unittest.TestCase):
         schema = {'Date Started': {'type': 'date'}, 'Year Started': {'type': 'select'}, 'Start Date Source': {'type': 'rich_text'}}
         cases = [(estimate, estimate, '2024-02-03', False),
                  (estimate, official, '2025-01-01', True),
+                 ('', official, '2025-01-01', True),
+                 (official, official, '2025-01-01', True),
                  (official, estimate, '2024-02-03', False),
                  ('', estimate, '2024-02-03', False)]
         for old_source, incoming_source, expected, changed in cases:

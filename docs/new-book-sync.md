@@ -1,8 +1,12 @@
 # New book synchronization
 
-The daily sync includes shelf books and personal notebooks outside the shelf.
-Books are created once using the existing title-and-author match; subsequent
-runs update the existing page and deduplicate notes.
+The twice-daily sync includes shelf books and personal notebooks outside the shelf.
+The configured schedule is 10:00 and 18:00 Asia/Shanghai (02:00 and 10:00 UTC).
+GitHub scheduled events can be delayed or dropped under load; these are requested
+start times, not guaranteed start or completion times. An independent cloud
+scheduler can use the existing workflow_dispatch endpoint if punctual triggering
+is required. See https://docs.github.com/en/actions/how-tos/troubleshoot-workflows.
+Runs update the existing WeRead page and deduplicate notes.
 
 Start-date policy:
 
@@ -12,9 +16,10 @@ Start-date policy:
 3. Label the fallback in `Start Date Source` as an observed activity date, not a
    guaranteed first-read date. The gateway does not expose a complete per-book
    daily history; earlier activity predating the first sync may be unavailable.
-4. Keep the earliest observed date across subsequent syncs. A later explicit
-   start time may replace a date already labelled as an estimate. Estimates do
-   not replace dates labelled as explicit start times.
+4. An explicit official start date replaces any differing local start date,
+   even if the local date is earlier or its provenance is unknown. When the
+   official start date is unavailable, keep the earliest observed fallback;
+   estimates never replace a date labelled as an explicit official start date.
 5. Derive `Year Started` from the date retained in Notion. Books with no start
    time, personal notes, or positive reading/listening time stay undated.
 
@@ -33,7 +38,8 @@ backwards. An official finishTime or finishReading=1 flag also counts as complet
 regardless of the current position. A finish flag without a date does not invent
 a completion date. Current Page stays equal to Total Page (including when total
 metadata changes); if the source omits the total, the existing total is used.
-The original completion date is preserved. Highlights, thoughts, chapter
+An explicit official finishTime replaces a differing completion date. When it
+is unavailable, the existing completion date is preserved. Highlights, thoughts, chapter
 position and last-read activity continue syncing. Full estimated pages alone
 are not treated as evidence of completion.
 
@@ -62,7 +68,12 @@ community rating or from the mere absence of a review.
 
 Legacy WeRead pages whose official cover URL explicitly identifies the same
 book ID also receive the current reading fields, even if their titles differ.
-Only pages tagged WeRead and recognized official cover URL patterns participate.
+Only pages exclusively tagged WeRead and recognized official cover URL patterns participate.
+Stable book ID matches take priority over title matches. If no ID match exists,
+title-and-author search is restricted to WeRead; known conflicting cover IDs are
+excluded. Failed queries never fall back to an unscoped title search. Each existing
+page's source is checked again before building its update. Paperback, Kindle,
+unlabelled and mixed-source records are excluded without changing their sources.
 Existing pages are preserved; a renamed book reuses its recognized page instead
 of creating another copy. Notes sync to the primary matched page.
 

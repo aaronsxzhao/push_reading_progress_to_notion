@@ -16,7 +16,7 @@ on:
   repository_dispatch:  # Webhook trigger from anywhere
     types: [sync]
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC (10 AM Beijing)
+    - cron: '0 2,10 * * *'  # Daily at 10:00 and 18:00 Asia/Shanghai; GitHub may delay dispatch
 
 concurrency:
   group: weread-notion-sync

@@ -211,8 +211,8 @@ def preserve_completion(db_props: Dict[str, Any], fields: Dict[str, Any], existi
     if total is None:
         total = existing_props.get(PROP_TOTAL_PAGE, {}).get("number")
     result["current_page"] = total if type(total) in (int, float) and total > 0 else None
-    # Do not replace the original completion date with a later re-read date.
-    if old_finished.get("start"):
+    # Official dates are authoritative; missing source dates never erase history.
+    if old_finished.get("start") and fields.get("data_source") != "weread_official_gateway":
         result["date_finished"] = None
     return result
 
@@ -391,10 +391,12 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
     return props
 
 def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
-    """Build properties for update only: status, last_read_at, date_finished, current_page, started_at (if earlier), total_page"""
+    """Update reading fields, preferring explicit official dates over local history."""
     # Read before constructing any update; failure must never downgrade a book.
-    if PROP_STATUS in db_props or PROP_DATE_FINISHED in db_props:
+    if fields.get("source") == SOURCE_WEREAD or PROP_STATUS in db_props or PROP_DATE_FINISHED in db_props:
         existing_page = notion.pages.retrieve(page_id=page_id)
+        if fields.get("source") == SOURCE_WEREAD and not is_weread_page(existing_page):
+            raise ValueError(f"Refusing WeRead update to page {page_id}: Source is not exclusively WeRead")
         fields = preserve_completion(db_props, fields, existing_page.get("properties", {}))
     else:
         fields = preserve_completion(db_props, fields)
@@ -474,7 +476,7 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
             date_str = str(date_finished)
         props[PROP_DATE_FINISHED] = {"date": {"start": date_str}}
 
-    # Preserve earlier dates and derive the year from the date actually retained.
+    # Explicit official dates win; estimates retain the earliest observed date.
     if fields.get("started_at") and prop_exists(db_props, PROP_STARTED_AT):
         # A failed read must stop the update, not overwrite an unknown existing date.
         if "existing_page" not in locals():
@@ -489,8 +491,7 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
         effective_date = min(existing_date, incoming_date) if existing_date else incoming_date
         if existing_date and old_source == "微信读书开始时间" and fields.get("start_date_source") == "最早可核验阅读记录（替代）":
             effective_date = existing_date
-        # An explicit start time supersedes a previously labelled estimate.
-        if fields.get("start_date_source") == "微信读书开始时间" and old_source == "最早可核验阅读记录（替代）":
+        if fields.get("start_date_source") == "微信读书开始时间":
             effective_date = incoming_date
         if existing_date != effective_date:
             props[PROP_STARTED_AT] = {"date": {"start": effective_date.isoformat()}}
@@ -625,9 +626,60 @@ def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Di
         # Fallback to title-only search
         return find_page_by_title(notion, database_id, title, db_props)
 
+def is_weread_page(page):
+    """Ambiguous, unlabelled, and other-source records are never WeRead targets."""
+    sources = page.get("properties", {}).get(PROP_SOURCE, {}).get("multi_select", [])
+    return {item.get("name") for item in sources} == {SOURCE_WEREAD}
+
+
+def weread_cover_book_id(page):
+    from urllib.parse import urlparse
+    cover = page.get("cover") or {}
+    parsed = urlparse(cover.get("external", {}).get("url", ""))
+    match = None
+    if parsed.scheme == "https" and parsed.hostname == "cdn.weread.qq.com":
+        match = re.search(r"/yuewen_(\d+)/", parsed.path, re.IGNORECASE)
+    elif parsed.scheme == "https" and parsed.hostname == "wfqqreader-1252317822.image.myqcloud.com":
+        match = re.fullmatch(r"/cover/\d+/(\d+)/t\d+_\1\.jpg", parsed.path)
+    return match.group(1) if match else None
+
+
+def find_weread_page(notion, database_id, db_props, fields, matching_pages):
+    """Prefer stable IDs, then search title/author strictly within WeRead."""
+    if db_props.get(PROP_SOURCE, {}).get("type") != "multi_select":
+        raise ValueError("WeRead sync requires a multi-select Source property")
+    title_name = get_title_property_name(db_props)
+    title = fields.get("title", "")
+    candidates = [page for page in matching_pages or [] if is_weread_page(page)]
+    if candidates:
+        # Retain the current-title page as the notes destination when aliases exist.
+        for page in candidates:
+            items = page.get("properties", {}).get(title_name, {}).get("title", [])
+            if "".join(item.get("plain_text", item.get("text", {}).get("content", "")) for item in items) == title:
+                return page, candidates
+        return candidates[0], candidates
+    if not title:
+        raise ValueError("WeRead book is missing its title")
+    filters = [{"property": title_name, "title": {"equals": title}},
+               {"property": PROP_SOURCE, "multi_select": {"contains": SOURCE_WEREAD}}]
+    if fields.get("author") and PROP_AUTHOR in db_props:
+        filters.append({"property": PROP_AUTHOR, "rich_text": {"equals": fields["author"]}})
+    # A failed query must stop this book; never fall back to an unscoped search.
+    response = notion.databases.query(database_id=database_id, filter={"and": filters}, page_size=100)
+    if response.get("has_more"):
+        raise ValueError("Ambiguous WeRead title match: too many results")
+    for page in response.get("results", []):
+        if not is_weread_page(page):
+            continue
+        known_id = weread_cover_book_id(page)
+        if known_id and fields.get("book_id") and known_id != str(fields["book_id"]):
+            continue
+        return page, []
+    return None, []
+
+
 def index_weread_pages(notion, database_id, db_props):
     """Recognize legacy aliases only from explicit IDs in official cover URLs."""
-    from urllib.parse import urlparse
     if db_props.get(PROP_SOURCE, {}).get("type") != "multi_select":
         return {}
     index = {}
@@ -640,15 +692,9 @@ def index_weread_pages(notion, database_id, db_props):
             args["start_cursor"] = cursor
         response = notion.databases.query(**args)
         for page in response["results"]:
-            cover = page.get("cover") or {}
-            parsed = urlparse(cover.get("external", {}).get("url", ""))
-            match = None
-            if parsed.scheme == "https" and parsed.hostname == "cdn.weread.qq.com":
-                match = re.search(r"/yuewen_(\d+)/", parsed.path, re.IGNORECASE)
-            elif parsed.scheme == "https" and parsed.hostname == "wfqqreader-1252317822.image.myqcloud.com":
-                match = re.fullmatch(r"/cover/\d+/(\d+)/t\d+_\1\.jpg", parsed.path)
-            if match:
-                index.setdefault(match.group(1), []).append(page)
+            book_id = weread_cover_book_id(page)
+            if book_id and is_weread_page(page):
+                index.setdefault(book_id, []).append(page)
         if not response.get("has_more"):
             return index
         cursor = response.get("next_cursor")
@@ -667,10 +713,12 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
     title = fields.get("title", "")
     author = fields.get("author", "")
     
-    # Check for duplicate by title AND author
-    existing = find_page_by_title_and_author(notion, database_id, db_props, title, author)
-    if not existing and matching_pages:
-        existing = matching_pages[0]
+    if fields.get("source") == SOURCE_WEREAD:
+        existing, matching_pages = find_weread_page(notion, database_id, db_props, fields, matching_pages)
+    else:
+        existing = find_page_by_title_and_author(notion, database_id, db_props, title, author)
+        if not existing and matching_pages:
+            existing = matching_pages[0]
     
     cover_url = fields.get("cover_image", "")
     page_cover = {"type": "external", "external": {"url": cover_url}} if cover_url else None
