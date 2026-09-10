@@ -29,8 +29,9 @@ Run regression checks with `python -m unittest discover -s tests -q`.
 
 Completion is permanent: an existing Read status, completion date, or stored
 100% progress keeps a book Read at 100%, even if a later source position moves
-backwards. An official finishTime also counts as completion regardless of the
-current position. Current Page stays equal to Total Page (including when total
+backwards. An official finishTime or finishReading=1 flag also counts as completion
+regardless of the current position. A finish flag without a date does not invent
+a completion date. Current Page stays equal to Total Page (including when total
 metadata changes); if the source omits the total, the existing total is used.
 The original completion date is preserved. Highlights, thoughts, chapter
 position and last-read activity continue syncing. Full estimated pages alone

@@ -560,6 +560,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             book_info = book_item
         
         if book_id and book_info:
+            if book_item.get("finishReading") == 1:
+                book_info = {**book_info, "finishReading": 1}
             books_map[book_id] = {
                 "book": book_info,
                 "has_full_info": True

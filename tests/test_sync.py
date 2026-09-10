@@ -160,6 +160,29 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(title, 'Chapter 3: Practice')
         self.api.call.assert_called_once_with('/book/chapterinfo', bookId='book')
 
+    def test_official_finished_flag_overrides_position_without_inventing_date(self):
+        for location in ('info', 'progress', 'item', 'book', 'bookInfo'):
+            for flag in (0, 1):
+                with self.subTest(location=location, flag=flag):
+                    info = {'title': 'Book', 'wordCount': 55000}
+                    progress = {'progress': 98, 'finishTime': 0}
+                    item = {}
+                    if location == 'info':
+                        info['finishReading'] = flag
+                    elif location == 'progress':
+                        progress['finishReading'] = flag
+                    elif location == 'item':
+                        item['finishReading'] = flag
+                    else:
+                        item[location] = {'finishReading': flag}
+                    self.api.call = Mock(side_effect=[info, {'book': progress},
+                        {'updated': [], 'chapters': []}, {'reviews': []}])
+                    data = self.api.get_single_book_data('1', item)
+                    self.assertEqual(data['status'], 'Read' if flag else 'Currently Reading')
+                    self.assertEqual(data['percent'], 100 if flag else 98)
+                    self.assertEqual(data['current_page'], 100 if flag else 98)
+                    self.assertIsNone(data['date_finished'])
+
     def test_note_chapter_metadata_avoids_extra_request(self):
         self.api.call = Mock()
         notes = {'chapter_info': {7: {'chapterUid': 7, 'title': 'Chapter 3'}}}
@@ -304,6 +327,21 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def test_shelf_completion_flag_reaches_gateway_after_book_normalization(self):
+        for item in ({'bookId': '1', 'title': 'Book', 'finishReading': 1},
+                     {'book': {'bookId': '1', 'title': 'Book', 'finishReading': 1}},
+                     {'bookInfo': {'bookId': '1', 'title': 'Book'}, 'finishReading': 1}):
+            with self.subTest(item=item):
+                api = Mock(spec=WeReadGateway)
+                api.get_sync_books.return_value = ({}, [item], [])
+                api.get_single_book_data.return_value = {'title': 'Book', 'status': 'Read'}
+                with patch.object(sync, 'create_weread_client', return_value=api), \
+                     patch.object(sync, 'upsert_page', return_value=('page', False)), \
+                     patch.object(sync, 'index_weread_pages', return_value={}), \
+                     redirect_stdout(io.StringIO()):
+                    sync.sync_books_from_api(Mock(), 'db', {}, '')
+                self.assertEqual(api.get_single_book_data.call_args.args[1]['book']['finishReading'], 1)
+
     def completion_schema(self, kind='status', fmt='percent'):
         return {'Status': {'type': kind, kind: {'options': [{'name': name} for name in
                     ('Read', 'Currently Reading', 'To Be Read')]}},

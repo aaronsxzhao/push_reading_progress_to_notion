@@ -241,7 +241,13 @@ class WeReadGateway:
                 started_at = min(candidates)
                 start_source = "最早可核验阅读记录（替代）"
         finished_at = self.timestamp(progress.get("finishTime"))
-        if finished_at:
+        # A user can mark a book finished before the last chapter (for example,
+        # before appendices). The shelf flag is independent of reading position.
+        item = book_item or {}
+        completion_sources = (info, progress, item, item.get("book"), item.get("bookInfo"))
+        marked_finished = any(isinstance(source, dict) and source.get("finishReading") == 1
+                              for source in completion_sources)
+        if finished_at or marked_finished:
             percent = 100
         status = ("Read" if percent == 100 else "Currently Reading"
                   if percent > 0 or progress.get("isStartReading") or started_at else "To Be Read")
