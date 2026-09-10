@@ -61,7 +61,7 @@ from config import (
 
 # Reuse Notion helpers
 from weread_notion_sync import (
-    get_db_properties, prop_exists, build_props, find_page_by_title, upsert_page
+    get_db_properties, prop_exists, build_props, find_page_by_title, upsert_page, index_weread_pages
 )
 
 
@@ -648,6 +648,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         print(f"[API] Limiting to first {limit} book(s) for testing")
     
     total_to_process = len(all_book_items)
+    # Read once before workers start; legacy titles can share a WeRead book ID.
+    existing_by_book_id = index_weread_pages(notion, database_id, db_props)
     
     # Get max workers from env or use default (5 parallel workers)
     max_workers = int(env("WEREAD_MAX_WORKERS", "5"))
@@ -721,7 +723,8 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
                 book_data["source"] = SOURCE_WEREAD
                 
                 # Sync to Notion - get page ID and whether it's new
-                page_id, is_new = upsert_page(notion, database_id, db_props, book_data)
+                page_id, is_new = upsert_page(notion, database_id, db_props, book_data,
+                                             matching_pages=existing_by_book_id.get(str(book_id), []))
                 
                 # Add bookmarks, reviews, quotes, and callouts as blocks
                 if page_id and (book_data.get("bookmarks") or book_data.get("summary_reviews") or 

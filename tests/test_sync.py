@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from weread_gateway import WeReadGateway, create_weread_client
 from weread_api import WeReadAPI
 import weread_notion_sync_api as sync
-from weread_notion_sync import build_props, build_update_props, upsert_page
+from weread_notion_sync import build_props, build_update_props, upsert_page, index_weread_pages
 from config import translate_genres
 
 
@@ -254,6 +254,38 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def test_legacy_alias_index_paginates_and_rejects_untrusted_cover_ids(self):
+        def page(id, url):
+            return {'id': id, 'cover': {'external': {'url': url}}}
+        notion = Mock()
+        notion.databases.query.side_effect = [
+            {'results': [page('a', 'https://cdn.weread.qq.com/weread/cover/39/YueWen_123/t6_YueWen_123.jpg'),
+                         page('bad', 'https://example.com/YueWen_123/image.jpg')], 'has_more': True, 'next_cursor': 'next'},
+            {'results': [page('b', 'https://wfqqreader-1252317822.image.myqcloud.com/cover/123/123/t6_123.jpg'),
+                         page('unknown', 'https://cdn.weread.qq.com/cover/opaque.jpg')], 'has_more': False},
+        ]
+        result = index_weread_pages(notion, 'db', {'Source': {'type': 'multi_select'}})
+        self.assertEqual([p['id'] for p in result['123']], ['a', 'b'])
+        self.assertEqual(list(result), ['123'])
+        self.assertEqual(notion.databases.query.call_args.kwargs['start_cursor'], 'next')
+        notion.databases.query.side_effect = None
+        notion.databases.query.return_value = {'results': [], 'has_more': True}
+        with self.assertRaisesRegex(RuntimeError, 'pagination'):
+            index_weread_pages(notion, 'db', {'Source': {'type': 'multi_select'}})
+
+    def test_renamed_book_reuses_page_and_updates_aliases_without_renaming(self):
+        notion = Mock()
+        notion.databases.query.return_value = {'results': []}
+        schema = {'Title': {'type': 'title'}, 'Current Page': {'type': 'number'}, 'Total Page': {'type': 'number'}}
+        fields = {'title': 'Current title', 'current_page': 20, 'total_page': 330}
+        aliases = [{'id': 'old-a'}, {'id': 'old-b'}]
+        self.assertEqual(upsert_page(notion, 'db', schema, fields, matching_pages=aliases), ('old-a', False))
+        notion.pages.create.assert_not_called()
+        self.assertEqual([c.kwargs['page_id'] for c in notion.pages.update.call_args_list], ['old-a', 'old-b'])
+        for call in notion.pages.update.call_args_list:
+            self.assertNotIn('Title', call.kwargs['properties'])
+            self.assertEqual(call.kwargs['properties']['Current Page']['number'], 20)
+
     def test_source_categories_are_not_silently_dropped(self):
         self.assertEqual(translate_genres([{'title': '历史-中国古代'}, {'title': '历史-中国近现代'}]), ['History'])
         self.assertEqual(translate_genres([{'title': '个人成长-情绪心灵'}]), ['Psychology', 'Self-Help'])

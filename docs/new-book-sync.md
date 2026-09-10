@@ -49,3 +49,9 @@ them; existing nonempty values are preserved. Known categories use the English
 genre map. Unmapped categories retain their original official label instead of
 being discarded. Personal ratings and review fields are not invented from the
 community rating or from the mere absence of a review.
+
+Legacy WeRead pages whose official cover URL explicitly identifies the same
+book ID also receive the current reading fields, even if their titles differ.
+Only pages tagged WeRead and recognized official cover URL patterns participate.
+Existing pages are preserved; a renamed book reuses its recognized page instead
+of creating another copy. Notes sync to the primary matched page.

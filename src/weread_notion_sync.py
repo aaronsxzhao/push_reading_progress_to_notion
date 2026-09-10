@@ -589,7 +589,39 @@ def find_page_by_title_and_author(notion: Client, database_id: str, db_props: Di
         # Fallback to title-only search
         return find_page_by_title(notion, database_id, title, db_props)
 
-def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Tuple[str, bool]:
+def index_weread_pages(notion, database_id, db_props):
+    """Recognize legacy aliases only from explicit IDs in official cover URLs."""
+    from urllib.parse import urlparse
+    if db_props.get(PROP_SOURCE, {}).get("type") != "multi_select":
+        return {}
+    index = {}
+    cursor = None
+    seen_cursors = set()
+    while True:
+        args = {"database_id": database_id, "page_size": 100,
+                "filter": {"property": PROP_SOURCE, "multi_select": {"contains": SOURCE_WEREAD}}}
+        if cursor:
+            args["start_cursor"] = cursor
+        response = notion.databases.query(**args)
+        for page in response["results"]:
+            cover = page.get("cover") or {}
+            parsed = urlparse(cover.get("external", {}).get("url", ""))
+            match = None
+            if parsed.scheme == "https" and parsed.hostname == "cdn.weread.qq.com":
+                match = re.search(r"/yuewen_(\d+)/", parsed.path, re.IGNORECASE)
+            elif parsed.scheme == "https" and parsed.hostname == "wfqqreader-1252317822.image.myqcloud.com":
+                match = re.fullmatch(r"/cover/\d+/(\d+)/t\d+_\1\.jpg", parsed.path)
+            if match:
+                index.setdefault(match.group(1), []).append(page)
+        if not response.get("has_more"):
+            return index
+        cursor = response.get("next_cursor")
+        if not cursor or cursor in seen_cursors:
+            raise RuntimeError("Notion page pagination did not advance")
+        seen_cursors.add(cursor)
+
+
+def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any], matching_pages=None) -> Tuple[str, bool]:
     """
     Upsert a page in Notion database.
     
@@ -601,6 +633,8 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
     
     # Check for duplicate by title AND author
     existing = find_page_by_title_and_author(notion, database_id, db_props, title, author)
+    if not existing and matching_pages:
+        existing = matching_pages[0]
     
     cover_url = fields.get("cover_image", "")
     page_cover = {"type": "external", "external": {"url": cover_url}} if cover_url else None
@@ -624,6 +658,14 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
         if update_kwargs:
             notion.pages.update(page_id=existing["id"], **update_kwargs)
             print(f"[INFO] Updated page {existing['id']} with: {list(update_props.keys())}")
+
+        # Keep historical renamed copies current without renaming, merging or
+        # deleting pages. Notes continue to sync to the primary matching page.
+        for alias in matching_pages or []:
+            if alias["id"] != existing["id"]:
+                alias_props = build_update_props(notion, alias["id"], db_props, fields)
+                if alias_props:
+                    notion.pages.update(page_id=alias["id"], properties=alias_props)
         
         # Append review if it exists
         if fields.get("review"):
