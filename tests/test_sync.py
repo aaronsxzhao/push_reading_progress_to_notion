@@ -128,7 +128,7 @@ class GatewayTests(unittest.TestCase):
     def test_invalid_word_counts_do_not_invent_estimated_pages(self):
         for value in [None, -1, True, '10000', 3.5, 0, 120000]:
             with self.subTest(value=value):
-                self.api.call = Mock(return_value={'title': 'Book', 'wordCount': value})
+                self.api.call = Mock(side_effect=[{'title': 'Book', 'wordCount': value}, {'chapters': []}])
                 self.api.get_read_info = Mock(return_value={'progress': 0})
                 self.api.get_notes = Mock(return_value={'bookmarks': [], 'summary_reviews': []})
                 fields = self.api.get_single_book_data('book')
@@ -145,7 +145,7 @@ class GatewayTests(unittest.TestCase):
         for value in [None, 0, True, 'unknown', float('nan'), float('inf'), 1735662600]:
             with self.subTest(value=value):
                 self.api.call = Mock(side_effect=[
-                    {'title': 'Book'},
+                    {'title': 'Book', 'wordCount': 5500},
                     {'book': {'progress': 5, 'startReadingTime': value, 'updateTime': 1788798600}},
                     {'updated': []}, {'reviews': []},
                 ])
@@ -157,6 +157,37 @@ class GatewayTests(unittest.TestCase):
                     self.assertIsNone(fields['started_at'])
                     self.assertIsNone(fields['year_started'])
 
+    def test_missing_book_word_count_uses_complete_directory_once(self):
+        for uid, expected_title in [(7, 'Chapter 3'), (99, '章节名称暂不可用')]:
+            with self.subTest(uid=uid):
+                self.api.call = Mock(side_effect=[{'title': 'Book'}, {'chapters': [
+                    {'chapterUid': 102, 'title': 'Foreword', 'wordCount': 317},
+                    {'chapterUid': 7, 'title': 'Chapter 3', 'wordCount': 181028},
+                    {'chapterUid': 9, 'title': 'End', 'wordCount': 0},
+                ]}])
+                self.api.get_read_info = Mock(return_value={'progress': 6, 'chapterUid': uid})
+                self.api.get_notes = Mock(return_value={'bookmarks': [], 'summary_reviews': [],
+                    'chapter_info': {7: {'chapterUid': 7, 'title': 'Old title', 'wordCount': 999}}})
+                fields = self.api.get_single_book_data('book')
+                self.assertEqual(fields['total_words'], 181345)
+                self.assertEqual(fields['total_page'], 330)
+                self.assertEqual(fields['current_page'], 20)
+                self.assertEqual(fields['current_chapter'], expected_title)
+                self.assertEqual(self.api.call.call_count, 2)
+                self.api.call.assert_called_with('/book/chapterinfo', bookId='book')
+
+    def test_incomplete_directory_does_not_publish_partial_word_total(self):
+        for count in [None, True, -1, '100', 2.5]:
+            with self.subTest(count=count):
+                self.api.call = Mock(side_effect=[{'title': 'Book'}, {'chapters': [
+                    {'chapterUid': 1, 'wordCount': 5500}, {'chapterUid': 2, 'wordCount': count}
+                ]}])
+                self.api.get_read_info = Mock(return_value={'progress': 0})
+                self.api.get_notes = Mock(return_value={'bookmarks': [], 'summary_reviews': []})
+                fields = self.api.get_single_book_data('book')
+                for key in ['total_words', 'total_page', 'current_page']:
+                    self.assertIsNone(fields[key])
+
     def test_new_book_start_date_fallback(self):
         cases = [
             ({'readingTime': 0}, [], [], None, None, 'To Be Read'),
@@ -166,7 +197,7 @@ class GatewayTests(unittest.TestCase):
         ]
         for extra, marks, reviews, expected, source, status in cases:
             with self.subTest(extra=extra, marks=marks):
-                self.api.call = Mock(return_value={'title': 'New book'})
+                self.api.call = Mock(return_value={'title': 'New book', 'wordCount': 5500})
                 self.api.get_read_info = Mock(return_value={'progress': 0, 'updateTime': 1735835400, **extra})
                 self.api.get_notes = Mock(return_value={'bookmarks': marks, 'summary_reviews': reviews})
                 fields = self.api.get_single_book_data('new')

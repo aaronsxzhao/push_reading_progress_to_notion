@@ -34,7 +34,11 @@ is the rounded-up result of `Total Page * progress / 100`, including an explicit
 printed edition page numbers. Both properties update on every successful sync;
 the `Page Count` formula and progress display settings are left unchanged.
 
-`Total Words` stores the official book-level `wordCount`. `Current Chapter`
+`Total Words` stores the official book-level `wordCount`, or sums every chapter's
+`wordCount` from the complete official directory when the book-level field is
+absent. Incomplete chapter counts remain unknown; note-only chapter metadata
+must never be summed as the full book. The directory response is reused for
+the current chapter to avoid duplicate requests. `Current Chapter`
 resolves the current reading `chapterUid` to its title, reusing available note
 metadata or fetching the official chapter directory when needed. Chapter IDs
 are never treated as array positions. Unavailable chapter titles are labelled
