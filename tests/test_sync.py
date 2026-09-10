@@ -12,6 +12,7 @@ from weread_gateway import WeReadGateway, create_weread_client
 from weread_api import WeReadAPI
 import weread_notion_sync_api as sync
 from weread_notion_sync import build_props, build_update_props, upsert_page
+from config import translate_genres
 
 
 class GatewayTests(unittest.TestCase):
@@ -253,6 +254,25 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def test_source_categories_are_not_silently_dropped(self):
+        self.assertEqual(translate_genres([{'title': '历史-中国古代'}, {'title': '历史-中国近现代'}]), ['History'])
+        self.assertEqual(translate_genres([{'title': '个人成长-情绪心灵'}]), ['Psychology', 'Self-Help'])
+        self.assertEqual(translate_genres([{'title': 'New official category'}, {'title': None}]), ['New official category'])
+
+    def test_missing_metadata_is_filled_without_overwriting_existing_choices(self):
+        schema = {'Author': {'type': 'rich_text'}, 'Genre': {'type': 'multi_select'}}
+        fields = {'author': 'Source author', 'genre': ['History']}
+        notion = Mock()
+        notion.pages.retrieve.return_value = {'properties': {'Author': {'rich_text': []}, 'Genre': {'multi_select': []}}}
+        self.assertEqual(build_update_props(notion, 'book', schema, fields), build_props(schema, fields))
+        notion.pages.retrieve.assert_called_once_with(page_id='book')
+        notion.pages.retrieve.return_value = {'properties': {'Author': {'rich_text': [{'plain_text': 'My author'}]},
+            'Genre': {'multi_select': [{'name': 'My genre'}]}}}
+        self.assertEqual(build_update_props(notion, 'book', schema, fields), {})
+        notion.pages.retrieve.side_effect = RuntimeError('read failed')
+        with self.assertRaisesRegex(RuntimeError, 'read failed'):
+            build_update_props(notion, 'book', schema, fields)
+
     def setUp(self):
         # Personal .env aliases must not change test schemas.
         for name, value in [('PROP_STARTED_AT', 'Date Started'), ('PROP_YEAR_STARTED', 'Year Started')]:

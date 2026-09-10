@@ -43,3 +43,9 @@ resolves the current reading `chapterUid` to its title, reusing available note
 metadata or fetching the official chapter directory when needed. Chapter IDs
 are never treated as array positions. Unavailable chapter titles are labelled
 explicitly. Missing word counts do not overwrite existing page/word counts.
+
+Existing blank author and genre properties are filled when the source provides
+them; existing nonempty values are preserved. Known categories use the English
+genre map. Unmapped categories retain their original official label instead of
+being discarded. Personal ratings and review fields are not invented from the
+community rating or from the mere absence of a review.

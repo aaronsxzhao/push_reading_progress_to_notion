@@ -482,6 +482,16 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
         except Exception:
             pass
 
+    # Repair missing source metadata, preserving the user's existing choices.
+    for name, field in ((PROP_AUTHOR, "author"), (PROP_GENRE, "genre")):
+        kind = db_props.get(name, {}).get("type")
+        if fields.get(field) and kind in ("rich_text", "multi_select", "select"):
+            if "existing_page" not in locals():
+                existing_page = notion.pages.retrieve(page_id=page_id)
+            existing_value = existing_page.get("properties", {}).get(name, {}).get(kind)
+            if not existing_value:
+                props.update(build_props(db_props, {field: fields[field]}))
+
     return props
 
 def append_review(notion: Client, page_id: str, db_props: Dict[str, Any], review_text: str) -> None:

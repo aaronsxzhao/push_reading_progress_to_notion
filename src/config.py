@@ -142,12 +142,15 @@ GENRE_MAP: dict[str, list[str]] = {
     "个人成长-励志成长":   ["Self-Help"],
     "个人成长-沟通表达":   ["Communication", "Self-Help"],
     "个人成长-认知思维":   ["Psychology", "Self-Help"],
+    "个人成长-情绪心灵":   ["Psychology", "Self-Help"],
     "人物传记-传记综合":   ["Biography"],
     "人物传记-军政领袖":   ["Biography", "Politics"],
     "人物传记-财经人物":   ["Biography", "Business"],
     "医学健康-健康":      ["Health"],
     "医学健康-医学":      ["Medicine"],
     "历史-历史读物":      ["History"],
+    "历史-中国近现代":    ["History"],
+    "历史-中国古代":      ["History"],
     "哲学宗教-哲学读物":   ["Philosophy"],
     "哲学宗教-宗教":      ["Religion"],
     "哲学宗教-西方哲学":   ["Philosophy"],
@@ -191,7 +194,10 @@ def translate_genres(categories: list[dict] | None) -> list[str]:
     result: list[str] = []
     for cat in categories:
         title = cat.get("title", "")
-        for eng in GENRE_MAP.get(title, []):
+        if not isinstance(title, str) or not title.strip():
+            continue
+        # Retain an unfamiliar official label rather than silently losing it.
+        for eng in GENRE_MAP.get(title, [title]):
             if eng not in seen:
                 seen.add(eng)
                 result.append(eng)
