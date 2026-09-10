@@ -60,3 +60,9 @@ The cloud job allows up to 90 minutes for paced requests and quota backoff.
 For a partial recovery, the manual workflow accepts `book_ids` as a comma-separated
 list of stable IDs. Only those current shelf/notebook books are processed; unknown
 IDs abort before writes. Leave it empty for the normal complete daily sync.
+
+GitHub caches only public chapter metadata, never credentials, reading positions
+or personal notes. It expires after seven days and refreshes immediately if the
+current chapter UID is absent. Reading progress, highlights and thoughts still
+come from fresh API calls on every sync. Quiet periods gradually restore request
+pacing after quota backoff; server retry delays are still honored.

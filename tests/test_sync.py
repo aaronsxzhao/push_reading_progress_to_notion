@@ -2,6 +2,7 @@ import io
 import os
 import sys
 import unittest
+import tempfile
 from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,45 @@ from config import translate_genres
 
 
 class GatewayTests(unittest.TestCase):
+    def test_chapter_cache_reuses_metadata_but_refreshes_new_positions(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'WEREAD_CHAPTER_CACHE_DIR': directory}):
+            self.api.call = Mock(return_value={'chapters': [{'chapterUid': 1, 'title': 'First', 'wordCount': 5500, 'paid': True}]})
+            self.api.get_chapters('book', 1)
+            self.api.get_chapters('book', 1)
+            self.api.call.assert_called_once()
+            self.assertNotIn('paid', next(Path(directory).glob('*.json')).read_text())
+            self.api.call.return_value = {'chapters': [{'chapterUid': 2, 'title': 'New', 'wordCount': 6600}]}
+            self.assertEqual(self.api.get_chapters('book', 2)[0]['title'], 'New')
+            self.assertEqual(self.api.call.call_count, 2)
+            for path in Path(directory).glob('*.json'):
+                path.write_text('{invalid')
+            self.api.get_chapters('book', 2)
+            self.assertEqual(self.api.call.call_count, 3)
+
+    def test_chapter_cache_expires_after_a_week(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {'WEREAD_CHAPTER_CACHE_DIR': directory}), patch('weread_gateway.time.time') as now:
+            self.api.call = Mock(return_value={'chapters': [{'chapterUid': 1, 'wordCount': 5500}]})
+            now.return_value = 1000000
+            self.api.get_chapters('book')
+            now.return_value += 7 * 86400
+            self.api.get_chapters('book')
+            self.assertEqual(self.api.call.call_count, 2)
+
+    def test_pacing_recovers_only_after_quiet_period(self):
+        with patch.object(WeReadGateway, '_adaptive_interval', 30), patch.object(WeReadGateway, '_last_limited_at', 100), patch.object(WeReadGateway, '_last_recovery_at', 0), patch('weread_gateway.time.monotonic') as now:
+            now.return_value = 399
+            self.api._record_success()
+            self.assertEqual(WeReadGateway._adaptive_interval, 30)
+            now.return_value = 400
+            self.api._record_success()
+            self.assertEqual(WeReadGateway._adaptive_interval, 15)
+            now.return_value = 459
+            self.api._record_success()
+            self.assertEqual(WeReadGateway._adaptive_interval, 15)
+            now.return_value = 460
+            self.api._record_success()
+            self.assertEqual(WeReadGateway._adaptive_interval, 7.5)
+
     def setUp(self):
         self.slot_patch = patch.object(WeReadGateway, '_wait_for_slot')
         self.slot_patch.start()

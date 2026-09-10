@@ -6,6 +6,10 @@ Use documented fields and observed optional fields; missing pages/dates stay unk
 
 import time
 import math
+import json
+import hashlib
+import tempfile
+from pathlib import Path
 from threading import Lock
 from datetime import datetime, timedelta, timezone
 
@@ -23,6 +27,8 @@ class WeReadGateway:
     _request_lock = Lock()
     _next_request = 0.0
     _adaptive_interval = 1.1
+    _last_limited_at = None
+    _last_recovery_at = 0.0
 
     @classmethod
     def _wait_for_slot(cls):
@@ -35,8 +41,20 @@ class WeReadGateway:
     @classmethod
     def _cool_down(cls, seconds):
         with cls._request_lock:
+            cls._last_limited_at = time.monotonic()
             cls._adaptive_interval = min(30.0, cls._adaptive_interval * 2)
             cls._next_request = max(cls._next_request, time.monotonic() + seconds)
+
+    @classmethod
+    def _record_success(cls):
+        # Local recovery policy: after five quiet minutes, cautiously recover
+        # once per minute instead of retaining a 30-second interval forever.
+        with cls._request_lock:
+            now = time.monotonic()
+            if (cls._last_limited_at is not None and now - cls._last_limited_at >= 300
+                    and now - cls._last_recovery_at >= 60):
+                cls._adaptive_interval = max(1.1, cls._adaptive_interval / 2)
+                cls._last_recovery_at = now
 
     def __init__(self, api_key):
         if not api_key or not api_key.startswith("wrk-"):
@@ -88,6 +106,7 @@ class WeReadGateway:
             for key in ("errcode", "errCode"):
                 if data.get(key) not in (None, 0, "0"):
                     raise RuntimeError(f"WeRead {api_name}: {key}={data[key]}")
+            self._record_success()
             return data
 
     def get_shelf(self):
@@ -231,7 +250,7 @@ class WeReadGateway:
         if total_words is None:
             # The gateway can omit book-level wordCount. Only the complete
             # directory is suitable for summing; note metadata is a subset.
-            chapters = self.get_chapters(book_id)
+            chapters = self.get_chapters(book_id, progress.get("chapterUid"))
             counts = [chapter.get("wordCount") for chapter in chapters]
             if counts and all(type(count) is int and count >= 0 for count in counts):
                 total_words = sum(counts)
@@ -258,11 +277,33 @@ class WeReadGateway:
             "data_source": "weread_official_gateway",
         }
 
-    def get_chapters(self, book_id):
+    def get_chapters(self, book_id, required_uid=None):
+        cache_dir = env("WEREAD_CHAPTER_CACHE_DIR", "")
+        path = (Path(cache_dir) / (hashlib.sha256(str(book_id).encode()).hexdigest() + ".json")) if cache_dir else None
+        if path:
+            try:
+                cached = json.loads(path.read_text())
+                chapters = cached["chapters"]
+                age = time.time() - cached["cached_at"]
+                valid = isinstance(chapters, list) and bool(chapters) and all(isinstance(c, dict) for c in chapters)
+                known_uid = required_uid in (None, 0, "0", "") or (valid and any(str(c.get("chapterUid")) == str(required_uid) for c in chapters))
+                if valid and known_uid and 0 <= age < 7 * 86400:
+                    return chapters
+            except (OSError, ValueError, KeyError, TypeError):
+                pass
         data = self.call("/book/chapterinfo", bookId=book_id)
         chapters = data.get("chapters")
         if not isinstance(chapters, list) or not all(isinstance(c, dict) for c in chapters):
             raise RuntimeError(f"WeRead {book_id}: missing chapter list")
+        if path and chapters:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as temporary:
+                    public_chapters = [{key: c[key] for key in ("chapterUid", "chapterIdx", "title", "wordCount", "level") if key in c} for c in chapters]
+                    json.dump({"cached_at": time.time(), "chapters": public_chapters}, temporary)
+                Path(temporary.name).replace(path)
+            except OSError:
+                print("[API] Chapter cache unavailable; continuing with the fresh response")
         return chapters
 
     def get_current_chapter(self, book_id, progress, notes, status, full_chapters=None):
@@ -276,7 +317,7 @@ class WeReadGateway:
         title = next((c.get("title") for c in chapters
                       if str(c.get("chapterUid")) == str(chapter_uid) and c.get("title")), None)
         if not title and full_chapters is None:
-            chapters = self.get_chapters(book_id)
+            chapters = self.get_chapters(book_id, chapter_uid)
             title = next((c.get("title") for c in chapters
                           if str(c.get("chapterUid")) == str(chapter_uid) and c.get("title")), None)
         # Do not retain a stale chapter or invent a page/character count.

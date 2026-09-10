@@ -30,6 +30,7 @@ jobs:
       WEREAD_API_KEY: ${{ secrets.WEREAD_API_KEY }}
       WEREAD_AUTO_REFRESH_COOKIES: 0
       WEREAD_MAX_WORKERS: 2
+      WEREAD_CHAPTER_CACHE_DIR: .cache/weread-chapters
       TZ: Asia/Shanghai
     
     steps:
@@ -44,6 +45,13 @@ jobs:
     
     - name: Install dependencies
       run: pip install -r requirements.txt
+
+    - name: Restore chapter metadata cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .cache/weread-chapters
+        key: weread-chapters-v1-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: weread-chapters-v1-
     
     - name: Fetch cookies from Gist (if configured)
       if: ${{ env.WEREAD_API_KEY == '' }}
@@ -99,6 +107,13 @@ jobs:
       run: |
         echo "Starting WeRead to Notion sync..."
         python3 -u src/weread_notion_sync_api.py
+
+    - name: Save chapter metadata cache
+      if: ${{ always() && !cancelled() }}
+      uses: actions/cache/save@v4
+      with:
+        path: .cache/weread-chapters
+        key: weread-chapters-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
     - name: Refresh heatmap from official statistics
       env:

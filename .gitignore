@@ -24,3 +24,4 @@ launchd.local.plist
 !.env.example
 .vercel
 .browser_state/
+.cache/weread-chapters/
