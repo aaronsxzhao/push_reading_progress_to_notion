@@ -27,6 +27,15 @@ Run regression checks with `python -m unittest discover -s tests -q`.
 
 ## Reading position and existing progress formulas
 
+Completion is permanent: an existing Read status, completion date, or stored
+100% progress keeps a book Read at 100%, even if a later source position moves
+backwards. An official finishTime also counts as completion regardless of the
+current position. Current Page stays equal to Total Page (including when total
+metadata changes); if the source omits the total, the existing total is used.
+The original completion date is preserved. Highlights, thoughts, chapter
+position and last-read activity continue syncing. Full estimated pages alone
+are not treated as evidence of completion.
+
 `Total Page` retains the original estimated-page convention: full book word
 count divided by 550 and rounded (minimum 1 for a nonempty book). `Current Page`
 is the rounded-up result of `Total Page * progress / 100`, including an explicit

@@ -188,6 +188,34 @@ def get_db_properties(notion: Client, database_id: str) -> Dict[str, Any]:
 def prop_exists(db_props: Dict[str, Any], name: str) -> bool:
     return name in db_props
 
+def preserve_completion(db_props: Dict[str, Any], fields: Dict[str, Any], existing_props=None) -> Dict[str, Any]:
+    """Completion is permanent even when a later reading position moves back."""
+    existing_props = existing_props or {}
+    old_status_prop = existing_props.get(PROP_STATUS, {})
+    old_status = old_status_prop.get("status") or old_status_prop.get("select") or {}
+    old_finished = existing_props.get(PROP_DATE_FINISHED, {}).get("date") or {}
+    progress_name = env("PROP_PROGRESS", "Reading Progress")
+    old_percent = existing_props.get(progress_name, {}).get("number")
+    full_progress = 1 if db_props.get(progress_name, {}).get("number", {}).get("format") == "percent" else 100
+    completed = (
+        str(fields.get("status", "")).casefold() == STATUS_READ.casefold()
+        or bool(fields.get("date_finished")) or fields.get("percent") == 100
+        or str(old_status.get("name", "")).casefold() == STATUS_READ.casefold()
+        or bool(old_finished.get("start"))
+        or (type(old_percent) in (int, float) and old_percent == full_progress)
+    )
+    if not completed:
+        return fields
+    result = {**fields, "status": STATUS_READ, "percent": 100}
+    total = fields.get("total_page")
+    if total is None:
+        total = existing_props.get(PROP_TOTAL_PAGE, {}).get("number")
+    result["current_page"] = total if type(total) in (int, float) and total > 0 else None
+    # Do not replace the original completion date with a later re-read date.
+    if old_finished.get("start"):
+        result["date_finished"] = None
+    return result
+
 def build_reading_detail_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
     props = {}
     if fields.get("current_chapter") is not None and db_props.get("Current Chapter", {}).get("type") == "rich_text":
@@ -200,6 +228,7 @@ def build_reading_detail_props(db_props: Dict[str, Any], fields: Dict[str, Any])
     return props
 
 def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
+    fields = preserve_completion(db_props, fields)
     props: Dict[str, Any] = build_reading_detail_props(db_props, fields)
 
     if fields.get("title"):
@@ -363,6 +392,12 @@ def build_props(db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, A
 
 def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
     """Build properties for update only: status, last_read_at, date_finished, current_page, started_at (if earlier), total_page"""
+    # Read before constructing any update; failure must never downgrade a book.
+    if PROP_STATUS in db_props or PROP_DATE_FINISHED in db_props:
+        existing_page = notion.pages.retrieve(page_id=page_id)
+        fields = preserve_completion(db_props, fields, existing_page.get("properties", {}))
+    else:
+        fields = preserve_completion(db_props, fields)
     props: Dict[str, Any] = build_reading_detail_props(db_props, fields)
 
     if fields.get("status") and prop_exists(db_props, PROP_STATUS):
@@ -442,7 +477,8 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
     # Preserve earlier dates and derive the year from the date actually retained.
     if fields.get("started_at") and prop_exists(db_props, PROP_STARTED_AT):
         # A failed read must stop the update, not overwrite an unknown existing date.
-        existing_page = notion.pages.retrieve(page_id=page_id)
+        if "existing_page" not in locals():
+            existing_page = notion.pages.retrieve(page_id=page_id)
         date_prop = existing_page.get("properties", {}).get(PROP_STARTED_AT, {}).get("date")
         from dateutil import parser as dtparser
         incoming = fields["started_at"]

@@ -240,7 +240,9 @@ class WeReadGateway:
             if candidates:
                 started_at = min(candidates)
                 start_source = "最早可核验阅读记录（替代）"
-        finished_at = self.timestamp(progress.get("finishTime")) if percent == 100 else None
+        finished_at = self.timestamp(progress.get("finishTime"))
+        if finished_at:
+            percent = 100
         status = ("Read" if percent == 100 else "Currently Reading"
                   if percent > 0 or progress.get("isStartReading") or started_at else "To Be Read")
         total_words = info.get("wordCount")

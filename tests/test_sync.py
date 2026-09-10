@@ -141,6 +141,16 @@ class GatewayTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.api.get_read_info('1')
 
+    def test_finished_book_keeps_full_progress_after_returning_to_an_earlier_chapter(self):
+        self.api.call = Mock(side_effect=[
+            {'title': 'Book', 'wordCount': 55000},
+            {'book': {'progress': 28, 'finishTime': 1735749000}},
+            {'updated': [], 'chapters': []}, {'reviews': []},
+        ])
+        data = self.api.get_single_book_data('1')
+        self.assertEqual((data['status'], data['percent'], data['current_page']), ('Read', 100, 100))
+        self.assertIsNotNone(data['date_finished'])
+
     def test_chapter_resolves_uid_instead_of_using_array_position(self):
         self.api.call = Mock(return_value={'chapters': [
             {'chapterUid': 102, 'chapterIdx': 0, 'title': 'Foreword'},
@@ -294,6 +304,76 @@ class GatewayTests(unittest.TestCase):
 
 
 class SyncTests(unittest.TestCase):
+    def completion_schema(self, kind='status', fmt='percent'):
+        return {'Status': {'type': kind, kind: {'options': [{'name': name} for name in
+                    ('Read', 'Currently Reading', 'To Be Read')]}},
+                'Date Finished': {'type': 'date'}, 'Current Page': {'type': 'number'},
+                'Total Page': {'type': 'number'},
+                'Reading Progress': {'type': 'number', 'number': {'format': fmt}}}
+
+    def test_completion_survives_regressed_progress_with_each_persisted_signal(self):
+        for kind in ('status', 'select'):
+            for fmt, full in (('percent', 1), ('number', 100)):
+                for evidence in ({'Status': {kind: {'name': 'Read'}}},
+                                 {'Date Finished': {'date': {'start': '2024-01-02'}}},
+                                 {'Reading Progress': {'number': full}}):
+                    with self.subTest(kind=kind, fmt=fmt, evidence=evidence):
+                        notion = Mock()
+                        notion.pages.retrieve.return_value = {'properties': evidence}
+                        fields = {'status': 'Currently Reading', 'percent': 28,
+                                  'current_page': 28, 'total_page': 100}
+                        props = build_update_props(notion, 'book', self.completion_schema(kind, fmt), fields)
+                        self.assertEqual(props['Status'][kind]['name'], 'Read')
+                        self.assertEqual(props['Reading Progress']['number'], full)
+                        self.assertEqual(props['Current Page']['number'], 100)
+                        self.assertEqual(fields['percent'], 28)  # No shared-input mutation.
+                        self.assertNotIn('Date Finished', props)
+                        notion.pages.retrieve.assert_called_once_with(page_id='book')
+
+    def test_completion_preserves_original_date_and_uses_existing_total_when_source_missing(self):
+        notion = Mock()
+        notion.pages.retrieve.return_value = {'properties': {
+            'Date Finished': {'date': {'start': '2024-01-02'}}, 'Total Page': {'number': 212}}}
+        props = build_update_props(notion, 'book', self.completion_schema(), {
+            'percent': 64, 'current_page': None, 'total_page': None,
+            'date_finished': datetime(2025, 2, 3)})
+        self.assertEqual(props['Current Page']['number'], 212)
+        self.assertNotIn('Date Finished', props)
+        self.assertNotIn('Total Page', props)
+        notion.pages.retrieve.return_value['properties'].pop('Total Page')
+        props = build_update_props(notion, 'book', self.completion_schema(), {'percent': 64})
+        self.assertEqual(props['Reading Progress']['number'], 1)
+        self.assertNotIn('Current Page', props)
+
+    def test_newly_completed_book_stays_completed_on_next_sync(self):
+        schema = self.completion_schema()
+        fields = {'status': 'Read', 'percent': 64, 'current_page': 136, 'total_page': 212}
+        created = build_props(schema, fields)
+        self.assertEqual(created['Current Page']['number'], 212)
+        self.assertEqual(created['Reading Progress']['number'], 1)
+        notion = Mock()
+        notion.pages.retrieve.return_value = {'properties': created}
+        updated = build_update_props(notion, 'book', schema, {
+            'status': 'Currently Reading', 'percent': 1, 'current_page': 3, 'total_page': 220})
+        self.assertEqual(updated['Status']['status']['name'], 'Read')
+        self.assertEqual(updated['Current Page']['number'], 220)
+        self.assertEqual(updated['Reading Progress']['number'], 1)
+
+    def test_unfinished_progress_still_updates_and_full_old_pages_do_not_imply_completion(self):
+        notion = Mock()
+        notion.pages.retrieve.return_value = {'properties': {
+            'Status': {'status': {'name': 'Currently Reading'}},
+            'Current Page': {'number': 100}, 'Total Page': {'number': 100}}}
+        fields = {'status': 'Currently Reading', 'percent': 64, 'current_page': 64, 'total_page': 100}
+        self.assertEqual(build_update_props(notion, 'book', self.completion_schema(), fields),
+                         build_props(self.completion_schema(), fields))
+
+    def test_failed_completion_read_stops_update_even_without_start_date(self):
+        notion = Mock()
+        notion.pages.retrieve.side_effect = RuntimeError('read failed')
+        with self.assertRaisesRegex(RuntimeError, 'read failed'):
+            build_update_props(notion, 'book', self.completion_schema(), {'percent': 28})
+
     def test_partial_sync_filters_stable_ids_and_fails_closed(self):
         items = [{'bookId': '11'}, {'bookId': 22}, {'bookId': '33'}]
         self.assertEqual(sync.filter_requested_books(items, ''), items)
