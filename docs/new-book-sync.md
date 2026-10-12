@@ -1,5 +1,15 @@
 # New book synchronization
 
+The gateway uses official Skills 1.0.5, reviewed against Tencent's
+[`d98e66e` contract update](https://github.com/Tencent/WeChatReading/commit/d98e66ee60a8c7bcd35da549d0643c4470439643).
+Relative to 1.0.4, the consumed shelf/book interfaces add optional `readerLink`
+fields; progress, personal-note pagination and statistics contracts are unchanged.
+This sync does not display book navigation links. Every gateway request, including
+heatmap requests, reports the reviewed version. An `upgrade_info` response still
+stops syncing until the next contract has been reviewed; versions are not adopted
+automatically or bypassed. Imported books returned in the shelf remain eligible
+for syncing, with missing information subject to the same validation as other books.
+
 The twice-daily sync includes shelf books and personal notebooks outside the shelf.
 The configured schedule is 10:00 and 18:00 Asia/Shanghai (02:00 and 10:00 UTC).
 GitHub scheduled events can be delayed or dropped under load; these are requested

@@ -1,4 +1,4 @@
-"""Official WeRead Skills 1.0.4 gateway, independent of browser cookies.
+"""Official WeRead Skills 1.0.5 gateway, independent of browser cookies.
 
 Contract: https://github.com/Tencent/WeChatReading/tree/main/skills
 Use documented fields and observed optional fields; missing pages/dates stay unknown.
@@ -18,7 +18,7 @@ import requests
 from config import env, translate_genres
 
 GATEWAY = "https://i.weread.qq.com/api/agent/gateway"
-SKILL_VERSION = "1.0.4"
+SKILL_VERSION = "1.0.5"
 CST = timezone(timedelta(hours=8))
 
 
@@ -102,7 +102,11 @@ class WeReadGateway:
             if not isinstance(data, dict):
                 raise RuntimeError(f"WeRead {api_name}: invalid response")
             if "upgrade_info" in data:
-                raise RuntimeError("WeRead Skills upgrade required; update the official contract before syncing")
+                raise RuntimeError(
+                    f"WeRead Skills upgrade required (client {SKILL_VERSION}); "
+                    "review https://github.com/Tencent/WeChatReading/tree/main/skills "
+                    "and update the official contract before syncing"
+                )
             for key in ("errcode", "errCode"):
                 if data.get(key) not in (None, 0, "0"):
                     raise RuntimeError(f"WeRead {api_name}: {key}={data[key]}")

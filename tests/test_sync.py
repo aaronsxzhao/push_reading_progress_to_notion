@@ -72,11 +72,12 @@ class GatewayTests(unittest.TestCase):
         self.api.session.post.return_value = self.response({'books': []})
         self.api.call('/shelf/sync', count=20)
         kwargs = self.api.session.post.call_args.kwargs
-        self.assertEqual(kwargs['json'], {'api_name': '/shelf/sync', 'skill_version': '1.0.4', 'count': 20})
+        self.assertEqual(kwargs['json'], {'api_name': '/shelf/sync', 'skill_version': '1.0.5', 'count': 20})
         self.assertEqual(kwargs['timeout'], 30)
 
     def test_business_errors_and_upgrade_stop(self):
-        for data in [{'errcode': -2012}, {'errCode': -2013}, {'upgrade_info': {}}, []]:
+        for data in [{'errcode': -2012}, {'errCode': -2013}, {'upgrade_info': {}},
+                     {'upgrade_info': {}, 'books': [{'bookId': '1', 'title': 'Book'}]}, []]:
             with self.subTest(data=data):
                 self.api.session.post.return_value = self.response(data)
                 with self.assertRaises(RuntimeError):
