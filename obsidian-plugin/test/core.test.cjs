@@ -20,6 +20,11 @@ class MemoryIO {
   async create(path, data) { if (this.exists(path)) throw Error('exists'); this.data.set(path, data); this.writes.push(path); }
   async process(path, fn) { this.data.set(path, fn(await this.read(path))); this.writes.push(path); }
   async mkdir(path) { this.dirs.add(path); }
+  async rename(from, to, expected) {
+    if (this.exists(to)) throw new C.SyncError('occupied', 'exists');
+    if (await this.read(from) !== expected) throw new C.SyncError('concurrent', 'changed');
+    this.data.set(to, this.data.get(from)); this.data.delete(from); this.writes.push(to);
+  }
   move(from, to) {
     for (const [path, content] of [...this.data]) if (path.startsWith(from + '/')) { this.data.delete(path); this.data.set(to + path.slice(from.length), content); }
     this.dirs.delete(from); this.dirs.add(to);
@@ -117,7 +122,7 @@ test('source title change updates existing note without creating a renamed dupli
   const { store, root } = await initialized(); const b = book();
   await store.write(root, b, rendered('原文'));
   assert.equal(await store.write(root, { ...b, title: '新书名' }, rendered('原文')), 'updated');
-  const files = await store.index(root); assert.equal(files.length, 1); assert.match(files[0].body, /新书名/);
+  const files = await store.index(root); assert.equal(files.length, 1); assert.equal(files[0].path, root + '/【自动摘录】新书名.md');
 });
 test('duplicate managed note stops updates to both copies', async () => {
   const { io, store, root } = await initialized(); await store.write(root, book(), rendered('原文'));
@@ -314,4 +319,46 @@ test('single-source rendering preserves intentional repeated paragraphs', async 
   const reader = readerFor(args => args.url.includes('/pages/') ? p : listing([paragraph('重复', BLOCK), paragraph('重复', PAGE2)]));
   const result = await reader.readGroup([...C.groupPages([p]).values()][0]);
   assert.equal(result.rendered.markdown.match(/重复/g).length, 2);
+});
+
+async function legacyNote(io, root, b = book()) {
+  const path = root + '/【自动摘录】' + b.title + '--' + b.pageId + '.md';
+  const body = '# 【自动摘录】' + b.title + '\n\n' + C.bookBody(b, rendered('原文'));
+  const text = await C.packManaged(body, { sourceId: SOURCE, pageId: b.pageId, bookKey: b.bookKey, sourceEdited: b.edited });
+  await io.create(path, text);
+  return { path, text };
+}
+test('legacy ID filename and duplicate heading migrate once without duplicating notes', async () => {
+  const { io, store, root } = await initialized(); const old = await legacyNote(io, root);
+  assert.equal(await store.write(root, book(), rendered('原文')), 'updated');
+  assert.equal(io.exists(old.path), false);
+  const notes = await store.index(root); assert.equal(notes.length, 1);
+  assert.equal(notes[0].path, root + '/【自动摘录】测试书.md');
+  assert.doesNotMatch(notes[0].body, /^# 【自动摘录】/m);
+  assert.equal(notes[0].meta.pageId, PAGE); assert.equal(notes[0].meta.bookKey, book().bookKey);
+  assert.equal(await store.write(root, book(), rendered('原文')), 'unchanged');
+});
+test('legacy migration preserves manually edited notes and conflicting personal filenames', async () => {
+  const { io, store, root } = await initialized(); const old = await legacyNote(io, root);
+  const target = root + '/' + C.bookFilename(book());
+  await io.create(target, '我的笔记');
+  await assert.rejects(store.write(root, book(), rendered('新原文')), { code: 'occupied' });
+  assert.equal(await io.read(old.path), old.text); assert.equal(await io.read(target), '我的笔记');
+  io.data.delete(target); io.data.set(old.path, old.text + '手写内容');
+  await assert.rejects(store.write(root, book(), rendered('新原文')), { code: 'manual_edit' });
+  assert.equal(io.exists(target), false); assert.equal(await io.read(old.path), old.text + '手写内容');
+});
+test('edit arriving before migration rename is preserved', async () => {
+  const { io, store, root } = await initialized(); const old = await legacyNote(io, root);
+  const rename = io.rename.bind(io);
+  io.rename = async (...args) => { io.data.set(old.path, old.text + '刚写的'); return rename(...args); };
+  await assert.rejects(store.write(root, book(), rendered('新原文')), { code: 'concurrent' });
+  assert.equal(await io.read(old.path), old.text + '刚写的');
+  assert.equal(io.exists(root + '/' + C.bookFilename(book())), false);
+});
+test('different IDs with identical filenames never overwrite or merge each other', async () => {
+  const { io, store, root } = await initialized(); await store.write(root, book(), rendered('第一本'));
+  const before = await io.read(root + '/' + C.bookFilename(book()));
+  await assert.rejects(store.write(root, C.describePage(page(PAGE2)), rendered('第二本')), { code: 'occupied' });
+  assert.equal(await io.read(root + '/' + C.bookFilename(book())), before);
 });

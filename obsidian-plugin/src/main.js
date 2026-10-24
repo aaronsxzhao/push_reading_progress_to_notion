@@ -104,6 +104,15 @@ class ExcerptsPlugin extends Plugin {
       read: path => vault.read(file(path)),
       create: (path, data) => { check(); return vault.create(path, data); },
       process: (path, fn) => { check(); return vault.process(file(path), current => { check(); return fn(current); }); },
+      rename: async (from, to, expected) => {
+        const entry = file(from);
+        if (await vault.read(entry) !== expected) throw new Core.SyncError('concurrent', '摘录在重命名前发生变化，已保留原文件。');
+        check();
+        if (entry.path !== from) throw new Core.SyncError('concurrent', '摘录位置发生变化，本次停止修改。');
+        if (vault.getAbstractFileByPath(to)) throw new Core.SyncError('occupied', '目标文件已存在，未重命名或覆盖。');
+        // Vault.rename avoids rewriting links in the user's personal notes.
+        await vault.rename(entry, to);
+      },
       mkdir: async path => {
         let parent = '';
         for (const part of path.split('/')) {

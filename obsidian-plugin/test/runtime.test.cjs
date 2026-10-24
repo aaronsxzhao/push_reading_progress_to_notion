@@ -57,6 +57,7 @@ async function harness({ initialized = true, mobile = false, aliases = false } =
       read: async f => data.get(f.path),
       create: async (p, text) => { if (data.has(p)) throw Error('exists'); data.set(p, text); return new TFile(p); },
       process: async (f, fn) => data.set(f.path, fn(data.get(f.path))),
+      rename: async (f, to) => { if (data.has(to)) throw Error('exists'); data.set(to, data.get(f.path)); data.delete(f.path); f.path = to; },
       createFolder: async () => {}, on: () => ({})
     }
   };
@@ -172,4 +173,19 @@ test('closing a stale UI subscriber cannot interrupt the synchronization', async
   h.plugin.subscribeReport(() => {});
   h.plugin.reportListeners.add(() => { throw new Error('window closed'); });
   await h.plugin.sync(true); assert.match(h.plugin.report.summary, /新增 1 本/);
+});
+
+for (const mobile of [false, true]) test(`legacy note migration uses cross-platform Vault APIs (mobile=${mobile})`, async () => {
+  const h = await harness({ mobile }); await h.plugin.sync(true);
+  const cleanPath = root + '/【自动摘录】测试书.md';
+  const oldPath = root + '/【自动摘录】测试书--' + PAGE + '.md';
+  const parsed = C.parseManaged(h.data.get(cleanPath));
+  h.data.set(oldPath, await C.packManaged('# 【自动摘录】测试书\n\n' + parsed.body, parsed.meta));
+  h.data.delete(cleanPath);
+  await h.plugin.sync(true);
+  assert.equal(h.data.has(oldPath), false); assert.equal(h.data.has(cleanPath), true);
+  assert.doesNotMatch(C.parseManaged(h.data.get(cleanPath)).body, /^# 【自动摘录】/m);
+  assert.equal(h.data.get('自己的笔记.md'), '永久保留');
+  await h.plugin.sync(true);
+  assert.equal([...h.data.keys()].filter(p => p.includes('【自动摘录】')).length, 1);
 });

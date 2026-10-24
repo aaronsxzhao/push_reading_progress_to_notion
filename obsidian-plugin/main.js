@@ -155,12 +155,12 @@ function isWereadPage(page) {
   return !page.archived && !page.in_trash && Array.isArray(values) && values.length === 1 && values[0].name === 'WeRead';
 }
 function bookBody(book, rendered) {
-  return `# 【自动摘录】${escapeMd(book.title)}\n\n> 自动同步自 Notion；请将自己的笔记写在其他文件中。\n\n${book.author ? '作者：' + escapeMd(book.author) + '\n\n' : ''}[在 Notion 中查看](https://www.notion.so/${book.pageId})\n\n---\n\n${rendered.markdown || '（Notion 当前没有摘录正文。）'}\n`;
+  return `> 自动同步自 Notion；请将自己的笔记写在其他文件中。\n\n${book.author ? '作者：' + escapeMd(book.author) + '\n\n' : ''}[在 Notion 中查看](https://www.notion.so/${book.pageId})\n\n---\n\n${rendered.markdown || '（Notion 当前没有摘录正文。）'}\n`;
 }
 function bookFilename(book) {
   let title = book.title.replace(/[\\/:*?"<>|\[\]#^\x00-\x1f\x7f]/g, '_').replace(/[. ]+$/g, '').trim() || '未命名';
   while (new TextEncoder().encode(title).length > 110) title = Array.from(title).slice(0, -1).join('');
-  return `【自动摘录】${title}--${book.pageId}.md`;
+  return `【自动摘录】${title}.md`;
 }
 
 class NotionReader {
@@ -336,18 +336,23 @@ class ExcerptStore {
     if (!existing && rendered.count === 0) return 'empty';
     const body = bookBody(book, rendered);
     const next = await packManaged(body, { sourceId: this.sourceId, pageId: book.pageId, bookKey: book.bookKey, sourceEdited: book.edited });
+    const path = root + '/' + bookFilename(book);
     if (existing) {
       if (await digest(existing.body) !== existing.meta.bodyHash) fail('manual_edit', `《${book.title}》的自动摘录已被修改，已保留你的内容并跳过。`);
       if (existing.meta.pageId === book.pageId && existing.meta.sourceEdited && book.edited && existing.meta.sourceEdited > book.edited) fail('stale', `《${book.title}》本地来源版本较新，未使用旧数据覆盖。`);
       // Source timestamps alone do not cause iCloud writes.
-      if (existing.body === body && existing.meta.pageId === book.pageId) return 'unchanged';
-      await this.io.process(existing.path, current => {
+      if (existing.body === body && existing.meta.pageId === book.pageId && existing.path === path) return 'unchanged';
+      // Rename only an intact, owned note. IDs remain in metadata, not its visible title.
+      if (existing.path !== path) {
+        if (this.io.exists(path)) fail('occupied', `《${book.title}》的目标文件已经存在，未重命名或覆盖。`);
+        await this.io.rename(existing.path, path, existing.text);
+      }
+      await this.io.process(path, current => {
         if (current !== existing.text) fail('concurrent', `《${book.title}》在同步期间发生变化，本次未覆盖。`);
         return next;
       });
       return 'updated';
     }
-    const path = root + '/' + bookFilename(book);
     if (this.io.exists(path)) fail('occupied', `《${book.title}》的目标文件已经存在，未覆盖。`);
     await this.io.create(path, next);
     return 'created';
@@ -470,6 +475,15 @@ class ExcerptsPlugin extends Plugin {
       read: path => vault.read(file(path)),
       create: (path, data) => { check(); return vault.create(path, data); },
       process: (path, fn) => { check(); return vault.process(file(path), current => { check(); return fn(current); }); },
+      rename: async (from, to, expected) => {
+        const entry = file(from);
+        if (await vault.read(entry) !== expected) throw new Core.SyncError('concurrent', '摘录在重命名前发生变化，已保留原文件。');
+        check();
+        if (entry.path !== from) throw new Core.SyncError('concurrent', '摘录位置发生变化，本次停止修改。');
+        if (vault.getAbstractFileByPath(to)) throw new Core.SyncError('occupied', '目标文件已存在，未重命名或覆盖。');
+        // Vault.rename avoids rewriting links in the user's personal notes.
+        await vault.rename(entry, to);
+      },
       mkdir: async path => {
         let parent = '';
         for (const part of path.split('/')) {
