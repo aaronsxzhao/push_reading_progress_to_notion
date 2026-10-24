@@ -1,0 +1,9 @@
+{
+  "id": "weread-notion-excerpts",
+  "name": "微信读书自动摘录",
+  "version": "0.1.2",
+  "minAppVersion": "1.11.4",
+  "description": "打开笔记库时从 Notion 导入微信读书摘录，支持移动端与 iCloud 目录移动。",
+  "author": "aaronsxzhao",
+  "isDesktopOnly": false
+}

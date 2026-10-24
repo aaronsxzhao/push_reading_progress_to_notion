@@ -652,6 +652,9 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
         all_book_items = all_book_items[:limit]
         print(f"[API] Limiting to first {limit} book(s) for testing")
     
+    # A book can appear in multiple upstream shelf/statistics collections. Never
+    # let two workers race to create the same Notion book.
+    all_book_items = list({str(item["bookId"]): item for item in all_book_items if item.get("bookId")}.values())
     total_to_process = len(all_book_items)
     # Read once before workers start; legacy titles can share a WeRead book ID.
     existing_by_book_id = index_weread_pages(notion, database_id, db_props)
@@ -705,6 +708,7 @@ def sync_books_from_api(notion: Client, database_id: str, db_props: Dict[str, An
             book_data = thread_client.get_single_book_data(book_id, book_item)
             
             if book_data:
+                book_data["book_id"] = str(book_id)
                 bookmarks = book_data.get("bookmarks", [])
                 page_notes = book_data.get("page_notes", [])
                 chapter_notes = book_data.get("chapter_notes", [])
@@ -976,7 +980,7 @@ def filter_requested_books(items, requested):
 
 
 def ensure_sync_properties(notion, database_id, db_props):
-    required = {"Start Date Source": "rich_text", "Current Chapter": "rich_text", "Total Words": "number"}
+    required = {"Start Date Source": "rich_text", "Current Chapter": "rich_text", "Total Words": "number", "WeRead Book ID": "rich_text"}
     additions = {}
     for name, kind in required.items():
         if name not in db_props:

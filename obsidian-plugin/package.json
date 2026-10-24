@@ -1,0 +1,10 @@
+{
+  "name": "weread-notion-excerpts",
+  "version": "0.1.2",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node --test test/*.test.cjs",
+    "check": "node --check src/core.js && node --check src/main.js && npm test && npm run build && node --check main.js"
+  }
+}

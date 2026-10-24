@@ -77,15 +77,17 @@ being discarded. Personal ratings and review fields are not invented from the
 community rating or from the mere absence of a review.
 
 Legacy WeRead pages whose official cover URL explicitly identifies the same
-book ID also receive the current reading fields, even if their titles differ.
+book ID are recognized as aliases of one book, even if their titles differ.
 Only pages exclusively tagged WeRead and recognized official cover URL patterns participate.
 Stable book ID matches take priority over title matches. If no ID match exists,
 title-and-author search is restricted to WeRead; known conflicting cover IDs are
 excluded. Failed queries never fall back to an unscoped title search. Each existing
 page's source is checked again before building its update. Paperback, Kindle,
 unlabelled and mixed-source records are excluded without changing their sources.
-Existing pages are preserved; a renamed book reuses its recognized page instead
-of creating another copy. Notes sync to the primary matched page.
+A renamed book reuses its recognized page and updates its title instead of
+creating another copy. Notes sync to that canonical page. Empty redundant aliases
+are checked and moved to recoverable trash; unique content and personal fields
+are never discarded automatically.
 
 The cloud job allows up to 90 minutes for paced requests and quota backoff.
 For a partial recovery, the manual workflow accepts `book_ids` as a comma-separated
@@ -97,3 +99,9 @@ or personal notes. It expires after seven days and refreshes immediately if the
 current chapter UID is absent. Reading progress, highlights and thoughts still
 come from fresh API calls on every sync. Quiet periods gradually restore request
 pacing after quota backoff; server retry delays are still honored.
+
+## Stable book identity
+
+`WeRead Book ID` (rich text) is the durable identity for official and imported books. Sync backfills it when it can verify the ID, and updates a renamed book on the same Notion page. Legacy official cover IDs remain a fallback. Different IDs and non-WeRead sources are never merged by title. Duplicate upstream IDs are processed once per run.
+
+The canonical page is pinned by its explicit ID, with the current official title preferred for legacy matches. Empty duplicate rows are moved to the recoverable trash only after identity, source, personal property and change checks. Rows containing unique content or personal fields remain intact and are reported. The Obsidian plugin reads all remaining same-ID sources into one managed Markdown file without a title chooser, failing closed on incomplete reads.

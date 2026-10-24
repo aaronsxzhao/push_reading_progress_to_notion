@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from weread_gateway import WeReadGateway, create_weread_client
 from weread_api import WeReadAPI
 import weread_notion_sync_api as sync
-from weread_notion_sync import build_props, build_update_props, upsert_page, index_weread_pages
+from weread_notion_sync import build_props, build_update_props, upsert_page, index_weread_pages, weread_cover_book_id, archive_empty_weread_alias
 from config import translate_genres
 
 
@@ -486,13 +486,13 @@ class SyncTests(unittest.TestCase):
         notion = Mock()
         notion.databases.query.return_value = {'results': [paper]}
         notion.pages.retrieve.side_effect = lambda page_id: {'ebook': ebook, 'alias': alias}[page_id]
+        notion.blocks.children.list.return_value = {'results': [], 'has_more': False}
         self.assertEqual(upsert_page(notion, 'db', schema, fields, [alias, paper, ebook]), ('ebook', False))
         notion.databases.query.assert_not_called()
         notion.pages.create.assert_not_called()
         self.assertEqual([c.kwargs['page_id'] for c in notion.pages.update.call_args_list], ['ebook', 'alias'])
-        for call in notion.pages.update.call_args_list:
-            self.assertNotIn('Source', call.kwargs['properties'])
-            self.assertNotIn('Title', call.kwargs['properties'])
+        self.assertEqual(notion.pages.update.call_args_list[0].kwargs['properties']['Title']['title'][0]['text']['content'], 'Current title')
+        self.assertEqual(notion.pages.update.call_args_list[1].kwargs, {'page_id': 'alias', 'archived': True})
 
     def test_weread_title_fallback_is_scoped_and_ignores_other_editions(self):
         schema, fields, page = self.weread_match_fixture()
@@ -587,7 +587,7 @@ class SyncTests(unittest.TestCase):
         with patch.object(sync, 'get_db_properties', return_value={'refreshed': True}):
             self.assertEqual(sync.ensure_sync_properties(notion, 'db', schema), {'refreshed': True})
         notion.databases.update.assert_called_once_with(database_id='db', properties={
-            'Current Chapter': {'rich_text': {}}, 'Total Words': {'number': {}}})
+            'Current Chapter': {'rich_text': {}}, 'Total Words': {'number': {}}, 'WeRead Book ID': {'rich_text': {}}})
         notion.databases.update.reset_mock()
         with self.assertRaisesRegex(ValueError, 'Total Words'):
             sync.ensure_sync_properties(notion, 'db', {'Total Words': {'type': 'formula'}})
@@ -761,6 +761,78 @@ class SyncTests(unittest.TestCase):
         response.json.return_value = {'errCode': -2012}
         with self.assertRaises(Exception):
             WeReadAPI._check_response(response)
+
+
+class BookIdentityTests(unittest.TestCase):
+    def fixture(self):
+        def page(id, title):
+            return {'id': id, 'last_edited_time': '2026-10-24T01:00:00Z',
+                    'cover': {'external': {'url': 'https://cdn.weread.qq.com/cover/YueWen_123/image.jpg'}},
+                    'properties': {'Title': {'type': 'title', 'title': [{'text': {'content': title}}]},
+                                   'Source': {'type': 'multi_select', 'multi_select': [{'name': 'WeRead'}]}}}
+        a, b = page('a', 'Current'), page('b', 'Old')
+        notion = Mock()
+        notion.pages.retrieve.side_effect = lambda page_id: {'a': a, 'b': b}[page_id]
+        notion.blocks.children.list.return_value = {'results': [], 'has_more': False}
+        return notion, a, b
+
+    def test_explicit_id_is_used_without_cover_for_imported_book(self):
+        self.assertEqual(weread_cover_book_id({'properties': {'WeRead Book ID': {'rich_text': [{'plain_text': 'CB_imported-1'}]}}}), 'CB_imported-1')
+        with self.assertRaises(ValueError):
+            weread_cover_book_id({'properties': {'WeRead Book ID': {'rich_text': [{'plain_text': 'bad id'}]}}})
+
+    def test_rename_updates_same_page_and_persists_id(self):
+        notion, a, _ = self.fixture()
+        a['properties']['WeRead Book ID'] = {'type': 'rich_text', 'rich_text': [{'text': {'content': '123'}}]}
+        schema = {'Title': {'type': 'title'}, 'Source': {'type': 'multi_select'}, 'WeRead Book ID': {'type': 'rich_text'}}
+        fields = {'source': 'WeRead', 'book_id': '123', 'title': 'Renamed again'}
+        self.assertEqual(upsert_page(notion, 'db', schema, fields, [a]), ('a', False))
+        props = notion.pages.update.call_args.kwargs['properties']
+        self.assertEqual(props['Title']['title'][0]['text']['content'], 'Renamed again')
+        self.assertEqual(props['WeRead Book ID']['rich_text'][0]['text']['content'], '123')
+        notion.pages.create.assert_not_called()
+
+    def test_empty_alias_can_be_trashed_but_primary_is_not(self):
+        notion, a, b = self.fixture()
+        self.assertTrue(archive_empty_weread_alias(notion, 'a', 'b', '123'))
+        notion.pages.update.assert_called_once_with(page_id='b', archived=True)
+
+    def test_alias_with_unique_notes_or_rating_is_retained(self):
+        notion, a, b = self.fixture()
+        notion.blocks.children.list.return_value = {'results': [{'id': 'child'}], 'has_more': False}
+        self.assertFalse(archive_empty_weread_alias(notion, 'a', 'b', '123'))
+        notion.blocks.children.list.return_value = {'results': [], 'has_more': False}
+        b['properties']['Rating'] = {'type': 'select', 'select': {'name': 'five stars'}}
+        self.assertFalse(archive_empty_weread_alias(notion, 'a', 'b', '123'))
+        notion.pages.update.assert_not_called()
+
+    def test_unique_relation_and_zero_personal_number_are_not_discarded(self):
+        for kind, value, other in [('relation', [{'id': 'personal-a'}], [{'id': 'personal-b'}]), ('number', 0, None)]:
+            notion, a, b = self.fixture()
+            b['properties']['Personal'] = {'type': kind, kind: value}
+            a['properties']['Personal'] = {'type': kind, kind: other}
+            self.assertFalse(archive_empty_weread_alias(notion, 'a', 'b', '123'))
+            notion.pages.update.assert_not_called()
+
+    def test_wrong_source_and_changed_identity_cannot_be_trashed(self):
+        for mutate in [lambda b: b['properties']['Source'].update(multi_select=[{'name': 'Paperback'}]),
+                       lambda b: b['properties'].update({'WeRead Book ID': {'rich_text': [{'plain_text': '456'}]}})]:
+            notion, a, b = self.fixture(); mutate(b)
+            with self.assertRaises(ValueError): archive_empty_weread_alias(notion, 'a', 'b', '123')
+            notion.pages.update.assert_not_called()
+
+    def test_changed_page_during_cleanup_aborts_before_trash(self):
+        notion, a, b = self.fixture()
+        notion.pages.retrieve.side_effect = [a, b, a, {**b, 'last_edited_time': 'later'}]
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            archive_empty_weread_alias(notion, 'a', 'b', '123')
+        notion.pages.update.assert_not_called()
+
+    def test_malformed_content_response_cannot_trash_page(self):
+        notion, _, _ = self.fixture()
+        notion.blocks.children.list.return_value = {'results': []}
+        with self.assertRaises(ValueError): archive_empty_weread_alias(notion, 'a', 'b', '123')
+        notion.pages.update.assert_not_called()
 
 
 if __name__ == '__main__':

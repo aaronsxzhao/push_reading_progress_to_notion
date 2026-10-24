@@ -397,6 +397,10 @@ def build_update_props(notion: Client, page_id: str, db_props: Dict[str, Any], f
         existing_page = notion.pages.retrieve(page_id=page_id)
         if fields.get("source") == SOURCE_WEREAD and not is_weread_page(existing_page):
             raise ValueError(f"Refusing WeRead update to page {page_id}: Source is not exclusively WeRead")
+        if fields.get("source") == SOURCE_WEREAD and fields.get("book_id"):
+            known_id = weread_cover_book_id(existing_page)
+            if known_id and known_id != str(fields["book_id"]):
+                raise ValueError("WeRead Book ID changed before write; refusing update")
         fields = preserve_completion(db_props, fields, existing_page.get("properties", {}))
     else:
         fields = preserve_completion(db_props, fields)
@@ -633,6 +637,12 @@ def is_weread_page(page):
 
 
 def weread_cover_book_id(page):
+    explicit = "".join(item.get("plain_text", item.get("text", {}).get("content", ""))
+                       for item in page.get("properties", {}).get("WeRead Book ID", {}).get("rich_text", []))
+    if explicit:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", explicit):
+            raise ValueError("Invalid WeRead Book ID; refusing title-based fallback")
+        return explicit
     from urllib.parse import urlparse
     cover = page.get("cover") or {}
     parsed = urlparse(cover.get("external", {}).get("url", ""))
@@ -650,14 +660,21 @@ def find_weread_page(notion, database_id, db_props, fields, matching_pages):
         raise ValueError("WeRead sync requires a multi-select Source property")
     title_name = get_title_property_name(db_props)
     title = fields.get("title", "")
-    candidates = [page for page in matching_pages or [] if is_weread_page(page)]
+    book_id = str(fields.get("book_id") or "")
+    if book_id and matching_pages is None:
+        matching_pages = index_weread_pages(notion, database_id, db_props).get(book_id, [])
+    candidates = [page for page in matching_pages or [] if is_weread_page(page)
+                  and not page.get("archived") and not page.get("in_trash")
+                  and weread_cover_book_id(page) == book_id]
     if candidates:
-        # Retain the current-title page as the notes destination when aliases exist.
-        for page in candidates:
-            items = page.get("properties", {}).get(title_name, {}).get("title", [])
-            if "".join(item.get("plain_text", item.get("text", {}).get("content", "")) for item in items) == title:
-                return page, candidates
-        return candidates[0], candidates
+        # Once assigned, an explicit ID pins the destination across future renames.
+        def rank(page):
+            props = page.get("properties", {})
+            name = "".join(i.get("plain_text", i.get("text", {}).get("content", ""))
+                           for i in props.get(title_name, {}).get("title", []))
+            return (not bool(props.get("WeRead Book ID", {}).get("rich_text")),
+                    name != title, page.get("created_time", ""), page["id"])
+        return min(candidates, key=rank), candidates
     if not title:
         raise ValueError("WeRead book is missing its title")
     filters = [{"property": title_name, "title": {"equals": title}},
@@ -693,7 +710,7 @@ def index_weread_pages(notion, database_id, db_props):
         response = notion.databases.query(**args)
         for page in response["results"]:
             book_id = weread_cover_book_id(page)
-            if book_id and is_weread_page(page):
+            if book_id and is_weread_page(page) and not page.get("archived") and not page.get("in_trash"):
                 index.setdefault(book_id, []).append(page)
         if not response.get("has_more"):
             return index
@@ -701,6 +718,68 @@ def index_weread_pages(notion, database_id, db_props):
         if not cursor or cursor in seen_cursors:
             raise RuntimeError("Notion page pagination did not advance")
         seen_cursors.add(cursor)
+
+
+def weread_identity_props(db_props, fields):
+    props = {}
+    book_id = str(fields.get("book_id") or "")
+    if not book_id:
+        return props
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", book_id):
+        raise ValueError("Invalid WeRead book ID")
+    if db_props.get("WeRead Book ID", {}).get("type") == "rich_text":
+        props["WeRead Book ID"] = {"rich_text": [{"text": {"content": book_id}}]}
+    if fields.get("title"):
+        props[get_title_property_name(db_props)] = {"title": [{"text": {"content": fields["title"]}}]}
+    return props
+
+
+def archive_empty_weread_alias(notion, primary_id, alias_id, book_id):
+    """Conservative, retry-safe cleanup: never trash distinct text or user fields."""
+    primary = notion.pages.retrieve(page_id=primary_id)
+    alias = notion.pages.retrieve(page_id=alias_id)
+    if alias.get("archived") or alias.get("in_trash"):
+        return False
+    if primary_id == alias_id or not book_id or any(
+        not is_weread_page(p) or weread_cover_book_id(p) != book_id
+        for p in (primary, alias)
+    ) or primary.get("archived") or primary.get("in_trash"):
+        raise ValueError("Refusing cleanup: WeRead identity/source mismatch")
+    children = notion.blocks.children.list(block_id=alias_id, page_size=1)
+    if not isinstance(children.get("results"), list) or "has_more" not in children:
+        raise ValueError("Incomplete alias content response")
+    if children["results"] or children["has_more"]:
+        print(f"[DEDUPE] Retained {alias_id}: contains content; canonical {primary_id}")
+        return False
+    # Official reading fields may differ in old snapshots. Personal fields must
+    # already be present on the retained page, including rich-text formatting.
+    automatic = {PROP_TITLE, get_title_property_name({k: {'type': v.get('type')} for k, v in alias.get('properties', {}).items()}),
+                 "WeRead Book ID", PROP_CURRENT_PAGE, PROP_TOTAL_PAGE,
+                 PROP_STARTED_AT, PROP_LAST_READ_AT, PROP_DATE_FINISHED, PROP_YEAR_STARTED,
+                 PROP_COVER_IMAGE, "Reading Progress", "Current Chapter", "Total Words", "Start Date Source"}
+    def normalized(value):
+        if isinstance(value, dict):
+            return {k: normalized(v) for k, v in value.items() if k not in {"plain_text", "href"}}
+        if isinstance(value, list):
+            return [normalized(v) for v in value]
+        return value
+    for name, prop in alias.get("properties", {}).items():
+        kind = prop.get("type")
+        if name in automatic or kind in {"formula", "rollup", "created_time", "last_edited_time", "created_by", "last_edited_by", "unique_id"}:
+            continue
+        value = prop.get(kind)
+        empty = value is None or value == [] or value == "" or (kind == "checkbox" and value is False)
+        if not empty and normalized(value) != normalized(primary.get("properties", {}).get(name, {}).get(kind)):
+            print(f"[DEDUPE] Retained {alias_id}: distinct property {name}; canonical {primary_id}")
+            return False
+    # Re-read both pages immediately before the recoverable trash operation.
+    for snapshot in (primary, alias):
+        fresh = notion.pages.retrieve(page_id=snapshot["id"])
+        if fresh != snapshot:
+            raise ValueError("Page changed during duplicate cleanup; retry later")
+    notion.pages.update(page_id=alias_id, archived=True)
+    print(f"[DEDUPE] Trashed empty duplicate {alias_id}; retained {primary_id}")
+    return True
 
 
 def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any], matching_pages=None) -> Tuple[str, bool]:
@@ -726,10 +805,12 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
 
     if existing:
         # Duplicate found - only update: status, last_read_at, date_finished, current_page
-        print(f"[INFO] Duplicate found (title: '{title}', author: '{author}') - updating only: status, last_read_at, date_finished, current_page")
+        print(f"[INFO] Existing book found (title: '{title}', author: '{author}') - updating its reading fields and verified identity")
         
         # Build update props (only the fields we want to update)
         update_props = build_update_props(notion, existing["id"], db_props, fields)
+        if fields.get("source") == SOURCE_WEREAD:
+            update_props.update(weread_identity_props(db_props, fields))
 
         # Set page cover/icon if missing
         update_kwargs: Dict[str, Any] = {}
@@ -743,13 +824,16 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
             notion.pages.update(page_id=existing["id"], **update_kwargs)
             print(f"[INFO] Updated page {existing['id']} with: {list(update_props.keys())}")
 
-        # Keep historical renamed copies current without renaming, merging or
-        # deleting pages. Notes continue to sync to the primary matching page.
+        # Only the canonical page is updated. Empty redundant rows can be safely
+        # trashed; aliases with distinct content/metadata are retained for review.
         for alias in matching_pages or []:
             if alias["id"] != existing["id"]:
-                alias_props = build_update_props(notion, alias["id"], db_props, fields)
-                if alias_props:
-                    notion.pages.update(page_id=alias["id"], properties=alias_props)
+                if fields.get("source") == SOURCE_WEREAD:
+                    archive_empty_weread_alias(notion, existing["id"], alias["id"], str(fields.get("book_id") or ""))
+                else:
+                    alias_props = build_update_props(notion, alias["id"], db_props, fields)
+                    if alias_props:
+                        notion.pages.update(page_id=alias["id"], properties=alias_props)
         
         # Append review if it exists
         if fields.get("review"):
@@ -760,6 +844,8 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
     # No duplicate - create new page with all fields
     print(f"[INFO] Creating new page (title: '{title}', author: '{author}')")
     props = build_props(db_props, fields)
+    if fields.get("source") == SOURCE_WEREAD:
+        props.update(weread_identity_props(db_props, fields))
     create_kwargs: Dict[str, Any] = {
         "parent": {"database_id": database_id},
         "properties": props,
