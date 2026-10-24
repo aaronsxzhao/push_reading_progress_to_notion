@@ -828,6 +828,12 @@ class BookIdentityTests(unittest.TestCase):
             archive_empty_weread_alias(notion, 'a', 'b', '123')
         notion.pages.update.assert_not_called()
 
+    def test_request_metadata_changes_are_not_page_edits(self):
+        notion, a, b = self.fixture()
+        notion.pages.retrieve.side_effect = [{**a, 'request_id': 'one'}, {**b, 'request_id': 'two'}, {**a, 'request_id': 'three'}, {**b, 'request_id': 'four'}]
+        self.assertTrue(archive_empty_weread_alias(notion, 'a', 'b', '123'))
+        notion.pages.update.assert_called_once_with(page_id='b', archived=True)
+
     def test_malformed_content_response_cannot_trash_page(self):
         notion, _, _ = self.fixture()
         notion.blocks.children.list.return_value = {'results': []}

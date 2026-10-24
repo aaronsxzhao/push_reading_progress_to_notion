@@ -773,9 +773,13 @@ def archive_empty_weread_alias(notion, primary_id, alias_id, book_id):
             print(f"[DEDUPE] Retained {alias_id}: distinct property {name}; canonical {primary_id}")
             return False
     # Re-read both pages immediately before the recoverable trash operation.
+    # API envelopes include per-request metadata (e.g. request_id), which must
+    # not be mistaken for a content edit. Compare persisted page state only.
+    def page_state(page):
+        return {k: page.get(k) for k in ("id", "last_edited_time", "archived", "in_trash", "properties", "parent")}
     for snapshot in (primary, alias):
         fresh = notion.pages.retrieve(page_id=snapshot["id"])
-        if fresh != snapshot:
+        if page_state(fresh) != page_state(snapshot):
             raise ValueError("Page changed during duplicate cleanup; retry later")
     notion.pages.update(page_id=alias_id, archived=True)
     print(f"[DEDUPE] Trashed empty duplicate {alias_id}; retained {primary_id}")
