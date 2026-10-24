@@ -786,6 +786,47 @@ def archive_empty_weread_alias(notion, primary_id, alias_id, book_id):
     return True
 
 
+def changed_properties(current, proposed):
+    """Drop equivalent writes so unchanged books keep their Notion edit time.
+
+    Compare writable values, not response IDs/colors/plain_text. Unknown value
+    shapes are deliberately kept rather than risking a missed real update.
+    """
+    def value(kind, raw):
+        if kind in {"title", "rich_text"}:
+            defaults = {"bold": False, "italic": False, "strikethrough": False,
+                        "underline": False, "code": False, "color": "default"}
+            result = []
+            for item in raw:
+                if item.get("type", "text") != "text":
+                    raise ValueError("Unsupported rich text")
+                result.append((item["text"]["content"], item["text"].get("link"),
+                               {**defaults, **item.get("annotations", {})}))
+            return result
+        if kind in {"select", "status"}:
+            return raw.get("name") if raw else None
+        if kind == "multi_select":
+            return sorted(item["name"] for item in raw)
+        if kind == "date":
+            return {key: raw.get(key) for key in ("start", "end", "time_zone")} if raw else None
+        if kind in {"number", "url", "checkbox", "email", "phone_number"}:
+            return raw
+        raise ValueError("Unsupported property")
+
+    changed = {}
+    for name, patch in proposed.items():
+        try:
+            if len(patch) != 1:
+                raise ValueError("Ambiguous property")
+            kind = next(iter(patch))
+            old = current[name]
+            if old.get("type", kind) != kind or value(kind, old[kind]) != value(kind, patch[kind]):
+                changed[name] = patch
+        except (KeyError, TypeError, ValueError):
+            changed[name] = patch
+    return changed
+
+
 def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fields: Dict[str, Any], matching_pages=None) -> Tuple[str, bool]:
     """
     Upsert a page in Notion database.
@@ -815,6 +856,11 @@ def upsert_page(notion: Client, database_id: str, db_props: Dict[str, Any], fiel
         update_props = build_update_props(notion, existing["id"], db_props, fields)
         if fields.get("source") == SOURCE_WEREAD:
             update_props.update(weread_identity_props(db_props, fields))
+            fresh = notion.pages.retrieve(page_id=existing["id"])
+            known_id = weread_cover_book_id(fresh)
+            if not is_weread_page(fresh) or (known_id and fields.get("book_id") and known_id != str(fields["book_id"])):
+                raise ValueError("WeRead identity/source changed before write; refusing update")
+            update_props = changed_properties(fresh.get("properties", {}), update_props)
 
         # Set page cover/icon if missing
         update_kwargs: Dict[str, Any] = {}

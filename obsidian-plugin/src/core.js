@@ -161,7 +161,7 @@ function bookFilename(book) {
 
 class NotionReader {
   constructor({ request, token, check = () => {}, wait = sleep, now = Date.now, interval = 380 }) {
-    this.request = request; this.token = token; this.check = check; this.wait = wait; this.now = now; this.interval = interval; this.lastRequest = 0;
+    this.request = request; this.token = token; this.check = check; this.wait = wait; this.now = now; this.interval = interval; this.lastRequest = 0; this.requestCount = 0;
   }
   async api(path, body) {
     if (!/^\/(data_sources|databases|pages|blocks)\/[a-f0-9-]+(\/query|\/children)?(\?[^\s]*)?$/.test(path)) fail('endpoint', '拒绝非预期的 Notion 请求。');
@@ -171,6 +171,7 @@ class NotionReader {
       this.check(); this.lastRequest = this.now();
       let response;
       try {
+        this.requestCount++;
         response = await this.request({ url: 'https://api.notion.com/v1' + path, method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + this.token, 'Notion-Version': API_VERSION, 'Content-Type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), throw: false });
       } catch (_) { fail('network', '无法连接 Notion，请检查网络后重试。'); }
       this.check();
@@ -365,4 +366,45 @@ function groupPages(pages) {
   return groups;
 }
 
-module.exports = { PLUGIN_ID, MARKER_NAME, API_VERSION, FILE_PREFIX, SyncError, cleanId, relativePath, parentPath, isUnder, digest, markerText, parseMarker, parseManaged, packManaged, plain, richText, renderBlocks, coverBookId, describePage, isWereadPage, bookBody, bookFilename, NotionReader, ExcerptStore, groupPages, sleep };
+// Device-local hints only: a hit requires both the full alias group version and
+// the exact local file to match. Never persist tokens or excerpt text here.
+class SyncCache {
+  constructor(saved, sourceId) {
+    this.data = saved?.schema === 1 && saved.sourceId === sourceId && saved.entries && typeof saved.entries === 'object'
+      ? saved : { schema: 1, sourceId, entries: {} };
+  }
+  async stamp(items, now = Date.now()) {
+    const versions = items.map(({ book }) => [book.pageId, book.bookKey, book.title, book.author, book.edited]).sort((a, b) => a[0].localeCompare(b[0]));
+    // Notion timestamps can be minute-granular. Re-read recent edits until
+    // settled, so two changes in the same minute cannot seed a false hit.
+    if (versions.some(v => !Number.isFinite(Date.parse(v[4])) || now - Date.parse(v[4]) < 120000)) return null;
+    return digest(JSON.stringify(versions));
+  }
+  matches(files, items) {
+    const ids = new Set(items.map(i => i.book.pageId));
+    return files.filter(f => ids.has(f.meta.pageId) || f.meta.bookKey === items[0].book.bookKey);
+  }
+  async hit(items, stamp, files, root) {
+    const entry = this.data.entries[items[0].book.bookKey];
+    if (!stamp || entry?.stamp !== stamp) return null;
+    const matches = this.matches(files, items);
+    if (entry.empty) return matches.length === 0 ? 'empty' : null;
+    if (matches.length !== 1) return null;
+    const file = matches[0];
+    return file.path.slice(root.length + 1) === entry.path && await digest(file.text) === entry.hash ? 'unchanged' : null;
+  }
+  async remember(items, stamp, files, root, outcome) {
+    const key = items[0].book.bookKey;
+    delete this.data.entries[key];
+    if (!stamp) return;
+    if (outcome === 'empty') { this.data.entries[key] = { stamp, empty: true }; return; }
+    const matches = this.matches(files, items);
+    if (matches.length !== 1) return;
+    const file = matches[0];
+    // Never bless content that changed after the successful write.
+    if (await digest(file.body) !== file.meta.bodyHash) return;
+    this.data.entries[key] = { stamp, path: file.path.slice(root.length + 1), hash: await digest(file.text) };
+  }
+}
+
+module.exports = { PLUGIN_ID, MARKER_NAME, API_VERSION, FILE_PREFIX, SyncError, cleanId, relativePath, parentPath, isUnder, digest, markerText, parseMarker, parseManaged, packManaged, plain, richText, renderBlocks, coverBookId, describePage, isWereadPage, bookBody, bookFilename, NotionReader, ExcerptStore, SyncCache, groupPages, sleep };

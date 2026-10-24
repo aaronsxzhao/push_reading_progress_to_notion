@@ -362,3 +362,29 @@ test('different IDs with identical filenames never overwrite or merge each other
   await assert.rejects(store.write(root, C.describePage(page(PAGE2)), rendered('第二本')), { code: 'occupied' });
   assert.equal(await io.read(root + '/' + C.bookFilename(book())), before);
 });
+
+test('incremental hints invalidate aliases, recent edits, missing timestamps and source changes', async () => {
+  const cache = new C.SyncCache(null, SOURCE), now = Date.parse('2026-10-24T02:00:00Z');
+  const items = [{ page: page(), book: book() }];
+  const stamp = await cache.stamp(items, now); assert.ok(stamp);
+  const alias = { page: page(PAGE2), book: { ...book(), pageId: PAGE2 } };
+  assert.notEqual(await cache.stamp([...items, alias], now), stamp);
+  assert.equal(await cache.stamp([{ book: { ...book(), edited: '2026-10-24T01:59:00Z' } }], now), null);
+  assert.equal(await cache.stamp([{ book: { ...book(), edited: '' } }], now), null);
+  cache.data.entries[book().bookKey] = { stamp, empty: true };
+  assert.deepEqual(new C.SyncCache(cache.data, PAGE2).data.entries, {});
+});
+test('incremental local validation survives folder moves but rejects copies and restored older files', async () => {
+  const { io, store, root } = await initialized();
+  const items = [{ page: page(), book: book() }], cache = new C.SyncCache(null, SOURCE);
+  const stamp = await cache.stamp(items, Date.parse('2026-10-24T02:00:00Z'));
+  await store.write(root, book(), rendered('旧原文')); const old = (await store.index(root))[0].text;
+  await store.write(root, book(), rendered('新原文'));
+  await cache.remember(items, stamp, await store.index(root), root, 'updated');
+  io.move(root, '阅读/' + root); const moved = '阅读/' + root;
+  assert.equal(await cache.hit(items, stamp, await store.index(moved), moved), 'unchanged');
+  const file = (await store.index(moved))[0]; io.data.set(file.path + '.copy.md', file.text);
+  assert.equal(await cache.hit(items, stamp, await store.index(moved), moved), null);
+  io.data.delete(file.path + '.copy.md'); io.data.set(file.path, old);
+  assert.equal(await cache.hit(items, stamp, await store.index(moved), moved), null);
+});

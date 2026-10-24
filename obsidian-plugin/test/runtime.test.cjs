@@ -9,10 +9,11 @@ const SOURCE = '11111111111111111111111111111111', PAGE = '222222222222222222222
 const root = '微信读书自动摘录';
 const rt = text => [{ plain_text: text, text: { content: text } }];
 
-async function harness({ initialized = true, mobile = false, aliases = false } = {}) {
+async function harness({ initialized = true, mobile = false, aliases = false, bookCount = 1, empty = false } = {}) {
   const data = new Map([[root + '/' + C.MARKER_NAME, C.markerText(SOURCE)], ['自己的笔记.md', '永久保留']]);
   const notices = [], calls = [], handlers = [], timers = new Map(); let tid = 0, requestsPending = 0, maxConcurrent = 0;
-  let content = '测试划线'; let version = '2026-10-24T01:00:00Z';
+  const changed = new Map(); let failPage = null;
+  let content = '测试划线'; let version = '2026-10-22T01:00:00Z';
   const document = { hidden: false };
   class TFile { constructor(path) { this.path = path; this.name = path.split('/').pop(); } }
   class TFolder { constructor(path) { this.path = path; this.name = path.split('/').pop(); } }
@@ -40,16 +41,29 @@ async function harness({ initialized = true, mobile = false, aliases = false } =
       if (aliases) page.properties['WeRead Book ID'] = { type: 'rich_text', rich_text: rt('123') };
       const oldPage = { ...page, id: SOURCE, properties: { ...page.properties, Title: { type: 'title', title: rt('旧书名') } } };
       let json;
-      if (args.url.endsWith('/query')) json = list(aliases ? [page, oldPage] : [page]);
-      else if (args.url.includes('/pages/')) json = args.url.endsWith(SOURCE) ? oldPage : page;
-      else if (args.url.includes('/children')) json = list([{ id: BLOCK, type: 'paragraph', paragraph: { rich_text: rt(content) } }]);
+      if (args.url.endsWith('/query')) {
+        const query = JSON.parse(args.body), offset = Number(query.start_cursor || 0);
+        const pages = aliases ? [page, oldPage] : Array.from({ length: bookCount }, (_, n) => ({ ...page, id: n ? n.toString(16).padStart(32, '0') : PAGE, last_edited_time: changed.get(n)?.version || version,
+          properties: { ...page.properties, Title: { type: 'title', title: rt('测试书' + (n || '')) } } }));
+        json = { results: pages.slice(offset, offset + 100), has_more: offset + 100 < pages.length, next_cursor: offset + 100 < pages.length ? String(offset + 100) : null };
+      }
+      else if (args.url.includes('/pages/')) {
+        const id = args.url.split('/').pop(), n = id === PAGE ? 0 : parseInt(id, 16);
+        if (id === failPage) return { status: 404, json: {} };
+        json = aliases ? (id === SOURCE ? oldPage : page) : { ...page, id, last_edited_time: changed.get(n)?.version || version,
+          properties: { ...page.properties, Title: { type: 'title', title: rt('测试书' + (n || '')) } } };
+      }
+      else if (args.url.includes('/children')) {
+        const id = args.url.split('/blocks/')[1].split('/')[0], n = id === PAGE ? 0 : parseInt(id, 16);
+        json = list(empty && !changed.has(n) ? [] : [{ id: BLOCK, type: 'paragraph', paragraph: { rich_text: rt(changed.get(n)?.content || content) } }]);
+      }
       else throw Error('unexpected');
       return { status: 200, json };
     }
   };
   const app = {
     isMobile: mobile,
-    loadLocalStorage: () => null, saveLocalStorage() {}, secretStorage: { getSecret: () => 'synthetic-readonly-token' },
+    loadLocalStorage: () => null, saveLocalStorage(key, value) { this.localSaved = JSON.parse(JSON.stringify(value)); }, secretStorage: { getSecret: () => 'synthetic-readonly-token' },
     workspace: { onLayoutReady(fn) { this.ready = fn; } },
     vault: {
       getFiles: () => [...data.keys()].map(p => new TFile(p)),
@@ -73,8 +87,10 @@ async function harness({ initialized = true, mobile = false, aliases = false } =
   vm.runInContext(main.replace("const Core = require('./core');", `const Core=(()=>{const module={exports:{}};${core}\nreturn module.exports;})();`), context);
   const plugin = new module.exports(); plugin.app = app; await plugin.onload();
   return { plugin, app, document, window, handlers, timers, notices, calls, data,
-    change(text) { content = text; version = '2026-10-25T01:00:00Z'; }, maxConcurrent: () => maxConcurrent,
-    async flushOpenTimer() { const entry = [...timers.entries()].find(([, t]) => t.ms === 1200); if (entry) { timers.delete(entry[0]); await entry[1].fn(); } }
+    change(text) { content = text; version = '2026-10-23T01:00:00Z'; },
+    changeBook(n, text) { changed.set(n, { content: text, version: '2026-10-23T02:00:00Z' }); },
+    fail(id) { failPage = id; }, maxConcurrent: () => maxConcurrent,
+    async flushOpenTimer() { const entry = [...timers.entries()].find(([, t]) => t.ms === 150); if (entry) { timers.delete(entry[0]); await entry[1].fn(); } }
   };
 }
 
@@ -106,7 +122,7 @@ test('desktop and mobile automatically consolidate legacy titles without opening
 test('startup schedules one debounced sync, without recurring polling', async () => {
   const h = await harness(); h.app.workspace.ready();
   for (const event of h.handlers.filter(x => x.event === 'focus')) event.fn();
-  assert.equal([...h.timers.values()].filter(t => t.ms === 1200).length, 1);
+  assert.equal([...h.timers.values()].filter(t => t.ms === 150).length, 1);
   await h.flushOpenTimer();
   assert.equal(h.timers.size, 0); assert.ok(h.calls.length);
 });
@@ -188,4 +204,46 @@ for (const mobile of [false, true]) test(`legacy note migration uses cross-platf
   assert.equal(h.data.get('自己的笔记.md'), '永久保留');
   await h.plugin.sync(true);
   assert.equal([...h.data.keys()].filter(p => p.includes('【自动摘录】')).length, 1);
+});
+
+for (const mobile of [false, true]) test(`185 unchanged books need only two listing requests (mobile=${mobile})`, async () => {
+  const h = await harness({ mobile, bookCount: 185 }); await h.plugin.sync(true);
+  assert.equal(h.calls.length, 557);
+  h.calls.length = 0;
+  // Simulate loading the persisted device cache after reopening the app.
+  h.plugin.device = JSON.parse(JSON.stringify(h.app.localSaved));
+  await h.plugin.sync(true);
+  assert.equal(h.calls.length, 2); assert.ok(h.calls.every(c => c.url.endsWith('/query')));
+  assert.match(h.plugin.report.summary, /未变 185 本；读取正文 0 本，2 次请求/);
+  h.changeBook(3, '只更新这一本'); h.calls.length = 0; await h.plugin.sync(true);
+  assert.equal(h.calls.length, 5);
+  assert.match(h.data.get(root + '/【自动摘录】测试书3.md'), /只更新这一本/);
+  assert.match(h.plugin.report.summary, /更新 1 本，未变 184 本/);
+});
+test('empty books are cached and become notes when their source changes', async () => {
+  const h = await harness({ bookCount: 185, empty: true }); await h.plugin.sync(true);
+  h.calls.length = 0; await h.plugin.sync(true); assert.equal(h.calls.length, 2);
+  h.changeBook(2, '新划线'); h.calls.length = 0; await h.plugin.sync(true);
+  assert.equal(h.calls.length, 5); assert.match(h.data.get(root + '/【自动摘录】测试书2.md'), /新划线/);
+});
+test('cached local deletion is restored and manual edits are never hidden by cache', async () => {
+  const h = await harness(); await h.plugin.sync(true);
+  const path = root + '/【自动摘录】测试书.md'; h.data.delete(path);
+  h.calls.length = 0; await h.plugin.sync(true); assert.equal(h.calls.length, 4); assert.ok(h.data.has(path));
+  h.data.set(path, h.data.get(path) + '我的手写');
+  await h.plugin.sync(true); assert.match(h.plugin.report.details.join(''), /已被修改/);
+  assert.match(h.data.get(path), /我的手写/);
+});
+test('failed source read is retried instead of being cached as success', async () => {
+  const h = await harness(); h.fail(PAGE); await h.plugin.sync(true);
+  assert.match(h.plugin.report.summary, /跳过 1 本/);
+  h.fail(null); h.calls.length = 0; await h.plugin.sync(true);
+  assert.equal(h.calls.length, 4); assert.match(h.plugin.report.summary, /新增 1 本/);
+});
+test('full verification bypasses cache and cache contains no credentials or excerpts', async () => {
+  const h = await harness(); await h.plugin.sync(true);
+  const saved = JSON.stringify(h.app.localSaved);
+  assert.doesNotMatch(saved, /synthetic-readonly-token|测试划线/);
+  h.calls.length = 0; await h.plugin.sync(true, h.document, true); assert.equal(h.calls.length, 4);
+  assert.ok(h.plugin.commands.some(c => c.id === 'verify-all'));
 });

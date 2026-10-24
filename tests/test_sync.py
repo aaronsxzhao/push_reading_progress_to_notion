@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from weread_gateway import WeReadGateway, create_weread_client
 from weread_api import WeReadAPI
 import weread_notion_sync_api as sync
-from weread_notion_sync import build_props, build_update_props, upsert_page, index_weread_pages, weread_cover_book_id, archive_empty_weread_alias
+from weread_notion_sync import build_props, build_update_props, upsert_page, index_weread_pages, weread_cover_book_id, archive_empty_weread_alias, changed_properties
 from config import translate_genres
 
 
@@ -789,8 +789,29 @@ class BookIdentityTests(unittest.TestCase):
         self.assertEqual(upsert_page(notion, 'db', schema, fields, [a]), ('a', False))
         props = notion.pages.update.call_args.kwargs['properties']
         self.assertEqual(props['Title']['title'][0]['text']['content'], 'Renamed again')
-        self.assertEqual(props['WeRead Book ID']['rich_text'][0]['text']['content'], '123')
+        self.assertNotIn('WeRead Book ID', props)  # Existing identity is unchanged.
         notion.pages.create.assert_not_called()
+
+    def test_unchanged_book_does_not_touch_notion_edit_time(self):
+        notion, a, _ = self.fixture()
+        a['properties']['WeRead Book ID'] = {'type': 'rich_text', 'rich_text': [{'type': 'text', 'plain_text': '123', 'text': {'content': '123', 'link': None}}]}
+        schema = {'Title': {'type': 'title'}, 'Source': {'type': 'multi_select'}, 'WeRead Book ID': {'type': 'rich_text'}}
+        fields = {'source': 'WeRead', 'book_id': '123', 'title': 'Current'}
+        self.assertEqual(upsert_page(notion, 'db', schema, fields, [a]), ('a', False))
+        notion.pages.update.assert_not_called()
+        notion.pages.create.assert_not_called()
+
+    def test_property_comparison_ignores_response_metadata_but_keeps_real_changes(self):
+        current = {
+            'Status': {'type': 'status', 'status': {'id': 'id', 'name': 'Read', 'color': 'green'}},
+            'Date': {'type': 'date', 'date': {'start': '2026-10-24', 'end': None, 'time_zone': None}},
+            'Words': {'type': 'number', 'number': 12000},
+            'Title': {'type': 'title', 'title': [{'type': 'text', 'text': {'content': 'A', 'link': None}, 'plain_text': 'A', 'annotations': {'bold': True}}]},
+        }
+        proposed = {'Status': {'status': {'name': 'Read'}}, 'Date': {'date': {'start': '2026-10-24'}},
+                    'Words': {'number': 13000}, 'Title': {'title': [{'text': {'content': 'A'}}]}}
+        self.assertEqual(set(changed_properties(current, proposed)), {'Words', 'Title'})
+        self.assertEqual(changed_properties({}, proposed), proposed)
 
     def test_empty_alias_can_be_trashed_but_primary_is_not(self):
         notion, a, b = self.fixture()

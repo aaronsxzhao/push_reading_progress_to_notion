@@ -43,6 +43,7 @@ class ExcerptsPlugin extends Plugin {
     this.status = this.addStatusBarItem();
     this.addSettingTab(new ExcerptsSettings(this.app, this));
     this.addCommand({ id: 'sync-now', name: '立即同步 Notion 摘录', callback: () => this.sync(true) });
+    this.addCommand({ id: 'verify-all', name: '完整核验所有 Notion 摘录（较慢）', callback: () => this.sync(true, document, true) });
     this.addCommand({ id: 'show-result', name: '查看同步结果', callback: () => new ResultModal(this.app, this).open() });
     this.addRibbonIcon('refresh-cw', '同步微信读书摘录', () => this.sync(true));
     this.app.workspace.onLayoutReady(() => this.schedule());
@@ -62,7 +63,7 @@ class ExcerptsPlugin extends Plugin {
   schedule() {
     if (this.disposed || !this.settings.automatic || !this.settings.initialized || document.hidden) return;
     window.clearTimeout(this.startTimer);
-    this.startTimer = window.setTimeout(() => this.sync(false), 1200);
+    this.startTimer = window.setTimeout(() => this.sync(false), 150);
   }
   setReport(summary, details = []) {
     this.report = { summary, details };
@@ -157,7 +158,7 @@ class ExcerptsPlugin extends Plugin {
     const message = error instanceof Core.SyncError ? error.message : '操作失败，已停止写入。请检查网络、iCloud 文件状态后重试。';
     this.setReport(message); new Notice(message, 10000);
   }
-  async sync(manual = false, ownerDocument = document) {
+  async sync(manual = false, ownerDocument = document, forceFull = false) {
     if (this.disposed || ownerDocument.hidden) return;
     if (this.running) {
       if (this.epoch !== this.runningEpoch) this.pendingResume = true;
@@ -181,7 +182,7 @@ class ExcerptsPlugin extends Plugin {
     const check = () => {
       if (this.disposed || ownerDocument.hidden || epoch !== this.epoch) throw new Core.SyncError('cancelled', '同步已暂停；下次打开或手动同步时重新检查。');
     };
-    const counts = { created: 0, updated: 0, unchanged: 0, empty: 0, failed: 0 };
+    const counts = { created: 0, updated: 0, unchanged: 0, empty: 0, failed: 0, fetched: 0 };
     const details = [];
     try {
       const reader = this.reader(check);
@@ -199,18 +200,29 @@ class ExcerptsPlugin extends Plugin {
       const pages = await reader.pages(this.settings.sourceId);
       const groups = Core.groupPages(pages);
       const initialFiles = await store.index(root);
+      const cache = new Core.SyncCache(this.device.syncCache, this.settings.sourceId);
+      this.device.syncCache = cache.data;
+      for (const key of Object.keys(cache.data.entries)) if (!groups.has(key)) delete cache.data.entries[key];
       let number = 0;
       for (const [bookKey, items] of groups) {
         check(); number++;
         const item = items[0];
         this.setReport(`正在核对 ${number}/${groups.size}：${item.book.title}`);
         try {
+          const stamp = await cache.stamp(items);
+          const hit = !forceFull && await cache.hit(items, stamp, initialFiles, root);
+          if (hit) { counts[hit]++; continue; }
+          delete cache.data.entries[bookKey];
+          this.saveDevice();
+          counts.fetched++;
           const { book, rendered } = await reader.readGroup(items);
           check();
           // Fail closed if the page's source identity changed during the read.
           if (book.bookKey !== item.book.bookKey) throw new Core.SyncError('changed', '书籍标识正在变化，已跳过。');
           const outcome = await store.write(root, book, rendered);
           counts[outcome]++;
+          await cache.remember(items, stamp, await store.index(root), root, outcome);
+          this.saveDevice();
         } catch (error) {
           if (['cancelled', 'folder_changed', 'auth', 'network', 'retry'].includes(error.code)) throw error;
           counts.failed++;
@@ -221,7 +233,7 @@ class ExcerptsPlugin extends Plugin {
       const currentIds = new Set(pages.map(p => Core.cleanId(p.id)));
       const missing = initialFiles.filter(f => !currentIds.has(f.meta.pageId) && !groups.has(f.meta.bookKey));
       if (missing.length) details.push(`${missing.length} 个旧摘录的来源本次未查到，已保留原文件。`);
-      const summary = `新增 ${counts.created} 本，更新 ${counts.updated} 本，未变 ${counts.unchanged} 本${counts.failed ? `，跳过 ${counts.failed} 本` : ''}`;
+      const summary = `新增 ${counts.created} 本，更新 ${counts.updated} 本，未变 ${counts.unchanged} 本${counts.failed ? `，跳过 ${counts.failed} 本` : ''}；读取正文 ${counts.fetched} 本，${reader.requestCount} 次请求，用时 ${((Date.now() - this.lastStarted) / 1000).toFixed(1)} 秒`;
       this.device.lastSuccess = new Date().toISOString(); this.device.lastRoot = root; this.saveDevice();
       this.setReport(summary, details);
       if (manual || counts.created || counts.updated || details.length) new Notice(summary + (details.length ? '。可在命令面板查看同步结果。' : ''), 8000);
@@ -276,6 +288,8 @@ class ExcerptsSettings extends PluginSettingTab {
       .addButton(button => { syncButton = button; button.setButtonText('立即同步').onClick(() => p.sync(true, el.ownerDocument)); })
       .addButton(button => { stopButton = button; button.setButtonText('停止本次同步').onClick(() => { p.epoch++; p.setReport('正在停止，等待当前读取结束…'); new Notice('将在当前读取结束后停止。'); }); })
       .addButton(button => button.setButtonText('查看结果').onClick(() => new ResultModal(p.app, p).open()));
+    new Setting(el).setName('完整核验').setDesc('日常只读取有变化的书；首次使用此设备需建立缓存。若怀疑 Notion 更新时间未反映正文变化，可在这里绕过缓存，重新读取全部书籍。')
+      .addButton(button => button.setButtonText('完整核验（较慢）').onClick(() => p.sync(true, el.ownerDocument, true)));
     if (p.device.selectedFolder) {
       new Setting(el).setName('重新选择重复目录').setDesc('仅清除重复目录选择；书籍按微信读书 ID 自动合并，无需选择来源。')
         .addButton(button => button.setButtonText('清除选择').onClick(async () => { if (p.running) { new Notice('请等待同步结束。'); return; } p.settings.pageChoices = {}; delete p.device.selectedFolder; p.saveDevice(); await p.saveSettings(); this.display(); }));
