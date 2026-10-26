@@ -453,7 +453,6 @@ class ExcerptsPlugin extends Plugin {
     this.running = false; this.epoch = 0; this.disposed = false; this.lastStarted = 0;
     this.reportListeners = new Set();
     this.report = { summary: '尚未同步', details: [] };
-    this.status = this.addStatusBarItem();
     this.addSettingTab(new ExcerptsSettings(this.app, this));
     this.addCommand({ id: 'sync-now', name: '立即同步 Notion 摘录', callback: () => this.sync(true) });
     this.addCommand({ id: 'verify-all', name: '完整核验所有 Notion 摘录（较慢）', callback: () => this.sync(true, document, true) });
@@ -480,7 +479,6 @@ class ExcerptsPlugin extends Plugin {
   }
   setReport(summary, details = []) {
     this.report = { summary, details };
-    this.status?.setText('微信读书：' + summary);
     for (const listener of this.reportListeners) { try { listener(this.report); } catch (_) { /* A closed settings window must not abort data sync. */ } }
   }
   subscribeReport(listener) {
